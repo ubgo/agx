@@ -20,6 +20,7 @@ Every example, grouped by topic. The guide column names the page that explains i
 |---|---|---|
 | [acct-login-kinds](acct-login-kinds/README.md) | Add one login of every kind and source, list and check them, and see how each reaches its agent. | [logins.md](../docs/logins.md#kinds) |
 | [acct-login-manage](acct-login-manage/README.md) | Check, default, rotate and remove logins; `--cascade`; the refusals. | [logins.md](../docs/logins.md#rotating-and-removing) |
+| [acct-login-token](acct-login-token/README.md) | Print a login's token for a pipe or an `apiKeyHelper`: every source, an agx login as a key helper, the refusals. | [logins.md](../docs/logins.md#print-a-logins-token) |
 | [acct-use-login](acct-use-login/README.md) | Every place a login can come from and what wins: agent default, profile, flags, `--token-ref`, `AGX_LOGIN`. | [logins.md](../docs/logins.md#using-a-login) |
 | [acct-second-account](acct-second-account/README.md) | A second Claude account in its own home: discover, `profile add` (with and without `--bare`), import, edit, default, remove. | [guides/second-account.md](../docs/guides/second-account.md) |
 | [acct-auto-pick](acct-auto-pick/README.md) | What `--auto-profile` and `--auto-login` decide before any request, and their refusals. | [guides/auto-pick.md](../docs/guides/auto-pick.md) |

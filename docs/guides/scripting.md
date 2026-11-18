@@ -166,7 +166,7 @@ $ agx run --dry-run --quiet --json --field decisions.1
 {"name":"profile","value":"work","source":"folder binding ~/projects/client"}
 ```
 
-A token never reaches any output, plain or resolved: it is `[redacted]` in text, JSON, errors and logs. Redaction goes by a value's source (a login, a reference, an env file, an agent's credential variable) and by the value, never by a name, so a literal `--env MY_SERVICE_TOKEN=abc` is shown as written; [what is redacted](../output.md#what-is-redacted) has the full rule.
+A token never reaches any output, plain or resolved: it is `[redacted]` in text, JSON, errors and logs. The one exception is a script that asks for it: `agx login token --id NAME` prints that login's token alone on stdout (a pipe or a file; a terminal needs `--reveal`, and `--json` is refused), for example `export ANTHROPIC_API_KEY="$(agx login token --id work-key)"`; see [print a login's token](../logins.md#print-a-logins-token). Redaction goes by a value's source (a login, a reference, an env file, an agent's credential variable) and by the value, never by a name, so a literal `--env MY_SERVICE_TOKEN=abc` is shown as written; [what is redacted](../output.md#what-is-redacted) has the full rule.
 
 <!-- snippet: examples/out-scripting/session.txt#redacted -->
 ```sh

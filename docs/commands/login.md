@@ -1,6 +1,6 @@
 # Logins
 
-Named logins: plan tokens, API keys and key helpers. [Logins](../logins.md) is the guide: the kinds, how each reaches the agent, and where a login can be set. No login command prints a token value, except [`agx login token`](#agx-login-token) when you ask for it. The examples below come from [`examples/acct-login-kinds`](../../examples/acct-login-kinds/README.md), [`examples/acct-login-manage`](../../examples/acct-login-manage/README.md) and [`examples/acct-use-login`](../../examples/acct-use-login/README.md), which run in the test suite.
+Named logins: plan tokens, API keys and key helpers. [Logins](../logins.md) is the guide: the kinds, how each reaches the agent, and where a login can be set. No login command prints a token value, except [`agx login token`](#agx-login-token) when you ask for it. The examples below come from [`examples/acct-login-kinds`](../../examples/acct-login-kinds/README.md), [`examples/acct-login-manage`](../../examples/acct-login-manage/README.md), [`examples/acct-use-login`](../../examples/acct-use-login/README.md) and [`examples/acct-login-token`](../../examples/acct-login-token/README.md), which run in the test suite.
 
 ## agx login list
 
@@ -288,5 +288,55 @@ agx login add --name console --agent claude --kind api-key-helper --helper-comma
 ```
 
 The second line makes any agx login, wherever its token lives, the `apiKeyHelper` of a Claude Code launch.
+
+Try it (from [`examples/acct-login-token`](../../examples/acct-login-token/README.md); the test runner gives stdout a pipe):
+
+<!-- snippet: examples/acct-login-token/session.txt#sources -->
+```sh
+$ agx login token --id work-key
+fake-work-key
+
+$ agx login token --id carol
+fake-token-carol
+
+$ agx login token --id derek
+fake-token-derek
+
+$ agx login token --id pasted
+fake-pasted-token
+```
+
+<!-- snippet: examples/acct-login-token/session.txt#refusals -->
+```sh
+$ agx login token --id vault
+agx: login vault is an api-key-helper: it has no token to print; the agent runs its helper command itself
+  agx login show --id vault
+[exit 4]
+
+$ agx login token --id work-key --json
+{
+  "schema_version": 1,
+  "command": "login token",
+  "ok": false,
+  "data": null,
+  "decisions": [],
+  "warnings": [],
+  "error": {
+    "code": "usage",
+    "message": "agx login token prints the bare value for scripts and apiKeyHelper; it takes no --json or --field"
+  }
+}
+[exit 2]
+
+$ agx login token --id spare
+agx: login spare: SPARE_CLAUDE_TOKEN is not set
+  agx login check --id spare --no-probe
+[exit 1]
+
+$ agx login token --id nosuch
+agx: unknown login nosuch
+  agx login list
+[exit 1]
+```
 
 Pitfalls: stdout on a terminal is refused (exit 2) unless you add `--reveal`, so a token does not land in scrollback by accident. `--json` and `--field` are refused (exit 2): the output is the bare value. An `api-key-helper` login has no token of its own and is refused (exit 4); agx does not run its command. An unknown login is `not-found` (exit 1), and a reference that does not resolve fails with the same message as `agx login check`, never a value.

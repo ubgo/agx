@@ -12,6 +12,7 @@ A login is what one launch authenticates with. agx offers six choices: the home'
 | you have no secret store | `oauth-token` with `--stdin` or `--login-setup`: the value is stored in `tokens.jsonc` (mode 0600) | Claude |
 | you pay per token (an Anthropic Console key, a Gemini key, a pi provider key) | `api-key` | Claude, Gemini CLI, pi |
 | the key must never pass through agx, or a command hands out short-lived keys | `api-key-helper`: Claude runs the command itself | Claude |
+| an agx login's key, fetched by Claude itself each time it needs one | `api-key-helper` with `--helper-command 'agx login token --id NAME'` | Claude |
 | a long session may hit its plan limit and you want to switch it without a restart | live login: `--live-login` on a stored `oauth-token` or `api-key` login | Claude |
 | one run on a token you do not want to save | `--token-ref REF --token-kind KIND` | Claude, Gemini CLI, pi |
 | Codex | the home login only: Codex has no token login | Codex |
@@ -135,6 +136,7 @@ claude --settings ~/.agx/runs/20261114-101500-k3x9/settings-20261114-101500-k3x9
 - If you want one home (its settings, history and MCP servers) on several plan accounts, add an `oauth-token` login per account and pick it per run, per folder or per terminal (see [Where to set the profile and login](where-to-set.md)).
 - If a session must outlive one account's quota, use a stored token login and `--live-login` (see [Continue on another account](continue-on-another-account.md)).
 - If your organisation hands out keys through a command, use `api-key-helper`. It cannot be live: agx never runs a credential command it only passes on.
+- If the key is already an agx login (gopass, a command, a variable or a pasted token) and you want Claude to fetch it through a helper, make the helper `agx login token --id NAME`; see [print a login's token](../logins.md#print-a-logins-token).
 - If you only need a token once, `--token-ref` with `--token-kind` saves nothing; it also cannot be live.
 
 ## Pitfalls

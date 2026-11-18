@@ -191,9 +191,17 @@ pi reads a different variable per provider, so a pi token login names its provid
 
 Live login switches the token a running Claude session fetches through `agx credential`, so the run must start on a stored token login: name one with `--login` (exit 125 otherwise). A one-off `--token-ref` and an `api-key-helper` login are refused for the same reason, and so is a profile whose environment sets a variable that outranks the helper. See [live login pitfalls](guides/live-login.md#pitfalls).
 
+### "agx login token will not print a token to a terminal"
+
+`agx login token` prints a token only to a pipe or a file, so it does not land in your scrollback or a screen share by accident (exit 2). Pipe it (`agx login token --id NAME | pbcopy`) or add `--reveal` to print it on the terminal anyway. `--json` and `--field` are refused too: the output is the bare value. See [print a login's token](logins.md#print-a-logins-token).
+
+### "login vault is an api-key-helper: it has no token to print"
+
+An `api-key-helper` login holds a command the agent runs, not a token, and `agx login token` does not run it for you (exit 4). Run the helper command yourself, or point `agx login token` at the token login the helper would read.
+
 ### Claude exits with "apiKeyHelper failed: did not return a value" (or "exited 1")
 
-A live-login session asks `agx credential` for its key at every refresh. When the chosen login does not resolve to one token, `agx credential` prints nothing and exits non-zero, and Claude Code treats that as a hard failure: it tries three times, then exits 1. It does not fall back to the home's own login. Claude's `/status` shows agx's one-line reason, for example `agx: login alice: token is empty (try: agx login check --id alice --no-probe)`. Run that check, fix the login, and resume the conversation (`agx resume --last --login NAME --live-login`); the ended run cannot be switched back. Check a login before you switch to it. See [a helper that fails stops the session](guides/live-login.md#a-helper-that-fails-stops-the-session).
+A live-login session asks `agx credential` for its key at every refresh. When the chosen login does not resolve to one token, `agx credential` prints nothing and exits non-zero, and Claude Code treats that as a hard failure: it tries three times, then exits 1. It does not fall back to the home's own login. Claude's `/status` shows agx's one-line reason, for example `agx: login alice: token is empty (try: agx login check --id alice --no-probe)`. Run that check, fix the login, and resume the conversation (`agx resume --last --login NAME --live-login`); the ended run cannot be switched back. Check a login before you switch to it. See [a helper that fails stops the session](guides/live-login.md#a-helper-that-fails-stops-the-session). A helper of your own that runs `agx login token --id NAME` fails the same way when that login does not resolve: `agx login check --id NAME --no-probe` shows why.
 
 ## Launch options
 

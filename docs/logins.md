@@ -109,6 +109,14 @@ env      set AGX_RUN_ID=20261118-061009-jpdh                                    
 note     installed Claude Code version unknown; flags not checked
 ```
 
+Any agx login can be the helper, wherever its token lives: make the helper command [`agx login token`](#print-a-logins-token), which prints only that login's token. Claude then gets the key of `work-key` (here from `${WORK_KEY}`; it could be gopass, a command or a pasted token) each time it runs the helper:
+
+<!-- snippet: examples/acct-login-token/session.txt#helper -->
+```sh
+$ agx login add --name console --agent claude --kind api-key-helper --helper-command 'agx login token --id work-key'
+added login console (api-key-helper, helper agx)
+```
+
 ## Adding a login
 
 `agx login add` writes a login to config: its name, the agents it serves (`--agent`, repeat it for one key that serves several), its kind (default: the first agent's usual kind) and one token source. `--account` is a display label, such as the account's email; `--provider` is the model provider, for agents that read one key per provider (pi: `anthropic`, `openai`, …).
@@ -438,6 +446,60 @@ PROFILE    PROVIDER  HOME            ACCOUNT  STATE  LOGIN       BILLING
 work       claude    ~/.claude-work           none   derek       plan
 ```
 
+## Print a login's token
+
+`agx login token --id NAME` resolves one login's token from its source and prints the value and a newline on stdout, nothing else, for a pipe (`| pbcopy`), a script or an `apiKeyHelper`. It reads only what is stored or referenced and never refreshes a token; a `$(…)` or gopass reference runs that local command (cost X). This is the one command that prints a token; every other output still shows `[redacted]`. From [`examples/acct-login-token`](../examples/acct-login-token/README.md), with stdout on a pipe:
+
+<!-- snippet: examples/acct-login-token/session.txt#sources -->
+```sh
+$ agx login token --id work-key
+fake-work-key
+
+$ agx login token --id carol
+fake-token-carol
+
+$ agx login token --id derek
+fake-token-derek
+
+$ agx login token --id pasted
+fake-pasted-token
+```
+
+Stdout on a terminal is refused (exit 2) unless you add `--reveal`, so a token does not land in your scrollback by accident. The other refusals: a key helper has no token of its own and agx does not run its command (exit 4), the output is never wrapped in `--json` or `--field` (exit 2), and a reference that does not resolve fails as it does in `agx login check`, without a value:
+
+<!-- snippet: examples/acct-login-token/session.txt#refusals -->
+```sh
+$ agx login token --id vault
+agx: login vault is an api-key-helper: it has no token to print; the agent runs its helper command itself
+  agx login show --id vault
+[exit 4]
+
+$ agx login token --id work-key --json
+{
+  "schema_version": 1,
+  "command": "login token",
+  "ok": false,
+  "data": null,
+  "decisions": [],
+  "warnings": [],
+  "error": {
+    "code": "usage",
+    "message": "agx login token prints the bare value for scripts and apiKeyHelper; it takes no --json or --field"
+  }
+}
+[exit 2]
+
+$ agx login token --id spare
+agx: login spare: SPARE_CLAUDE_TOKEN is not set
+  agx login check --id spare --no-probe
+[exit 1]
+
+$ agx login token --id nosuch
+agx: unknown login nosuch
+  agx login list
+[exit 1]
+```
+
 ## Live login: switch a running session's account
 
 A long Claude session that hits its plan limit can continue on another account without a restart: start it with `--live-login` (or a profile with `"live_login": true`), then run `agx live use --id RUN --login NAME` from another terminal. Claude picks up the new login at its next key refresh, about ten seconds later, or at once after a rejected key. It is Claude only, needs the run to start on a stored login, and the login you switch to must resolve: Claude stops a session whose key helper fails, with no fallback to the home's own login. The whole flow, its refusals and how it works are in [Live login](guides/live-login.md).
@@ -451,13 +513,13 @@ agx live use --id 20261114-101500-k3x9 --start-login      # back to the login it
 
 ## Try it
 
-Every block on this page comes from three tested examples, each on a fake machine (no real account, binary or network):
+Every block on this page comes from four tested examples, each on a fake machine (no real account, binary or network):
 
 ```sh
-go test -count=1 ./internal/docscheck/ -run 'TestExamples/acct-(login-kinds|login-manage|use-login)$'
+go test -count=1 ./internal/docscheck/ -run 'TestExamples/acct-(login-kinds|login-manage|use-login|login-token)$'
 ```
 
-See [`examples/acct-login-kinds`](../examples/acct-login-kinds/README.md), [`examples/acct-login-manage`](../examples/acct-login-manage/README.md) and [`examples/acct-use-login`](../examples/acct-use-login/README.md).
+See [`examples/acct-login-kinds`](../examples/acct-login-kinds/README.md), [`examples/acct-login-manage`](../examples/acct-login-manage/README.md), [`examples/acct-use-login`](../examples/acct-use-login/README.md) and [`examples/acct-login-token`](../examples/acct-login-token/README.md).
 
 ## Pitfalls
 

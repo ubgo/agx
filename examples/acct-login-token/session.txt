@@ -1,0 +1,71 @@
+#: The commands run with stdout on a pipe, as `agx login token --id NAME | pbcopy` would.
+#options env=WORK_KEY=fake-work-key
+#region sources
+$ agx login token --id work-key
+fake-work-key
+
+$ agx login token --id carol
+fake-token-carol
+
+$ agx login token --id derek
+fake-token-derek
+
+$ agx login token --id pasted
+fake-pasted-token
+
+#endregion
+#region helper
+$ agx login add --name console --agent claude --kind api-key-helper --helper-command 'agx login token --id work-key'
+added login console (api-key-helper, helper agx)
+
+#endregion
+#: The dry run passes the helper to Claude in the run's settings file.
+$ agx run --profile work --login console --dry-run --quiet
+agent    claude                                                                                 from profile work
+profile  work                                                                                   from --profile
+home     ~/.claude-work                                                                         from profile work
+login    console (not resolved: --dry-run)                                                      from --login
+binary   /usr/local/bin/claude version unknown                                                  from no install metadata
+folder   ~/projects/app                                                                         from current folder
+run      ~/.agx/runs/20261118-120000-jqx6                                                       from AGX_RUN_ID=20261118-120000-jqx6
+command  claude --settings ~/.agx/runs/20261118-120000-jqx6/settings-20261118-120000-jqx6.json  from built by agentio
+env      set AGX_RUN_ID=20261118-120000-jqx6                                                    from launch environment
+         set AGX_RUN_AGENT=claude                                                               from launch environment
+         set AGX_RUN_PROFILE=work                                                               from launch environment
+         set AGX_RUN_LOGIN=console                                                              from launch environment
+         set AGX_RUN_HOME=~/.claude-work                                                        from launch environment
+         set CLAUDE_CONFIG_DIR=~/.claude-work                                                   from launch environment
+note     installed Claude Code version unknown; flags not checked
+
+#region refusals
+$ agx login token --id vault
+agx: login vault is an api-key-helper: it has no token to print; the agent runs its helper command itself
+  agx login show --id vault
+[exit 4]
+
+$ agx login token --id work-key --json
+{
+  "schema_version": 1,
+  "command": "login token",
+  "ok": false,
+  "data": null,
+  "decisions": [],
+  "warnings": [],
+  "error": {
+    "code": "usage",
+    "message": "agx login token prints the bare value for scripts and apiKeyHelper; it takes no --json or --field"
+  }
+}
+[exit 2]
+
+$ agx login token --id spare
+agx: login spare: SPARE_CLAUDE_TOKEN is not set
+  agx login check --id spare --no-probe
+[exit 1]
+
+$ agx login token --id nosuch
+agx: unknown login nosuch
+  agx login list
+[exit 1]
+
+#endregion
