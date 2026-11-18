@@ -1,0 +1,42 @@
+# test: the repo's own gate, run by hand only (Actions tab → test → Run
+# workflow, or `gh workflow run test -R ubgo/agx`). It never starts on push or
+# pull request, by the owner's choice; the local `task check` stays the gate
+# before a commit. It runs `task check` (gofmt, go vet, staticcheck, race tests,
+# docs gate, cross-build, build) plus golangci-lint, the same commands a
+# contributor runs locally.
+name: test
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+env:
+  # Tool versions are pinned so a new upstream release cannot turn the gate
+  # red without a commit here. Bump them on purpose.
+  TASK_VERSION: v3.53.1
+  STATICCHECK_VERSION: 2026.2.1
+  GOLANGCI_LINT_VERSION: v2.13.2
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      # go-version-file reads go.mod, so the run never drifts from the
+      # module's declared Go version.
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      # Built with the go.mod toolchain (not a prebuilt binary), so the
+      # linters always understand the language version the module targets.
+      - name: Install task, staticcheck, golangci-lint
+        run: |
+          go install github.com/go-task/task/v3/cmd/task@"$TASK_VERSION"
+          go install honnef.co/go/tools/cmd/staticcheck@"$STATICCHECK_VERSION"
+          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@"$GOLANGCI_LINT_VERSION"
+      - name: task check
+        run: task check
+      - name: golangci-lint
+        run: golangci-lint run ./...

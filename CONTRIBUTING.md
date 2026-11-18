@@ -43,7 +43,7 @@ task check          # everything that must be green before a commit
 | `cross` | builds the binary for darwin, linux and windows on amd64 and arm64 |
 | `docs:check` | the docs gates below |
 
-There is no CI that runs on push or pull request. The local `task check` is the gate: run it before you open a pull request and say in the pull request that it passed.
+Nothing runs on push or pull request. The local `task check` is the gate: run it before you open a pull request and say in the pull request that it passed. The maintainers can also run the same gate on Linux and macOS by hand with the `test` workflow (`.github/workflows/test.yml`, Actions tab → Run workflow).
 
 ### Test isolation
 
