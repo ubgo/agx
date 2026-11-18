@@ -86,7 +86,7 @@ Wrap the part in `#region <name>` and `#endregion` lines in the session (or behi
 - **No vendor logic in agx.** Everything about an agent comes from [agentio](https://github.com/ubgo/agentio); a missing capability is agentio's typed unsupported reason, never an `if claude` branch here.
 - **Named flags only.** The action is the command, a flag names a thing, a mode is one flag with a value, negatives are `--no-x`. A bare `agx` prints help.
 - **No magic.** Every decision has one documented source that `--dry-run` shows. Plain values are allowed anywhere; only a true conflict inside one command is refused.
-- **Never refresh, write or print an OAuth token**, never put one on argv, redact every secret in every output (see [SECURITY.md](SECURITY.md)).
+- **Never refresh, write or print an OAuth token** (the one exception: `agx login token` prints a login's token on request), never put one on argv, redact every secret in every output (see [SECURITY.md](SECURITY.md)).
 - No lint suppressions, no `any` in signatures, named constants for closed sets, and comments that say why.
 
 ## Commits

@@ -4,7 +4,7 @@ A login is what a launch authenticates with. By default an agent uses the login 
 
 You want named logins when you have more plans than homes: a second Claude plan you want to use from the home you already have, an API key for pi and Claude at once, a token kept in gopass rather than in an agent's own files. If you want a second account with its own history and settings, add a profile instead ([A second account](guides/second-account.md)).
 
-agx never refreshes, prints or rewrites an agent's own stored OAuth credential. It only hands a token you gave it to the agent, through the agent's environment.
+agx never refreshes, prints or rewrites an agent's own stored OAuth credential. It only hands a token you gave it to the agent, through the agent's environment, and prints a login's token only when you ask with [`agx login token`](commands/login.md#agx-login-token).
 
 ## Before you start
 

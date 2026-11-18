@@ -102,20 +102,29 @@ var noLeakExtra = [][]string{
 	{"login", "use", "--id", "ref", "--terminal"},
 }
 
+// noLeakExempt are the only commands that print a token by design, so
+// the sweep skips them: the hidden credential (the live-login helper the
+// agent runs) and login token (prints one login's token when the user
+// asks, for a pipe or an apiKeyHelper; its own tests cover what it may
+// print and when). Every other command stays in the sweep.
+var noLeakExempt = map[string]bool{"credential": true, "login token": true}
+
 // TestNoCommandPrintsASecret runs every command (bare, and the extra
 // invocations above) in human, --json and --json --field data modes and
-// fails if any planted token value appears in stdout or stderr. The
-// hidden credential command is the one place that prints a credential by
-// design (to the agent), so it is excluded. A literal value typed on the
-// command line (--env X=literal) is the user's own text and may be shown;
-// every value that came from a reference must not be.
+// fails if any planted token value appears in stdout or stderr, skipping
+// only noLeakExempt. A literal value typed on the command line (--env
+// X=literal) is the user's own text and may be shown; every value that
+// came from a reference must not be.
 func TestNoCommandPrintsASecret(t *testing.T) {
 	f := leakFixture(t)
-	invocations := append(leafCommands(t), noLeakExtra...)
+	leaves := leafCommands(t)
+	invocations := append(leaves, noLeakExtra...)
+	swept := map[string]bool{}
 	for _, inv := range invocations {
-		if inv[0] == "credential" {
+		if noLeakExempt[exemptKey(inv)] {
 			continue
 		}
+		swept[strings.Join(inv, " ")] = true
 		for _, mode := range [][]string{nil, {"--json"}, {"--json", "--field", "data"}} {
 			args := append(append([]string{}, inv...), mode...)
 			r := f.Run(args...)
@@ -131,5 +140,49 @@ func TestNoCommandPrintsASecret(t *testing.T) {
 				}
 			}
 		}
+	}
+	// Every leaf outside noLeakExempt was run: the exemption is the only
+	// way out of the sweep.
+	for _, inv := range leaves {
+		if k := strings.Join(inv, " "); !noLeakExempt[k] && !swept[k] {
+			t.Errorf("agx %s was not swept", k)
+		}
+	}
+}
+
+// exemptKey is the command an invocation runs, as noLeakExempt names it:
+// the leading words before the first flag.
+func exemptKey(inv []string) string {
+	var words []string
+	for _, w := range inv {
+		if strings.HasPrefix(w, "-") {
+			break
+		}
+		words = append(words, w)
+	}
+	return strings.Join(words, " ")
+}
+
+// TestNoLeakSweepCoversEveryOtherCommand: the exemption list names only
+// commands that exist and skips nothing else, so a new command is swept
+// by default and a renamed exemption cannot silently widen the skip.
+func TestNoLeakSweepCoversEveryOtherCommand(t *testing.T) {
+	leaves := leafCommands(t)
+	found := map[string]bool{}
+	skipped := 0
+	for _, inv := range leaves {
+		k := strings.Join(inv, " ")
+		if noLeakExempt[exemptKey(inv)] {
+			found[k] = true
+			skipped++
+		}
+	}
+	for k := range noLeakExempt {
+		if !found[k] {
+			t.Errorf("noLeakExempt names %q, which is not a leaf command", k)
+		}
+	}
+	if skipped != len(noLeakExempt) {
+		t.Errorf("the sweep skips %d leaf commands, want exactly %d (noLeakExempt)", skipped, len(noLeakExempt))
 	}
 }

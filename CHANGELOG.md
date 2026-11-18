@@ -2,6 +2,12 @@
 
 All notable changes to agx are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and agx uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.4] - 2026-11-19
+
+### Added
+
+- `agx login token --id NAME` prints one login's token (the value and a newline on stdout, nothing else) for a pipe or a Claude Code `apiKeyHelper`: `--helper-command 'agx login token --id work-key'` makes any agx login the helper. It resolves the stored value or reference and never refreshes a token; stdout on a terminal is refused unless `--reveal`, `--json` and `--field` are refused, and an `api-key-helper` login is refused (agx does not run its command). Every other output still shows `[redacted]`.
+
 ## [0.4.3] - 2026-11-18
 
 ### Changed

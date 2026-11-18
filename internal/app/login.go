@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"slices"
 	"strings"
@@ -128,6 +129,30 @@ func (a *App) LoginShow(o LoginShowOptions) (LoginInfo, error) {
 		info.Users = slices.DeleteFunc(info.Users, func(u LoginUser) bool { return u.Agent != o.Agent })
 	}
 	return info, nil
+}
+
+// LoginToken resolves login id's token from its source (a stored value,
+// a reference, a plain value) for agx login token. It reads only what is
+// stored or referenced: nothing is refreshed or written. An api-key-helper
+// login has no token of its own (the agent runs its command), so it is
+// refused rather than run: running it would make agx a second, silent
+// caller of a command the user wrote for the agent. Errors come from the
+// brief expander, the same wording agx credential uses, so a store's or a
+// command's stderr is never repeated.
+func (a *App) LoginToken(ctx context.Context, id string) (agentio.Token, error) {
+	_, l, err := a.namedLogin(id)
+	if err != nil {
+		return agentio.Token{}, err
+	}
+	if l.Kind == config.KindAPIKeyHelper {
+		return agentio.Token{}, apperr.Unsupported(fmt.Sprintf("login %s is an api-key-helper: it has no token to print; the agent runs its helper command itself", id)).
+			WithHint("agx login show --id " + id)
+	}
+	cred, err := login.Credential(ctx, a.exp.Brief(), a.paths, id, l)
+	if err != nil {
+		return agentio.Token{}, withCheckHint(err, id)
+	}
+	return cred.Token, nil
 }
 
 // namedLogin loads the config and finds login id (a usage error when id

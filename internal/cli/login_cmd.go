@@ -11,6 +11,7 @@ import (
 	"github.com/ubgo/agentio"
 
 	"github.com/ubgo/agx/internal/app"
+	"github.com/ubgo/agx/internal/apperr"
 	"github.com/ubgo/agx/internal/render"
 	"github.com/ubgo/agx/internal/run"
 	"github.com/ubgo/agx/internal/textout"
@@ -29,7 +30,7 @@ var (
 func (c *cliCtx) loginCmd() *cobra.Command {
 	return group("login", "Logins: what a launch authenticates with",
 		c.loginListCmd(), c.loginShowCmd(), c.loginAddCmd(), c.loginEditCmd(),
-		c.loginRemoveCmd(), c.loginUseCmd(), c.loginCheckCmd(),
+		c.loginRemoveCmd(), c.loginUseCmd(), c.loginCheckCmd(), c.loginTokenCmd(),
 	)
 }
 
@@ -281,4 +282,48 @@ func (c *cliCtx) loginCheckCmd() *cobra.Command {
 	f.StringArrayVar(&o.IDs, "id", nil, "a login to check (repeat; default: every login)")
 	f.BoolVar(&o.NoProbe, "no-probe", false, "resolve only; never spend quota")
 	return fields(cmd, loginCheckFields...)
+}
+
+// loginTokenUsage is the hint of a refused agx login token.
+const loginTokenUsage = "pipe it (agx login token --id NAME | pbcopy) or add --reveal to print it here"
+
+// loginTokenCmd is agx login token: the one command that prints a login's
+// token, on request, for a pipe or an apiKeyHelper. Stdout carries the
+// bare value and a newline, nothing else, so a script or an agent reads it
+// as is. A terminal is refused unless --reveal says so, because a token on
+// a screen ends up in scrollback, screen shares and recordings. --json and
+// --field are refused instead of wrapping the value: an envelope around a
+// secret would be logged and stored by tools that expect harmless data.
+func (c *cliCtx) loginTokenCmd() *cobra.Command {
+	var (
+		id     string
+		reveal bool
+	)
+	cmd := c.newCmd("token", "Print one login's token for a pipe or an apiKeyHelper (a terminal needs --reveal)", CostExec, func(cmd *cobra.Command, _ []string) (render.Output, error) {
+		if c.g.JSON || len(c.g.Fields) > 0 {
+			// The refusal itself must reach the user: a --field path would
+			// select from an envelope that has no data and drop the
+			// message, so the error prints whole (JSON under --json).
+			c.g.Fields = nil
+			return render.Output{}, apperr.Usage("agx login token prints the bare value for scripts and apiKeyHelper; it takes no --json or --field")
+		}
+		if c.env.StdoutTTY && !reveal {
+			return render.Output{}, apperr.Usage("agx login token will not print a token to a terminal").WithHint(loginTokenUsage)
+		}
+		tok, err := c.App().LoginToken(cmd.Context(), id)
+		if err != nil {
+			return render.Output{}, err
+		}
+		return render.Output{Text: func(w io.Writer) error {
+			_, err := io.WriteString(w, tok.Reveal()+"\n")
+			return err
+		}}, nil
+	})
+	cmd.Long = "Resolve a login's token from its source (a stored value, ${gopass:…}, $(…), ${VAR} or a plain value) and print only the value and a newline on stdout. It reads what is stored or referenced and never refreshes a token; a $(…) or gopass reference runs that local command. Stdout must be a pipe or a file unless --reveal is given. An api-key-helper login has no token and is refused."
+	cmd.Example = "  agx login token --id work-key | pbcopy\n" +
+		"  agx login add --name console --agent claude --kind api-key-helper --helper-command 'agx login token --id work-key'"
+	f := cmd.Flags()
+	f.StringVar(&id, "id", "", "the login name")
+	f.BoolVar(&reveal, "reveal", false, "print the token even when stdout is a terminal")
+	return cmd
 }

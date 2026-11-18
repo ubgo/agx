@@ -4,7 +4,7 @@
 
 ![Go 1.26.4+](https://img.shields.io/badge/go-1.26.4%2B-00ADD8?logo=go&logoColor=white) ![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue) ![Platforms: macOS, Linux, Windows preview](https://img.shields.io/badge/platforms-macOS%20%7C%20Linux%20%7C%20Windows%20preview-lightgrey) ![Status: pre-release](https://img.shields.io/badge/status-pre--release-orange) [![Go Reference](https://pkg.go.dev/badge/github.com/ubgo/agx.svg)](https://pkg.go.dev/github.com/ubgo/agx)
 
-agx is an open-source command-line account and launch manager for AI coding agents, written in Go. It runs Claude Code, OpenAI Codex, Gemini CLI and pi on any of your accounts: several Claude Pro or Max plans, a Codex login, a Gemini API key, a client's account that must be used in the client's repository. It switches the agent's home folder and login per launch, binds accounts to project folders, shows plan usage across every home, finds and resumes conversations wherever they are stored, and passes models, settings, autonomy levels and environment variables the same way for every agent. Tokens come from gopass, a command or an environment variable and are never printed.
+agx is an open-source command-line account and launch manager for AI coding agents, written in Go. It runs Claude Code, OpenAI Codex, Gemini CLI and pi on any of your accounts: several Claude Pro or Max plans, a Codex login, a Gemini API key, a client's account that must be used in the client's repository. It switches the agent's home folder and login per launch, binds accounts to project folders, shows plan usage across every home, finds and resumes conversations wherever they are stored, and passes models, settings, autonomy levels and environment variables the same way for every agent. Tokens come from gopass, a command or an environment variable and are never printed unless you ask with `agx login token`.
 
 ## Contents
 
@@ -27,13 +27,13 @@ You have two Claude plans, a Codex login, a Gemini key, and a client repository 
 agx makes that one command:
 
 - **Profiles** name each home: `agx run --profile work`.
-- **Logins** run any home on any account: `agx run --profile work --login carol`, with the token taken from gopass, a command or a variable and never printed.
+- **Logins** run any home on any account: `agx run --profile work --login carol`, with the token taken from gopass, a command or a variable and never printed (only `agx login token` prints one, on request).
 - **Folder bindings** pick the account per repository, per agent: a plain `agx run` in the client repository uses the client profile.
 - **Usage** across every home and login at once: `agx usage`.
 - **Resume** finds the home that stores a conversation: `agx resume --id 3f2a9c1e`.
 - **Every option** reaches the agent the same way for every vendor: settings, typed options, environment, autonomy levels and raw flags.
 
-What agx never does: guess, discover accounts behind your back, edit an agent's own settings files, refresh or print an OAuth token, or run an agent with more autonomy than you asked for.
+What agx never does: guess, discover accounts behind your back, edit an agent's own settings files, refresh an OAuth token, print one unless you ask with `agx login token`, or run an agent with more autonomy than you asked for.
 
 ### How it compares
 
@@ -62,10 +62,10 @@ Prebuilt binaries (macOS and Linux on amd64 and arm64, Windows on amd64) are on 
 
 ```sh
 # macOS on Apple Silicon: swap darwin_arm64 for darwin_amd64, linux_amd64 or linux_arm64
-curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.3/agx_v0.4.3_darwin_arm64.tar.gz
-curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.3/checksums.txt
+curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.4/agx_v0.4.4_darwin_arm64.tar.gz
+curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.4/checksums.txt
 shasum -a 256 -c checksums.txt --ignore-missing
-tar -xzf agx_v0.4.3_darwin_arm64.tar.gz agx && sudo mv agx /usr/local/bin/
+tar -xzf agx_v0.4.4_darwin_arm64.tar.gz agx && sudo mv agx /usr/local/bin/
 agx version
 ```
 
@@ -262,7 +262,7 @@ Claude Code, OpenAI Codex, Gemini CLI and pi are built in, and any other agent c
 
 ### Does agx store, print or refresh my OAuth token?
 
-agx never refreshes an OAuth token and never prints one: token values read `[redacted]` in text, `--json`, `--dry-run`, errors and logs. A login normally holds a reference (`${gopass:…}`, `$(…)` or `${VAR}`) that is resolved only when the agent launches, and the token goes to the agent through its environment, never on its command line. agx stores a token value only when you hand it one: a pasted token (`agx login add --stdin` or the hidden prompt) goes into `~/.agx/tokens.jsonc`, written with mode 0600 and refused when group or others can read it, and a plain value you pass to `--token-ref` is written to config as typed (`agx doctor` lists such logins). See [SECURITY.md](SECURITY.md).
+agx never refreshes an OAuth token and prints one only when you ask: `agx login token --id NAME` writes that login's token to stdout for a pipe or an `apiKeyHelper` (refused on a terminal unless you add `--reveal`). Everywhere else token values read `[redacted]` in text, `--json`, `--dry-run`, errors and logs. A login normally holds a reference (`${gopass:…}`, `$(…)` or `${VAR}`) that is resolved only when the agent launches, and the token goes to the agent through its environment, never on its command line. agx stores a token value only when you hand it one: a pasted token (`agx login add --stdin` or the hidden prompt) goes into `~/.agx/tokens.jsonc`, written with mode 0600 and refused when group or others can read it, and a plain value you pass to `--token-ref` is written to config as typed (`agx doctor` lists such logins). See [SECURITY.md](SECURITY.md).
 
 ### Does agx change my agent's settings or homes?
 
@@ -283,6 +283,12 @@ Yes. A login of kind `api-key-helper` holds the command Claude Code runs to get 
 ```sh
 agx login add --name console --agent claude --kind api-key-helper --helper-command 'gopass show -o work/anthropic-api-key'
 agx run --profile work --login console
+```
+
+To use any agx login as the helper, wherever its token lives (gopass, a command, a variable, a pasted token), make the helper `agx login token`, which prints only that login's token:
+
+```sh
+agx login add --name console --agent claude --kind api-key-helper --helper-command 'agx login token --id work-key'
 ```
 
 `--live-login` uses the same mechanism to switch the account of a running Claude Code session. Flags and examples are in the [login reference](docs/commands/login.md).

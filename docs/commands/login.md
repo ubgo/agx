@@ -1,6 +1,6 @@
 # Logins
 
-Named logins: plan tokens, API keys and key helpers. [Logins](../logins.md) is the guide: the kinds, how each reaches the agent, and where a login can be set. No login command ever prints a token value. The examples below come from [`examples/acct-login-kinds`](../../examples/acct-login-kinds/README.md), [`examples/acct-login-manage`](../../examples/acct-login-manage/README.md) and [`examples/acct-use-login`](../../examples/acct-use-login/README.md), which run in the test suite.
+Named logins: plan tokens, API keys and key helpers. [Logins](../logins.md) is the guide: the kinds, how each reaches the agent, and where a login can be set. No login command prints a token value, except [`agx login token`](#agx-login-token) when you ask for it. The examples below come from [`examples/acct-login-kinds`](../../examples/acct-login-kinds/README.md), [`examples/acct-login-manage`](../../examples/acct-login-manage/README.md) and [`examples/acct-use-login`](../../examples/acct-use-login/README.md), which run in the test suite.
 
 ## agx login list
 
@@ -272,3 +272,21 @@ derek  oauth-token  command gopass    ok       skipped  --no-probe
 ```
 
 Pitfalls: a probe spends a few tokens of each plan; do not run it in a loop. An API key bills per token and has no plan windows to probe.
+
+## agx login token
+
+Print one login's token: the value and a newline on stdout, nothing else, for a pipe, a script or a Claude Code `apiKeyHelper`. It resolves the login's source (a stored value, `${gopass:…}`, `$(…)`, `${VAR}` or a plain value) and never refreshes a token. Cost X: a `$(…)` or gopass reference runs that local command; nothing goes over the network.
+
+| Flag | Meaning |
+|---|---|
+| `--id` | the login |
+| `--reveal` | print it even when stdout is a terminal |
+
+```sh
+agx login token --id work-key | pbcopy
+agx login add --name console --agent claude --kind api-key-helper --helper-command 'agx login token --id work-key'
+```
+
+The second line makes any agx login, wherever its token lives, the `apiKeyHelper` of a Claude Code launch.
+
+Pitfalls: stdout on a terminal is refused (exit 2) unless you add `--reveal`, so a token does not land in scrollback by accident. `--json` and `--field` are refused (exit 2): the output is the bare value. An `api-key-helper` login has no token of its own and is refused (exit 4); agx does not run its command. An unknown login is `not-found` (exit 1), and a reference that does not resolve fails with the same message as `agx login check`, never a value.

@@ -92,7 +92,7 @@ $ agx run --dry-run --quiet --json --field data.profile
 work
 ```
 
-Secrets are never printed: a token value is `[redacted]` in text, JSON, errors and logs, plain or resolved.
+Secrets are never printed: a token value is `[redacted]` in text, JSON, errors and logs, plain or resolved. The one exception is [`agx login token`](commands/login.md#agx-login-token), which prints a login's token when you ask for it.
 
 <!-- snippet: examples/out-scripting/session.txt#redacted -->
 ```sh
