@@ -1,0 +1,16 @@
+me@example.com  Max (20x)  personal · claude  ~/.claude
+  Current session    ████░░░░░░░░░░░░░░░░░░░░░░░░░░   13% used  resets in 2 hr 50 min
+  Weekly limits
+  All models         ███████████████░░░░░░░░░░░░░░░   49% used  resets in 5 d 11 hr
+  Sonnet             █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░    3% used  resets in 5 d 11 hr
+
+work@example.com  Pro  work · claude  ~/.claude-work
+  Current session    ██████████████████████████████  110% used  resets in 40 min
+  Weekly limits
+  All models         ████████████████████████████░░   93% used  resets in 3 hr 40 min
+
+codex  codex · codex  ~/.codex
+  not logged in; run the agent once in this home
+
+side@example.com  side · claude  ~/.claude-side
+  expired: login expired at 2026-11-17T09:00:00Z: run claude once in this home to refresh it

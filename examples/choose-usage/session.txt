@@ -1,0 +1,36 @@
+#: Four homes: a Claude home with no reading on disk, a Claude home with an old reading, a Codex home with no session yet, a Gemini home.
+#region cached
+$ agx usage --cached
+personal  personal · claude  ~/.claude
+  no cache: no reading on disk: Claude Code 2.1.323 and later no longer store a usage reading on disk (an existing one is not refreshed); use live usage
+
+work  work · claude  ~/.claude-work  cached 381 d ago
+  Current session    █████████████░░░░░░░░░░░░░░░░░   42% used  resets now
+  Weekly limits
+  All models         █████░░░░░░░░░░░░░░░░░░░░░░░░░   17% used  resets now
+  stale: reading is 381d old; drop --cached for a live read (Claude Code 2.1.323 and later no longer store a usage reading on disk (an existing one is not refreshed); use live usage)
+
+codex  codex · codex  ~/.codex
+  no cache: no reading on disk yet; run the agent once, or drop --cached
+
+gem  gem · gemini  ~/.gemini
+  unsupported: Gemini CLI leaves no usage or quota cache on disk; per-message token counts in chats are not plan usage
+
+#endregion
+#region stale
+$ agx usage --cached --profile work --json --field data.0.status
+stale
+
+#endregion
+#region unsupported
+$ agx usage --agent gemini
+gem  gem · gemini  ~/.gemini
+  unsupported: Gemini CLI quota and tier come from a logged-in Code Assist API call (retrieveUserQuota, loadCodeAssist) whose responses are not recorded yet
+
+#endregion
+#region conflict
+$ agx usage --cached --login-probes
+agx: --cached reads disk only and --login-probes probes logins (spends quota); pick one
+[exit 2]
+
+#endregion

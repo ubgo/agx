@@ -1,0 +1,233 @@
+#: Every agent agx knows, read from agentio and the disk; no binary runs.
+#region list
+$ agx agent list
+AGENT   KIND      BINARY  VERSION  TESTED            COMPAT   CAPABILITIES
+claude  built-in  claude  unknown  2.1.323..2.1.327  unknown  installer,binary-version,identity,usage,cached-usage,subscription,token-login,token-prober,login-commander,conversations,history-checker,history-mover,conversation-mover,prompt-history,live-sessions,process-classifier,turns,home-linker,instruction-files,mcp-servers,skills,plugins,config,run-events,doctor,live-credential,launch-config
+codex   built-in  codex   unknown  0.162.1..0.162.1  unknown  installer,binary-version,identity,usage,cached-usage,subscription,login-commander,conversations,history-checker,prompt-history,live-sessions,process-classifier,turns,home-linker,instruction-files,mcp-servers,skills,plugins,config,models,run-events,doctor,launch-config
+gemini  built-in  gemini  unknown  0.68.0..0.68.0    unknown  installer,binary-version,identity,token-login,conversations,history-checker,process-classifier,home-linker,instruction-files,mcp-servers,skills,plugins,config,doctor
+pi      built-in  pi      unknown  1.5.2..1.5.2      unknown  installer,binary-version,identity,token-login,conversations,history-checker,process-classifier,turns,instruction-files,mcp-servers,skills,config,doctor
+
+#endregion
+#region ids
+$ agx agent list --json --field data.*.id
+["claude","codex","gemini","pi"]
+
+#endregion
+#: One agent: each capability, its cost, and the agent's own reason when it is missing.
+#region show-claude
+$ agx agent show --id claude
+agent: claude (Claude Code, built-in)
+binary: claude
+path: /usr/local/bin/claude
+version: unknown
+method: unknown
+tested: 2.1.323..2.1.327
+compat: unknown
+autonomy: default, read-only, ask, accept-edits, full
+token kinds: oauth-token, api-key, api-key-helper
+
+CAPABILITY          SUPPORTED  COST     REASON
+installer           yes        disk     —
+binary-version      yes        process  —
+identity            yes        process  —
+usage               yes        network  —
+cached-usage        yes        disk     —
+subscription        yes        network  —
+token-login         yes        pure     —
+token-prober        yes        quota    —
+login-commander     yes        pure     —
+conversations       yes        disk     —
+history-checker     yes        disk     —
+history-mover       yes        disk     —
+conversation-mover  yes        disk     —
+prompt-history      yes        disk     —
+live-sessions       yes        process  —
+process-classifier  yes        pure     —
+turns               yes        disk     —
+home-linker         yes        disk     —
+instruction-files   yes        disk     —
+mcp-servers         yes        disk     —
+skills              yes        disk     —
+plugins             yes        disk     —
+config              yes        disk     —
+models              no         disk     Claude Code keeps no model catalog on disk that has a recorded shape; a static list would rot
+run-events          yes        pure     —
+doctor              yes        disk     —
+live-credential     yes        pure     —
+launch-config       yes        disk     —
+
+#endregion
+#region show-codex
+$ agx agent show --id codex
+agent: codex (Codex, built-in)
+binary: codex
+path: /usr/local/bin/codex
+version: unknown
+method: unknown
+tested: 0.162.1..0.162.1
+compat: unknown
+autonomy: default, read-only, ask, full
+token kinds: —
+
+CAPABILITY          SUPPORTED  COST     REASON
+installer           yes        disk     —
+binary-version      yes        process  —
+identity            yes        process  —
+usage               yes        network  —
+cached-usage        yes        disk     —
+subscription        yes        network  —
+token-login         no         pure     Codex has no token login: it logs in with `codex login` (ChatGPT, API key or access token on stdin)
+token-prober        no         quota    Codex has no quota probe: no token login to probe
+login-commander     yes        pure     —
+conversations       yes        disk     —
+history-checker     yes        disk     —
+history-mover       no         disk     Codex indexes conversations in its own SQLite database with absolute paths (state_5.sqlite threads.rollout_path), so moving its files would break its index; continue Codex work in the original home
+conversation-mover  no         disk     Codex indexes conversations in its own SQLite database with absolute paths (state_5.sqlite threads.rollout_path), so moving its files would break its index; continue Codex work in the original home
+prompt-history      yes        disk     —
+live-sessions       yes        process  —
+process-classifier  yes        pure     —
+turns               yes        disk     —
+home-linker         yes        disk     —
+instruction-files   yes        disk     —
+mcp-servers         yes        disk     —
+skills              yes        disk     —
+plugins             yes        disk     —
+config              yes        disk     —
+models              yes        disk     —
+run-events          yes        pure     —
+doctor              yes        disk     —
+live-credential     no         pure     Codex reads its login from auth.json or the keyring and refreshes it itself; it has no credential-helper setting
+launch-config       yes        disk     —
+
+#endregion
+#region show-gemini
+$ agx agent show --id gemini
+agent: gemini (Gemini CLI, built-in)
+binary: gemini
+path: /usr/local/bin/gemini
+version: unknown
+method: unknown
+tested: 0.68.0..0.68.0
+compat: unknown
+autonomy: default, read-only, ask, accept-edits, full
+token kinds: api-key
+
+CAPABILITY          SUPPORTED  COST     REASON
+installer           yes        disk     —
+binary-version      yes        process  —
+identity            yes        process  —
+usage               no         network  Gemini CLI quota and tier come from a logged-in Code Assist API call (retrieveUserQuota, loadCodeAssist) whose responses are not recorded yet
+cached-usage        no         disk     Gemini CLI leaves no usage or quota cache on disk; per-message token counts in chats are not plan usage
+subscription        no         network  Gemini CLI quota and tier come from a logged-in Code Assist API call (retrieveUserQuota, loadCodeAssist) whose responses are not recorded yet
+token-login         yes        pure     —
+token-prober        no         quota    probing a Gemini key spends quota through a model call that is not modelled
+login-commander     no         pure     Gemini CLI has no login subcommand; it asks for the auth method in its first interactive run
+conversations       yes        disk     —
+history-checker     yes        disk     —
+history-mover       no         disk     Gemini CLI keys chats by a project slug registry (projects.json, .project_root markers); moving them is not modelled
+conversation-mover  no         disk     Gemini CLI keys chats by a project slug registry (projects.json, .project_root markers); moving them is not modelled
+prompt-history      no         disk     the per-project prompt log (tmp/<slug>/logs.json) is recorded only from source, never from a real run
+live-sessions       no         process  Gemini CLI writes no session lock or pid file to join a process to a chat
+process-classifier  yes        pure     —
+turns               no         disk     Gemini chats rewrite earlier records ($rewindTo, $patch), so an offset-based turn reader would report dropped turns
+home-linker         yes        disk     —
+instruction-files   yes        disk     —
+mcp-servers         yes        disk     —
+skills              yes        disk     —
+plugins             yes        disk     —
+config              yes        disk     —
+models              no         disk     Gemini CLI keeps its model catalog in its own defaults, not in a file on disk
+run-events          no         pure     the --output-format stream-json event shape is not recorded from a real run yet
+doctor              yes        disk     —
+live-credential     no         pure     Gemini CLI reads its login (oauth_creds.json, the keychain or GEMINI_API_KEY) at start and refreshes OAuth itself; it has no setting that re-reads a key from a caller's command
+launch-config       no         disk     Gemini CLI has no settings flag and no typed launch options in agentio; pass flags as raw args
+
+#endregion
+#region show-pi
+$ agx agent show --id pi
+agent: pi (pi, built-in)
+binary: pi
+path: /usr/local/bin/pi
+version: unknown
+method: unknown
+tested: 1.5.2..1.5.2
+compat: unknown
+autonomy: default, read-only, full
+token kinds: api-key
+
+CAPABILITY          SUPPORTED  COST     REASON
+installer           yes        disk     —
+binary-version      yes        process  —
+identity            yes        process  —
+usage               no         network  pi has no plan or quota; it records per-message token cost in session files (pi.Agent.SessionUsage)
+cached-usage        no         disk     pi has no plan or quota; it records per-message token cost in session files (pi.Agent.SessionUsage)
+subscription        no         network  pi has no plan or quota; it records per-message token cost in session files (pi.Agent.SessionUsage)
+token-login         yes        pure     —
+token-prober        no         quota    pi has no plan or quota to probe
+login-commander     no         pure     pi logs in with /login inside its interactive UI; there is no login subcommand to build
+conversations       yes        disk     —
+history-checker     yes        disk     —
+history-mover       no         disk     pi keys sessions by the folder they ran in and records that cwd in every header; moving them is not modelled
+conversation-mover  no         disk     pi keys sessions by the folder they ran in and records that cwd in every header; moving them is not modelled
+prompt-history      no         disk     pi keeps no prompt history file; prompts live only in session files
+live-sessions       no         process  pi writes no live-session registry; only the process table shows a running pi
+process-classifier  yes        pure     —
+turns               yes        disk     —
+home-linker         no         disk     pi has no documented set of files to share between agent dirs
+instruction-files   yes        disk     —
+mcp-servers         yes        disk     —
+skills              yes        disk     —
+plugins             no         disk     pi packages and extensions are code loaded into the process, not plugins with a manifest this library models
+config              yes        disk     —
+models              no         disk     pi's model catalog (models-store.json) has no recorded shape yet
+run-events          no         pure     pi's --mode json event stream is recorded once but not yet modelled as a decoder
+doctor              yes        disk     —
+live-credential     no         pure     pi can read a key from a !command in auth.json, but when it re-runs that command is not documented or recorded
+launch-config       no         disk     pi has no settings flag and no typed launch options in agentio; pass flags as raw args
+
+#endregion
+#: The levels and login kinds as data, for a script.
+#region levels
+$ agx agent show --id pi --json --field data.autonomy --field data.token_kinds
+{
+  "data.autonomy": [
+    "default",
+    "read-only",
+    "full"
+  ],
+  "data.token_kinds": [
+    "api-key"
+  ]
+}
+
+#endregion
+#: --vendor-checks also runs the binary's --version (cost X). The fake claude here prints its argv, not a version.
+#region vendor
+$ agx agent show --id claude --vendor-checks --json --field data.version --field data.vendor_version
+{
+  "data.version": "unknown",
+  "data.vendor_version": "1.0.0"
+}
+
+#endregion
+#: What each refusal looks like when a capability is missing.
+#region refused
+$ agx run --profile codex --autonomy accept-edits --dry-run --quiet
+agx: codex: autonomy accept-edits: Codex has no edits-only mode; never mapped to a more permissive one
+[exit 125]
+
+$ agx run --profile pi --autonomy ask --dry-run --quiet
+agx: pi: autonomy ask: pi has no permission modes; it always runs without prompts
+[exit 125]
+
+$ agx usage --agent gemini
+gem  gem · gemini  ~/.gemini
+  unsupported: Gemini CLI quota and tier come from a logged-in Code Assist API call (retrieveUserQuota, loadCodeAssist) whose responses are not recorded yet
+
+#endregion
+#region unknown
+$ agx agent show --id cursor
+agx: unknown agent cursor; known: claude, codex, gemini, pi
+[exit 1]
+
+#endregion

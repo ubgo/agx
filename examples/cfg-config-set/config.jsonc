@@ -1,0 +1,11 @@
+{
+  "$schema": "https://raw.githubusercontent.com/ubgo/agx/main/schema/config.schema.json",
+  "version": 1,
+  // the agent when no flag or folder binding names one
+  "default_agent": "claude",
+  "profiles": {
+    // my own account
+    "personal": { "agent": "claude", "home": "~/.claude", "default": true },
+    "work": { "agent": "claude", "home": "~/.claude-work" }
+  }
+}

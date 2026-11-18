@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "default_agent": "claude",
+  // #region agents
+  "agents": {
+    "claude": {
+      // every Claude profile starts with these, unless it says otherwise
+      "defaults": { "args": ["--chrome"], "login": "carol" }
+    }
+  },
+  // #endregion
+  // #region profiles
+  "profiles": {
+    // inherits both defaults: --chrome and the login carol
+    "personal": { "agent": "claude", "home": "~/.claude", "default": true },
+    // its own login, and its own args instead of the defaults
+    "work": { "agent": "claude", "home": "~/.claude-work", "login": "dave", "inherit_defaults": false, "args": ["--verbose"] },
+    // the home's own login, even though the agent default names one
+    "own": { "agent": "claude", "home": "~/.claude-work", "home_login": true, "billing": "api" }
+  },
+  // #endregion
+  "logins": {
+    "carol": { "agents": ["claude"], "kind": "oauth-token", "token": "${gopass:personal/claude/carol}" },
+    "dave": { "agents": ["claude"], "kind": "oauth-token", "token": "${gopass:work/claude/dave}" }
+  }
+}

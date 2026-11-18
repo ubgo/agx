@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "profiles": {
+    "work": { "agent": "claude", "home": "~/.claude-work", "default": true }
+  },
+  // Written by hand: agx alias add refuses the name agx.
+  "aliases": {
+    "agx": "run --profile work"
+  }
+}

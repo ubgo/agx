@@ -1,0 +1,5 @@
+PROFILE   PROVIDER  ACCOUNT         PLAN               STATUS  SINCE
+personal  claude    me@example.com  Max (20x)          active  2 Jan 2025
+codex     codex     —               error (see below)  —       —
+
+codex: not logged in

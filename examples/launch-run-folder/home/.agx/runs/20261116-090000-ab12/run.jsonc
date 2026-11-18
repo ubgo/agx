@@ -1,0 +1,11 @@
+{
+  "id": "20261116-090000-ab12",
+  "pid": 99999999,
+  "started_at": "2026-11-16T09:00:00Z",
+  "agent": "claude",
+  "binary": "/usr/local/bin/claude",
+  "profile": "work",
+  "home": "~/.claude-work",
+  "login": "home",
+  "folder": "~/projects/app"
+}

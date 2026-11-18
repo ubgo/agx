@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "command": "conversation show",
+  "ok": true,
+  "data": {
+    "agent": "claude",
+    "profiles": [
+      "personal"
+    ],
+    "home": "~/.claude",
+    "id": "aaaabbbb-0000-4000-8000-000000000002",
+    "title": "Write the docs",
+    "folder": "<root>/work/proj",
+    "created": "<time>",
+    "updated": "<time>",
+    "path": "<root>/home/.claude/projects/<root-key>-work-proj/aaaabbbb-0000-4000-8000-000000000002.jsonl",
+    "size_bytes": "<size>",
+    "turns": 2,
+    "live": false
+  },
+  "decisions": [],
+  "warnings": [],
+  "error": null
+}

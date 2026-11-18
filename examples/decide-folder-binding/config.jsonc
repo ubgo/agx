@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "default_agent": "claude",
+  // #region profiles
+  "profiles": {
+    "personal": { "agent": "claude", "home": "~/.claude", "default": true },
+    "work": { "agent": "claude", "home": "~/.claude-work" },
+    "codex": { "agent": "codex", "home": "~/.codex", "default": true },
+    "codex-work": { "agent": "codex", "home": "~/.codex-work" }
+  },
+  "logins": {
+    "carol": { "agents": ["claude"], "kind": "oauth-token", "token": "${gopass:personal/claude/carol}" }
+  }
+  // #endregion
+}

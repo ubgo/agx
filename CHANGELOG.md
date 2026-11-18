@@ -1,0 +1,91 @@
+# Changelog
+
+All notable changes to agx are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and agx uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.4.3] - 2026-11-18
+
+### Changed
+
+- First public release of github.com/ubgo/agx. Test fixtures use placeholder login names.
+
+## [0.4.2] - 2026-11-18
+
+### Changed
+
+- The human output is agx v0.3's again (the owner's reference look): `agx usage` prints the claude.ai-style bars (bold account header, `█`/`░` bars, a `Weekly limits` heading, `resets in 2 hr 50 min`), and `--table` has v0.3's columns `#`, `LOGIN` (`PROFILE` for homes), `PROVIDER`, `ACCOUNT`, `5H USED`, `5H RESETS`, `WEEKLY USED`, `WEEKLY RESETS`, `RESET DAY`, `RESETS ON`, a pair per model window, `LEFT`, `STATUS`, with the `Weekly resets:` summary and failed rows' full reasons under it; `#` is the login's (or home's) place in the config file and stays under `--sort`. `--plan` adds v0.3's plan table.
+- `agx profile list` lists profiles in the file's order with v0.3's columns (`*` marks each agent's default, `ACCOUNT` and `STATE` from the login on disk); `agx login list` and `login check` follow the file's order; `agx doctor` prints one line per check (`✓`, `·`, `!`, `✗`) with its fix below; `agx session list` shows `LAST ACTIVITY` as "3 min ago" and the root on stderr; `agx conversation list` and the resume picker print v0.3's one-line rows (when, agent, profile, title, folder, id prefix); `agx whoami` prints `label:  value` lines; empty `login list` and `project list` say how to add one.
+- `--color` now also colours the human output on stdout, decided per stream: bold headers, dim indices and sources, blue/amber/red statuses, coloured usage bars; `auto` only on a terminal and without `NO_COLOR`, `always` forces, `never` and `--json` stay plain.
+- `agx usage --json` rows carry `index`, `plan_label` and, for homes, the `account` email read from disk.
+- The usage table's `STATUS` cell holds only the status words (`expired`, `limit reached`, `rejected`), as v0.3's did; every row's reason is a `  name: reason` line under the table.
+- Messages no longer carry library prefixes: `agentio: login expired at …` reads `login expired at …`, `--option sandbox: agentio: invalid launch option` reads `--option sandbox: invalid launch option`, in errors, warnings, hints, usage reasons, doctor findings and `--json` alike. Agent names (`codex: autonomy accept-edits: …`) stay.
+
+### Fixed
+
+- Every printed clock time rounds to the nearest minute, the same in every column, mode and `--date-format` (a reset at 22:19:50 reads `22:20` everywhere, as in v0.3); durations keep v0.3's rule.
+- The shell layer survives your own aliases and functions: bash and zsh parse its definitions with alias expansion off (restored right after), so `alias do=…`, `alias then=…` or `alias fi=…` no longer break the whole layer at load, and its loops are gone; every shell calls the commands it runs as `builtin cd`, `builtin printf`, `command rm`, `command mktemp`, `command hostname` (PowerShell: module-qualified cmdlets), so an alias or function named `cd`, `printf` or `rm` is never run instead.
+
+### Added
+
+- `agx usage --time-format relative|day|absolute|both` and the config key `usage.time_format` (default `relative`). `both` keeps the duration and adds the clock time: `3 hr 10 min (22:20)`, with the weekday when the reset is not today (`1 d 4 hr (Thu 23:30)`) and the date when it is more than six days away, in the bars, the table and the per-model columns.
+- A date and time format of your own: the global flag `--date-format` and the config keys `date_format` (every screen that prints a date) and `usage.date_format` (`agx usage` only, first). Presets `iso`, `short`, `long` (usage's default), `us`, or tokens `YYYY MM MMM DD D ddd dddd HH H hh h mm ss a A` with words in `[brackets]`; it writes the clock and date parts of `day`, `absolute`, `both` and `RESETS ON`, table timestamps and `conversation show`. An unknown token or an empty value is refused (exit 2) with the token list.
+
+## [0.4.1] - 2026-11-18
+
+agx v0.4.1 is the first release of a complete rewrite of `github.com/khanakia/agx` v0.3 under the new module `github.com/ubgo/agx`, built on [agentio](https://github.com/ubgo/agentio) v0.1.0 and [textdata](https://github.com/ubgo/textdata), with no backward compatibility. See [Coming from v0.3](docs/coming-from-v0.3.md).
+
+### Added
+
+- Built-in support for Claude Code, OpenAI Codex, Gemini CLI and pi, plus any agent described in config under `agents.<agent>.spec`.
+- A typed JSONC config (`~/.agx/config.jsonc`) checked on every load, with unknown keys and wrong types reported at their line and column; writes keep comments and layout under a cross-process lock; a published schema for editor completion.
+- One resolution chain for agent, profile, home, login, binary, folder and args, with `--dry-run` printing every decision and its source and a stderr note whenever something other than a flag decided.
+- Launching commands `run`, `new` and `resume` that exec into the agent on macOS and Linux, with one run folder per launch and `AGX_RUN_*` variables in the agent's environment.
+- Per-launch options for every agent: `--model`, `--prompt`, `--add-dir`, `--autonomy` with `--consent`, `--headless`, typed `--option`, `--setting` with file or inline delivery, `--env`, `--no-env`, `--env-file`, `before_run` scripts, and raw args after `--`.
+- Named logins (`oauth-token`, `api-key`, `api-key-helper`) from references (`${gopass:…}`, `$(…)`, `${VAR}`), plain values or a 0600 token store; `AGX_LOGIN` and `AGX_LOGIN_<AGENT>`; strict expansion that never yields an empty or unresolved secret.
+- Per-agent folder bindings (`agx project`), profiles with discovery on request (`agx profile list --discovered`, `agx profile import`), session folders (`agx session`), conversations (`agx conversation`), plan usage across homes and logins (`agx usage`), live login switching for Claude (`agx live`), `agx doctor` and `agx clean`.
+- A shell layer for zsh, bash, fish and PowerShell: `cd` after `new` and `resume`, per-terminal logins, and config aliases as shell functions.
+- One JSON envelope for every command with `--field` path selection, stable `error.code` values, documented exit codes, and `agx help --json` generated from the parser's declarations.
+
+### Changed
+
+- `--color` is validated and honoured: agx colours its own error line red and warning lines yellow on stderr (`auto` when stderr is a terminal and `NO_COLOR` is unset or empty, `always`, `never`); stdout and `--json` are never coloured, and any other value is refused (exit 2).
+- A flag that takes one value, given twice, is refused with `--agent given twice (gemini and pi); pick one` (exit 2; 125 on a launching command), even when both values are equal.
+- Launch output redacts by a value's source (a login token, a reference, an env file, `tokens.jsonc`, an agent's credential variable) and by the value wherever else it appears, never by a variable's name: a literal such as `CLAUDE_CODE_API_KEY_HELPER_TTL_MS=10000` or `MY_SERVICE_TOKEN=abc` is shown as written, and `agx doctor` flags a literal profile `env` value whose name looks secret.
+- Keys of one concern from one input launch together: a profile with Claude's `print` and `output_format`, or `--option print=true --option output_format=json`, gives `claude -p --output-format json`; a contradiction inside one input is refused with the agent's reason.
+- `settings` means agx's settings only: `--option settings=…` is refused and points at `--setting`; the valid-keys list no longer offers it.
+- A raw `--settings` (after `--`, in profile `args`, agent default args or `extra_args`) is merged into agx's settings instead of replacing them: agx reads the value (inline JSON or a JSONC file, a relative path from the launch folder), deep-merges it over the profile and `--setting` keys (your keys win; objects merge, anything else replaces; several values merge in order), takes it out of the args and passes exactly one `--settings`, even when it has no settings of its own. Claude keeps only the last `--settings` wholesale, so the old "raw --settings wins: … not applied" behaviour silently disabled a live-login helper. The dry run sources each raw key `from raw --settings`; a missing or invalid file is an error naming it (line:col for bad JSONC); a raw `apiKeyHelper` with `--live-login` is refused (exit 125).
+- `agx resume --limit 0` means no cap, as in `agx conversation list`; a negative value is refused.
+- A shell layer made with `--config X` passes it on every call it makes, aliases included; a `--config` the user types wins.
+- Alias names and words are checked on every config load: a name or word the shell layer cannot define is refused at its line and column.
+- A config-defined agent whose spec has `token_env` takes token logins (`agx login add --agent mycli`, `--login`, `--token-ref`) for the kinds it names; the token goes into the variable `token_env` names, redacted in output.
+- A Claude block's `extra_args` combine with other raw args, placed before them (later wins), instead of being refused.
+- A leading `~` is expanded in the options agentio marks as paths (profile block, `--option`, and after their flags in profile and agent default args); everything else, and args after `--`, stays as written.
+- A searched folder is a home only when it holds a file distinctive of the agent: `settings.json` alone no longer makes a folder a Claude, Gemini CLI and pi home at once.
+- An agent's refusal of its own options (`--resume and --continue are exclusive`) is a usage error, not `io`.
+- `agx credential` (the live-login key helper Claude Code runs) fails with exactly one stderr line, the line Claude shows in `/status`: a hint is folded into it (`(try: agx login check --id NAME --no-probe)`), and it names the login and the reference but never what a secret store or a command printed on stderr. It still never prints an empty value: an empty, whitespace-only, multi-line or unresolvable token exits non-zero with nothing on stdout, because Claude Code stops the session after three failed tries with no fallback to the home's own login.
+- A missing gopass entry reads `gopass:REF is not in the gopass store` instead of the plugin's nested error text.
+- The live-login guide says when a switch applies (the next key refresh, or at once after a 401; the first request after a timed refresh may still use the old key), where agx sets the refresh interval and why, and that a failing helper stops the session.
+
+### Fixed
+
+- `--resolved-secrets` without `--dry-run` was silently ignored; it is now refused (exit 125) and nothing starts.
+- `--field data.*.KEY` on an empty list accepted any key; the path is now checked against the fields the command declares.
+- A profile settings type error now names the key's file, line and column (`config.jsonc:32:86: profile typo settings cleanupPeriodDays: expected int`).
+- Agent errors no longer carry a doubled agent prefix (`claude: claude: …`).
+- `agx resume` on a config-defined agent searched nothing and said "not found"; it now refuses up front with the agent's reason (`mycli cannot resume conversations: …`, exit 125).
+- `agx config init` on an existing file names it in the `~` form.
+- `agx login add --provider nope` answered as if no provider was given; it now says the provider is unknown and lists the known ones.
+- The attribution gate no longer trips on pi's real `github-copilot` provider name.
+- A Codex dry run with `codex_profile` no longer carries the note `--profile conflict with a legacy profile not checked (no config given)`: the home's `config.toml` is checked.
+
+### Documentation
+
+- A learning path and a "start from your goal" table at the top of `docs/README.md`, and a feature index (`docs/reference/features.md`) that points every command, flag, config key, environment variable and exit code at the guide section and the examples that show it.
+- Sixteen task guides under `docs/guides/` (a second account, auto-pick, plan usage, live login, folder bindings, shared homes, run folders, autonomy, raw args, headless runs, conversations, session folders, agents, a custom agent, doctor, scripting), and the existing guides and command reference rewritten to one shape: what and when, before you start, steps, real output, pitfalls, related links.
+- Nine decision guides under `docs/choosing/`: which login kind, a second account, where to set the profile and login, which way to pass something to an agent, settings as a file or inline, usage live or cached (Claude Code 2.1.323 and later no longer write a cached reading), continuing on another account, built-in or config-defined agent, and the shell layer.
+- 52 runnable example folders under `examples/`, each a scripted session run by the test suite on a fake machine; docs show their output through snippet markers that a gate keeps equal to the files, so every output in the docs is what agx prints.
+- An architecture diagram (`docs/assets/architecture.svg`).
+- What is redacted, colour, the repeated-flag refusal, `--resolved-secrets` without `--dry-run`, `--field` on an empty list, settings errors with line and column, headless keys together, `--option settings`, resume of a config-defined agent, `--limit 0`, a shell layer made with `--config`, alias checks at load, pi's `--provider` refusals, token logins for a config-defined agent, `extra_args` with raw args, `~` in path options and home markers for searched folders, each with an example session or a troubleshooting entry.
+
+### Removed
+
+- Everything specific to v0.3: positional arguments, `-p auto` and `--login home`, profile discovery at run time, `config.yaml` and `tokens.yaml`, and the v0.3 JSON envelope.

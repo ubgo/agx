@@ -1,0 +1,9 @@
+[1m#[0m   [1mLOGIN[0m   [1mPROVIDER[0m  [1mACCOUNT[0m             [1m5H USED[0m  [1m5H RESETS[0m    [1mWEEKLY USED[0m  [1mWEEKLY RESETS[0m  [1mRESET DAY[0m  [1mRESETS ON[0m         [1mLEFT[0m  [1mSTATUS[0m
+[2m2[0m   nora    claude    nora@example.com    13%      2 hr 50 min  49%          5 d 11 hr      Tue        Tue 24 Nov 05:30  [34m51%[0m   [34mok[0m
+[2m13[0m  miriam  claude    miriam@example.com  110%     40 min       93%          3 hr 40 min    Wed        Wed 18 Nov 21:30  [31m0%[0m    [31mlimit reached[0m
+[2m5[0m   carol   claude    carol@example.com   [2m—[0m        [2m—[0m            [2m—[0m            [2m—[0m              [2m—[0m          [2m—[0m                 [2m—[0m     [31mrejected[0m
+[2m7[0m   key     claude    [2m—[0m                   [2m—[0m        [2m—[0m            [2m—[0m            [2m—[0m              [2m—[0m          [2m—[0m                 [2m—[0m     [2mper token[0m
+[2m9[0m   oskar   claude    oskar@example.com   [2m—[0m        [2m—[0m            [2m—[0m            [2m—[0m              [2m—[0m          [2m—[0m                 [2m—[0m     [33mexpired[0m
+Weekly resets: Wed 1 (+93%) · Tue 1 (+49%)
+  carol: the server refused the credential (HTTP 401): token revoked or from another organization
+  oskar: login expired at 2026-11-17T09:00:00Z: run claude once in this home to refresh it

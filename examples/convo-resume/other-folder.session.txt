@@ -1,0 +1,26 @@
+#region here
+$ agx resume --last --dry-run
+agx: no conversations in ~/projects/app
+  agx resume --scope all
+[exit 125]
+
+#endregion
+#region all
+$ agx resume --last --scope all --dry-run --quiet
+agent    claude                                                from conversation 7b1d4e20-0000-4000-8000-000000000002
+profile  work                                                  from home ~/.claude-work
+home     ~/.claude-work                                        from conversation 7b1d4e20-0000-4000-8000-000000000002 (stored there)
+login    home login                                            from default (no login named)
+binary   /usr/local/bin/claude version unknown                 from no install metadata
+folder   ~/projects/client                                     from conversation 7b1d4e20-0000-4000-8000-000000000002
+run      ~/.agx/runs/20261118-061045-eehv                      from AGX_RUN_ID=20261118-061045-eehv
+command  claude --resume 7b1d4e20-0000-4000-8000-000000000002  from built by agentio
+env      set AGX_RUN_ID=20261118-061045-eehv                   from launch environment
+         set AGX_RUN_AGENT=claude                              from launch environment
+         set AGX_RUN_PROFILE=work                              from launch environment
+         set AGX_RUN_LOGIN=home                                from launch environment
+         set AGX_RUN_HOME=~/.claude-work                       from launch environment
+         set CLAUDE_CONFIG_DIR=~/.claude-work                  from launch environment
+note     installed Claude Code version unknown; flags not checked
+
+#endregion

@@ -1,0 +1,257 @@
+{
+  "schema_version": 1,
+  "command": "run",
+  "ok": true,
+  "data": {
+    "run_id": "<run-id>",
+    "run_dir": "<root>/home/.agx/runs/<run-id>",
+    "agent": "claude",
+    "profile": "work",
+    "home": "<root>/home/.claude-work",
+    "login": "home",
+    "login_kind": "home",
+    "folder": "<root>/work",
+    "binary": "<root>/bin/claude",
+    "command": {
+      "line": "claude --effort max --settings <root>/home/.agx/runs/<run-id>/settings-<run-id>.json",
+      "path": "claude",
+      "args": [
+        "--effort",
+        "max",
+        "--settings",
+        "<root>/home/.agx/runs/<run-id>/settings-<run-id>.json"
+      ],
+      "dir": "<root>/work",
+      "env": [
+        "set DEBUG=1",
+        "set AGX_RUN_ID=<run-id>",
+        "set AGX_RUN_AGENT=claude",
+        "set AGX_RUN_PROFILE=work",
+        "set AGX_RUN_LOGIN=home",
+        "set AGX_RUN_HOME=<root>/home/.claude-work",
+        "set CLAUDE_CONFIG_DIR=<root>/home/.claude-work"
+      ]
+    },
+    "decisions": [
+      {
+        "name": "agent",
+        "value": "claude",
+        "source": "default_agent"
+      },
+      {
+        "name": "profile",
+        "value": "work",
+        "source": "default profile of claude"
+      },
+      {
+        "name": "home",
+        "value": "~/.claude-work",
+        "source": "profile work"
+      },
+      {
+        "name": "login",
+        "value": "home login",
+        "source": "default (no login named)"
+      },
+      {
+        "name": "binary",
+        "value": "<root>/bin/claude version unknown",
+        "source": "no install metadata"
+      },
+      {
+        "name": "folder",
+        "value": "<root>/work",
+        "source": "current folder"
+      },
+      {
+        "name": "env",
+        "value": "DEBUG",
+        "source": "--env"
+      },
+      {
+        "name": "options",
+        "value": "effort=max",
+        "source": "--option (overrides profile work: high)"
+      },
+      {
+        "name": "settings",
+        "value": "cleanupPeriodDays, permissions.allow",
+        "source": "profile work (file ~/.agx/settings/strict.jsonc)"
+      },
+      {
+        "name": "settings",
+        "value": "cleanupPeriodDays",
+        "source": "--setting (overrides profile work (file ~/.agx/settings/strict.jsonc): cleanupPeriodDays)"
+      },
+      {
+        "name": "settings",
+        "value": "delivered as file ~/.agx/runs/<run-id>/settings-<run-id>.json (0600)",
+        "source": "settings_delivery file"
+      },
+      {
+        "name": "run",
+        "value": "~/.agx/runs/<run-id>",
+        "source": "AGX_RUN_ID=<run-id>"
+      },
+      {
+        "name": "command",
+        "value": "claude --effort max --settings <root>/home/.agx/runs/<run-id>/settings-<run-id>.json",
+        "source": "built by agentio"
+      },
+      {
+        "name": "env",
+        "value": "set DEBUG=1",
+        "source": "launch environment"
+      },
+      {
+        "name": "env",
+        "value": "set AGX_RUN_ID=<run-id>",
+        "source": "launch environment"
+      },
+      {
+        "name": "env",
+        "value": "set AGX_RUN_AGENT=claude",
+        "source": "launch environment"
+      },
+      {
+        "name": "env",
+        "value": "set AGX_RUN_PROFILE=work",
+        "source": "launch environment"
+      },
+      {
+        "name": "env",
+        "value": "set AGX_RUN_LOGIN=home",
+        "source": "launch environment"
+      },
+      {
+        "name": "env",
+        "value": "set AGX_RUN_HOME=<root>/home/.claude-work",
+        "source": "launch environment"
+      },
+      {
+        "name": "env",
+        "value": "set CLAUDE_CONFIG_DIR=<root>/home/.claude-work",
+        "source": "launch environment"
+      }
+    ],
+    "warnings": [
+      {
+        "code": "version",
+        "message": "installed Claude Code version unknown; flags not checked"
+      }
+    ],
+    "notes": [
+      "agent claude (default_agent)"
+    ],
+    "settings_delivery": "file"
+  },
+  "decisions": [
+    {
+      "name": "agent",
+      "value": "claude",
+      "source": "default_agent"
+    },
+    {
+      "name": "profile",
+      "value": "work",
+      "source": "default profile of claude"
+    },
+    {
+      "name": "home",
+      "value": "~/.claude-work",
+      "source": "profile work"
+    },
+    {
+      "name": "login",
+      "value": "home login",
+      "source": "default (no login named)"
+    },
+    {
+      "name": "binary",
+      "value": "<root>/bin/claude version unknown",
+      "source": "no install metadata"
+    },
+    {
+      "name": "folder",
+      "value": "<root>/work",
+      "source": "current folder"
+    },
+    {
+      "name": "env",
+      "value": "DEBUG",
+      "source": "--env"
+    },
+    {
+      "name": "options",
+      "value": "effort=max",
+      "source": "--option (overrides profile work: high)"
+    },
+    {
+      "name": "settings",
+      "value": "cleanupPeriodDays, permissions.allow",
+      "source": "profile work (file ~/.agx/settings/strict.jsonc)"
+    },
+    {
+      "name": "settings",
+      "value": "cleanupPeriodDays",
+      "source": "--setting (overrides profile work (file ~/.agx/settings/strict.jsonc): cleanupPeriodDays)"
+    },
+    {
+      "name": "settings",
+      "value": "delivered as file ~/.agx/runs/<run-id>/settings-<run-id>.json (0600)",
+      "source": "settings_delivery file"
+    },
+    {
+      "name": "run",
+      "value": "~/.agx/runs/<run-id>",
+      "source": "AGX_RUN_ID=<run-id>"
+    },
+    {
+      "name": "command",
+      "value": "claude --effort max --settings <root>/home/.agx/runs/<run-id>/settings-<run-id>.json",
+      "source": "built by agentio"
+    },
+    {
+      "name": "env",
+      "value": "set DEBUG=1",
+      "source": "launch environment"
+    },
+    {
+      "name": "env",
+      "value": "set AGX_RUN_ID=<run-id>",
+      "source": "launch environment"
+    },
+    {
+      "name": "env",
+      "value": "set AGX_RUN_AGENT=claude",
+      "source": "launch environment"
+    },
+    {
+      "name": "env",
+      "value": "set AGX_RUN_PROFILE=work",
+      "source": "launch environment"
+    },
+    {
+      "name": "env",
+      "value": "set AGX_RUN_LOGIN=home",
+      "source": "launch environment"
+    },
+    {
+      "name": "env",
+      "value": "set AGX_RUN_HOME=<root>/home/.claude-work",
+      "source": "launch environment"
+    },
+    {
+      "name": "env",
+      "value": "set CLAUDE_CONFIG_DIR=<root>/home/.claude-work",
+      "source": "launch environment"
+    }
+  ],
+  "warnings": [
+    {
+      "code": "version",
+      "message": "installed Claude Code version unknown; flags not checked"
+    }
+  ],
+  "error": null
+}

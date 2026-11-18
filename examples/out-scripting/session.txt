@@ -1,0 +1,247 @@
+#options dir=~/projects/client
+#: The same envelope on every command with --json.
+#region envelope
+$ agx profile list --profile gem --json
+{
+  "schema_version": 1,
+  "command": "profile list",
+  "ok": true,
+  "data": [
+    {
+      "name": "gem",
+      "agent": "gemini",
+      "home": "~/.gemini",
+      "default": true,
+      "billing": "plan",
+      "login": "home login",
+      "home_exists": true,
+      "state": "none"
+    }
+  ],
+  "decisions": [],
+  "warnings": [],
+  "error": null
+}
+
+#endregion
+#region error
+$ agx run --profile nosuch --json
+{
+  "schema_version": 1,
+  "command": "run",
+  "ok": false,
+  "data": null,
+  "decisions": [],
+  "warnings": [],
+  "error": {
+    "code": "not-found",
+    "message": "unknown profile nosuch",
+    "hint": "agx profile list"
+  }
+}
+[exit 125]
+
+#endregion
+#region error-code
+$ agx run --profile nosuch --json --field error.code
+not-found
+[exit 125]
+
+#endregion
+#: --field: one path prints the value bare; several print one object.
+#region field-one
+$ agx run --dry-run --quiet --json --field data.profile
+work
+
+#endregion
+#region field-many
+$ agx run --dry-run --quiet --json --field data.profile --field data.home --field data.login
+{
+  "data.profile": "work",
+  "data.home": "~/.claude-work",
+  "data.login": "carol"
+}
+
+#endregion
+#region field-star
+$ agx profile list --json --field data.*.name
+["personal","work","gem","pi"]
+
+#endregion
+#region columns
+$ agx profile list --field data.*.name --field data.*.agent --field data.*.home
+NAME      AGENT   HOME
+personal  claude  ~/.claude
+work      claude  ~/.claude-work
+gem       gemini  ~/.gemini
+pi        pi      ~/.pi/agent
+
+#endregion
+#region field-missing
+$ agx profile list --json --field data.*.hom
+agx: --field data.*.hom: no such path (did you mean data.*.home?)
+[exit 2]
+
+#endregion
+#: No aliases are configured, so alias list is empty: a path is still checked against the fields the command declares.
+#region field-empty
+$ agx alias list --field data.*.nosuch
+agx: --field data.*.nosuch: no such path
+[exit 2]
+
+$ agx alias list --json --field data.*.name
+[]
+
+#endregion
+#: A flag that takes one value, given twice, is refused, even with the same value.
+#region twice
+$ agx usage --agent gemini --agent pi
+agx: --agent given twice (gemini and pi); pick one
+[exit 2]
+
+$ agx profile list --quiet --quiet
+agx: --quiet given twice; pick one
+[exit 2]
+
+#endregion
+#: Notes go to stderr; --quiet drops them; stdout stays clean either way.
+#region notes
+$ agx run --dry-run --json --field data.profile
+agx: agent claude (folder binding ~/projects/client)
+agx: profile work (folder binding ~/projects/client)
+work
+
+$ agx run --dry-run --quiet --json --field data.profile
+work
+
+#endregion
+#region warnings
+$ agx run --dry-run --quiet --json --field warnings
+[{"code":"version","message":"installed Claude Code version unknown; flags not checked"}]
+
+#endregion
+#: A token is never printed, plain or resolved.
+#region redacted
+$ agx run --dry-run --quiet --resolved-secrets --json --field data.command.env
+["set AGX_RUN_ID=20261118-061527-ppg6","set AGX_RUN_AGENT=claude","set AGX_RUN_PROFILE=work","set AGX_RUN_LOGIN=carol","set AGX_RUN_HOME=~/.claude-work","set CLAUDE_CODE_OAUTH_TOKEN=[redacted]","set CLAUDE_CONFIG_DIR=~/.claude-work"]
+
+$ agx login show --id carol
+name     carol
+agents   claude
+kind     oauth-token
+source   plain
+account  —
+users    profile work
+
+#endregion
+#region decisions
+$ agx run --dry-run --quiet --json --field decisions.1
+{"name":"profile","value":"work","source":"folder binding ~/projects/client"}
+
+#endregion
+#: Width: the terminal's, else COLUMNS, else 120; never below 60.
+#region columns-env
+$ COLUMNS=60 agx config show --field data.*.key --field data.*.value
+KEY                                        VALUE
+$schema                                    https://raw.githubuserco
+                                           ntent.com/ubgo/agx/main/
+                                           schema/config.schema.jso
+                                           n
+version                                    1
+default_agent                              claude
+profiles.gem.agent                         gemini
+profiles.gem.home                          ~/.gemini
+profiles.gem.default                       true
+profiles.personal.agent                    claude
+profiles.personal.home                     ~/.claude
+profiles.personal.default                  true
+profiles.pi.agent                          pi
+profiles.pi.home                           ~/.pi/agent
+profiles.pi.default                        true
+profiles.work.agent                        claude
+profiles.work.home                         ~/.claude-work
+profiles.work.login                        carol
+logins.carol.agents                        claude
+logins.carol.kind                          oauth-token
+logins.carol.token                         (plain value,
+                                           [redacted])
+projects.~/projects/client.claude.profile  work
+sessions.root                              ~/.agx/sessions
+profiles.gem.billing                       plan
+profiles.gem.inherit_defaults              true
+profiles.personal.billing                  plan
+profiles.personal.inherit_defaults         true
+profiles.pi.billing                        plan
+profiles.pi.inherit_defaults               true
+profiles.work.billing                      plan
+profiles.work.inherit_defaults             true
+
+#endregion
+#region color
+$ agx profile list --color never --field data.*.name
+NAME
+personal
+work
+gem
+pi
+
+$ NO_COLOR=1 agx profile list --field data.*.name
+NAME
+personal
+work
+gem
+pi
+
+$ agx profile list --color purple
+agx: --color "purple": use one of auto, always, never
+[exit 2]
+
+#endregion
+#region timeout
+$ agx usage --agent gemini --timeout 5s --json --field data.*.status
+["unsupported"]
+
+$ agx usage --timeout soon
+agx: invalid argument "soon" for "--timeout" flag: must be a duration like "30s" or "5m"
+[exit 2]
+
+#endregion
+#region help-json
+$ agx help --json --field data.flags.*.name
+["color","config","date-format","field","json","quiet","timeout"]
+
+$ agx help --json --field data.commands.*.name
+["agent","alias","clean","completion","config","conversation","credential","doctor","help","launch","live","login","new","plan","profile","project","resume","run","session","shell-init","usage","version","whoami"]
+
+$ agx help --json --field data.commands.20.name --field data.commands.20.cost --field data.commands.20.fields
+{
+  "data.commands.20.name": "usage",
+  "data.commands.20.cost": "N",
+  "data.commands.20.fields": [
+    "data.*.kind",
+    "data.*.name",
+    "data.*.agent",
+    "data.*.home",
+    "data.*.profile",
+    "data.*.profiles",
+    "data.*.login",
+    "data.*.account",
+    "data.*.source",
+    "data.*.observed_at",
+    "data.*.age",
+    "data.*.status",
+    "data.*.reason",
+    "data.*.left",
+    "data.*.windows",
+    "data.*.plan",
+    "data.*.index",
+    "data.*.plan_label"
+  ]
+}
+
+#endregion
+#region version
+$ agx version --json --field data.binary
+agx
+
+#endregion

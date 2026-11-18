@@ -1,0 +1,938 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "agx config",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "type": "integer"
+    },
+    "default_agent": {
+      "type": "string"
+    },
+    "sessions": {
+      "type": "object",
+      "properties": {
+        "root": {
+          "type": "string"
+        },
+        "promote_root": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "agents": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "defaults": {
+            "type": "object",
+            "properties": {
+              "args": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "login": {
+                "type": "string"
+              },
+              "home_login": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          },
+          "spec": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "binary": {
+                    "type": "string"
+                  },
+                  "home_env": {
+                    "type": "string"
+                  },
+                  "home_env_names_parent": {
+                    "type": "boolean"
+                  },
+                  "default_home": {
+                    "type": "string"
+                  },
+                  "extra_homes": {
+                    "type": "string"
+                  },
+                  "home_markers": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "generic_home_markers": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "new_args": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "resume_args": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "model_args": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "add_dir_args": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "prompt_args": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "autonomy_args": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": [
+                        "array",
+                        "null"
+                      ],
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "headless_args": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "token_env": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string"
+                        },
+                        "provider": {
+                          "type": "string"
+                        },
+                        "env": {
+                          "type": "string"
+                        },
+                        "scrub": {
+                          "type": [
+                            "array",
+                            "null"
+                          ],
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "version_args": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "packages": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "login_args": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "logout_args": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "shared_home_files": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "credential_env": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "api_billing_env": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "process": {
+                    "type": "object",
+                    "properties": {
+                      "basenames": {
+                        "type": [
+                          "array",
+                          "null"
+                        ],
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "argv_contains": {
+                        "type": [
+                          "array",
+                          "null"
+                        ],
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "exclude": {
+                        "type": [
+                          "array",
+                          "null"
+                        ],
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "profiles": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "agent": {
+            "type": "string"
+          },
+          "home": {
+            "type": "string"
+          },
+          "default": {
+            "type": "boolean"
+          },
+          "billing": {
+            "type": "string",
+            "enum": [
+              "plan",
+              "api"
+            ]
+          },
+          "login": {
+            "type": "string"
+          },
+          "home_login": {
+            "type": "boolean"
+          },
+          "args": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "inherit_defaults": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "model": {
+            "type": "string"
+          },
+          "autonomy": {
+            "type": "string",
+            "enum": [
+              "default",
+              "read-only",
+              "ask",
+              "accept-edits",
+              "full"
+            ]
+          },
+          "env": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "env_refs": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "env_file": {
+            "type": "string"
+          },
+          "env_file_commands": {
+            "type": "boolean"
+          },
+          "before_run": {
+            "type": "string"
+          },
+          "before_run_from": {
+            "type": "string",
+            "enum": [
+              "config",
+              "folder"
+            ]
+          },
+          "before_run_env": {
+            "type": "string",
+            "enum": [
+              "safe",
+              "full"
+            ]
+          },
+          "settings_delivery": {
+            "type": "string",
+            "enum": [
+              "file",
+              "inline"
+            ]
+          },
+          "live_login": {
+            "type": "boolean"
+          },
+          "claude": {
+            "type": "object",
+            "properties": {
+              "add_dirs": {
+                "description": "--add-dir",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "agent": {
+                "description": "--agent",
+                "type": "string"
+              },
+              "agents": {
+                "description": "--agents",
+                "type": "object"
+              },
+              "allow_dangerously_skip_permissions": {
+                "description": "--allow-dangerously-skip-permissions",
+                "type": "boolean"
+              },
+              "allowed_tools": {
+                "description": "--allowedTools",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "append_system_prompt": {
+                "description": "--append-system-prompt",
+                "type": "string"
+              },
+              "append_system_prompt_file": {
+                "description": "--append-system-prompt-file",
+                "type": "string"
+              },
+              "autocompact": {
+                "description": "--autocompact",
+                "type": "string"
+              },
+              "background": {
+                "description": "--bg",
+                "type": "boolean"
+              },
+              "bare": {
+                "description": "--bare",
+                "type": "boolean"
+              },
+              "betas": {
+                "description": "--betas",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "brief": {
+                "description": "--brief",
+                "type": "boolean"
+              },
+              "chrome": {
+                "description": "--chrome",
+                "type": "boolean"
+              },
+              "continue": {
+                "description": "--continue",
+                "type": "boolean"
+              },
+              "dangerously_skip_permissions": {
+                "description": "--dangerously-skip-permissions",
+                "type": "boolean"
+              },
+              "debug": {
+                "description": "--debug",
+                "type": "string"
+              },
+              "debug_file": {
+                "description": "--debug-file",
+                "type": "string"
+              },
+              "disable_slash_commands": {
+                "description": "--disable-slash-commands",
+                "type": "boolean"
+              },
+              "disallowed_tools": {
+                "description": "--disallowedTools",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "effort": {
+                "description": "--effort",
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high",
+                  "xhigh",
+                  "max"
+                ]
+              },
+              "exclude_dynamic_system_prompt_sections": {
+                "description": "--exclude-dynamic-system-prompt-sections",
+                "type": "boolean"
+              },
+              "extra_args": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "fallback_models": {
+                "description": "--fallback-model",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "files": {
+                "description": "--file",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "fork_session": {
+                "description": "--fork-session",
+                "type": "boolean"
+              },
+              "forward_subagent_text": {
+                "description": "--forward-subagent-text",
+                "type": "boolean"
+              },
+              "from_pr": {
+                "description": "--from-pr",
+                "type": "string"
+              },
+              "ide": {
+                "description": "--ide",
+                "type": "boolean"
+              },
+              "include_hook_events": {
+                "description": "--include-hook-events",
+                "type": "boolean"
+              },
+              "include_partial_messages": {
+                "description": "--include-partial-messages",
+                "type": "boolean"
+              },
+              "input_format": {
+                "description": "--input-format",
+                "type": "string",
+                "enum": [
+                  "text",
+                  "stream-json"
+                ]
+              },
+              "json_schema": {
+                "description": "--json-schema"
+              },
+              "max_budget_usd": {
+                "description": "--max-budget-usd",
+                "type": "number"
+              },
+              "mcp_configs": {
+                "description": "--mcp-config",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "model": {
+                "description": "--model",
+                "type": "string"
+              },
+              "name": {
+                "description": "--name",
+                "type": "string"
+              },
+              "no_chrome": {
+                "description": "--no-chrome",
+                "type": "boolean"
+              },
+              "no_session_persistence": {
+                "description": "--no-session-persistence",
+                "type": "boolean"
+              },
+              "output_format": {
+                "description": "--output-format",
+                "type": "string",
+                "enum": [
+                  "text",
+                  "json",
+                  "stream-json"
+                ]
+              },
+              "permission_mode": {
+                "description": "--permission-mode",
+                "type": "string",
+                "enum": [
+                  "acceptEdits",
+                  "auto",
+                  "bypassPermissions",
+                  "manual",
+                  "dontAsk",
+                  "plan"
+                ]
+              },
+              "permission_prompts": {
+                "description": "--permission-prompts",
+                "type": "string"
+              },
+              "plugin_dirs": {
+                "description": "--plugin-dir",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "plugin_urls": {
+                "description": "--plugin-url",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "print": {
+                "description": "-p",
+                "type": "boolean"
+              },
+              "prompt": {
+                "type": "string"
+              },
+              "remote_control": {
+                "description": "--remote-control",
+                "type": "string"
+              },
+              "replay_user_messages": {
+                "description": "--replay-user-messages",
+                "type": "boolean"
+              },
+              "restricted": {
+                "description": "--restricted",
+                "type": "boolean"
+              },
+              "resume": {
+                "description": "--resume",
+                "type": "string"
+              },
+              "safe_mode": {
+                "description": "--safe-mode",
+                "type": "boolean"
+              },
+              "session_id": {
+                "description": "--session-id",
+                "type": "string"
+              },
+              "setting_sources": {
+                "description": "--setting-sources",
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "user",
+                    "project",
+                    "local"
+                  ]
+                }
+              },
+              "strict_mcp_config": {
+                "description": "--strict-mcp-config",
+                "type": "boolean"
+              },
+              "system_prompt": {
+                "description": "--system-prompt",
+                "type": "string"
+              },
+              "system_prompt_file": {
+                "description": "--system-prompt-file",
+                "type": "string"
+              },
+              "system_prompt_snapshot": {
+                "description": "--system-prompt-snapshot",
+                "type": "string"
+              },
+              "tmux": {
+                "description": "--tmux",
+                "type": "string"
+              },
+              "tools": {
+                "description": "--tools",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "verbose": {
+                "description": "--verbose",
+                "type": "boolean"
+              },
+              "worktree": {
+                "description": "--worktree",
+                "type": "string"
+              },
+              "settings": {
+                "description": "agent settings: a JSONC file path (relative to the config dir) or an object",
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "codex": {
+            "type": "object",
+            "properties": {
+              "add_dirs": {
+                "description": "--add-dir",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "approval": {
+                "description": "-a",
+                "type": "string",
+                "enum": [
+                  "on-request",
+                  "never",
+                  "untrusted",
+                  "on-failure"
+                ]
+              },
+              "approve_for_me": {
+                "description": "--approve-for-me",
+                "type": "boolean"
+              },
+              "bypass_all": {
+                "description": "--dangerously-bypass-approvals-and-sandbox",
+                "type": "boolean"
+              },
+              "cd": {
+                "description": "-C",
+                "type": "string"
+              },
+              "codex_profile": {
+                "description": "-p",
+                "type": "string"
+              },
+              "disable": {
+                "description": "--disable",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "enable": {
+                "description": "--enable",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "images": {
+                "description": "-i",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "local_provider": {
+                "description": "--local-provider",
+                "type": "string"
+              },
+              "model": {
+                "description": "-m",
+                "type": "string"
+              },
+              "no_alt_screen": {
+                "description": "--no-alt-screen",
+                "type": "boolean"
+              },
+              "no_daemon": {
+                "description": "--no-daemon",
+                "type": "boolean"
+              },
+              "oss": {
+                "description": "--oss",
+                "type": "boolean"
+              },
+              "prompt": {
+                "type": "string"
+              },
+              "remote": {
+                "description": "--remote",
+                "type": "string"
+              },
+              "remote_auth_token_env": {
+                "description": "--remote-auth-token-env",
+                "type": "string"
+              },
+              "sandbox": {
+                "description": "-s",
+                "type": "string",
+                "enum": [
+                  "read-only",
+                  "workspace-write",
+                  "danger-full-access"
+                ]
+              },
+              "search": {
+                "description": "--search",
+                "type": "boolean"
+              },
+              "strict_config": {
+                "description": "--strict-config",
+                "type": "boolean"
+              },
+              "worktree": {
+                "description": "--worktree",
+                "type": "boolean"
+              },
+              "settings": {
+                "description": "agent settings: a JSONC file path (relative to the config dir) or an object",
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "logins": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "agents": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "oauth-token",
+              "api-key",
+              "api-key-helper"
+            ]
+          },
+          "token": {
+            "type": "string"
+          },
+          "stored": {
+            "type": "boolean"
+          },
+          "account": {
+            "type": "string"
+          },
+          "command": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "projects": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "object",
+          "properties": {
+            "profile": {
+              "type": "string"
+            },
+            "login": {
+              "type": "string"
+            },
+            "home_login": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "aliases": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "date_format": {
+      "type": "string"
+    },
+    "usage": {
+      "type": "object",
+      "properties": {
+        "time_format": {
+          "type": "string",
+          "enum": [
+            "relative",
+            "day",
+            "absolute",
+            "both"
+          ]
+        },
+        "date_format": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

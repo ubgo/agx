@@ -1,0 +1,93 @@
+#region check
+$ agx login check --no-probe
+agx: 1 of 5 logins failed: spare
+NAME           KIND            SOURCE                  RESOLVE  PROBE    DETAIL
+carol          oauth-token     reference gopass        ok       skipped  --no-probe
+derek          oauth-token     command gopass          ok       skipped  --no-probe
+console        api-key-helper  helper gopass           skipped  skipped  the agent runs the helper itself; agx never does
+anthropic-key  api-key         reference gopass        ok       skipped  --no-probe
+spare          oauth-token     env SPARE_CLAUDE_TOKEN  failed   skipped  login spare: SPARE_CLAUDE_TOKEN is not set
+[exit 3]
+
+$ agx login check --no-probe --id carol --id derek
+NAME   KIND         SOURCE            RESOLVE  PROBE    DETAIL
+carol  oauth-token  reference gopass  ok       skipped  --no-probe
+derek  oauth-token  command gopass    ok       skipped  --no-probe
+
+#endregion
+#region use
+$ agx login use --id carol --profile work
+profile work now uses login carol
+
+$ agx login use --id derek --agent claude
+agent claude now uses login derek
+
+$ agx run --profile personal --dry-run --quiet --json --field data.decisions.3
+{"name":"login","value":"derek (not resolved: --dry-run)","source":"agents.claude.defaults"}
+
+$ agx login use --home-login --profile personal
+profile personal now uses the home login
+
+$ agx run --profile personal --dry-run --quiet --json --field data.decisions.3
+{"name":"login","value":"home login","source":"profile personal"}
+
+$ agx login show --id carol
+name     carol
+agents   claude
+kind     oauth-token
+source   reference gopass
+account  —
+users    profile work
+
+#endregion
+#region edit
+$ agx login edit --id carol --token-ref '${gopass:personal/claude/carol-2}'
+changed login carol (oauth-token, reference gopass)
+
+$ agx login edit --id spare --stdin < ~/new-token.txt
+changed login spare (oauth-token, stored (tokens.jsonc))
+
+$ agx login edit --id derek --account derek@example.com
+changed login derek (oauth-token, command gopass)
+
+$ agx login edit --id console --kind api-key --token-ref '${gopass:work/anthropic-api-key}'
+changed login console (api-key, reference gopass)
+
+$ agx login edit --id anthropic-key --provider openai
+changed login anthropic-key (api-key, reference gopass)
+
+$ agx login edit --id anthropic-key --agent pi
+changed login anthropic-key (api-key, reference gopass)
+
+$ agx login edit --id console --kind api-key-helper --helper-command 'gopass show -o work/anthropic-helper'
+changed login console (api-key-helper, helper gopass)
+
+$ agx login edit --id spare --login-setup
+agx: no terminal: --login-setup runs the setup command, then asks you to paste the token it prints; pipe the token with --stdin
+[exit 2]
+
+$ agx login list
+NAME           AGENTS  KIND            SOURCE                 ACCOUNT
+carol          claude  oauth-token     reference gopass       —
+derek          claude  oauth-token     command gopass         derek@example.com
+console        claude  api-key-helper  helper gopass          —
+anthropic-key  pi      api-key         reference gopass       —
+spare          claude  oauth-token     stored (tokens.jsonc)  —
+
+#endregion
+#region remove
+$ agx login remove --id carol
+agx: login carol is used by profile work
+  agx login remove --id carol --cascade   (also clears it there)
+[exit 2]
+
+$ agx login remove --id carol --cascade
+removed login carol
+  cleared from profile work
+
+$ agx profile list --agent claude
+PROFILE    PROVIDER  HOME            ACCOUNT  STATE  LOGIN       BILLING
+*personal  claude    ~/.claude                none   home login  plan
+work       claude    ~/.claude-work           none   derek       plan
+
+#endregion

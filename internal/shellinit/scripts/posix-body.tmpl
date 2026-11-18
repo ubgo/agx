@@ -1,0 +1,95 @@
+{{- /* The body of the bash and zsh layer: posix.tmpl evals it, single-quoted, with aliases off, so it holds no single quote of its own (only a quoted --config path can add one). Every command it runs is builtin or command, so a user function (cd, printf) is never called instead. */ -}}
+# __{{.Name}}_has FLAG ARGS...: whether ARGS hold FLAG or FLAG=... before a bare
+# --. It recurses instead of looping, so the layer has no for/do/done at all.
+__{{.Name}}_has() {
+  local __{{.Name}}_f=$1
+  shift
+  [ $# -eq 0 ] && return 1
+  case "$1" in
+    --) return 1 ;;
+    "$__{{.Name}}_f"|"$__{{.Name}}_f"=*) return 0 ;;
+  esac
+  shift
+  __{{.Name}}_has "$__{{.Name}}_f" "$@"
+}
+{{- if .OSC7}}
+
+# Report the current folder to the terminal (OSC 7) so new tabs open there.
+__{{.Name}}_osc7() {
+  builtin printf "\033]7;file://%s%s\033\\\\" "${HOSTNAME:-$(command hostname)}" "$PWD"
+}
+{{- end}}
+{{- if .ConfigArg}}
+
+# __{{.Name}}_bin runs the binary with the config of this layer,{{.ConfigArg}},
+# unless the arguments already name one before a bare --: the one typed
+# wins, so the binary never sees --config twice.
+__{{.Name}}_bin() {
+  if __{{.Name}}_has --config "$@"; then
+    command {{.Name}} "$@"
+    return
+  fi
+  command {{.Name}}{{.ConfigArg}} "$@"
+}
+{{- end}}
+
+# {{.Name}}: one wrapper around the binary for the two things a child process
+# cannot do for its shell. `new` and `resume` write a plan, cd to its folder,
+# then start the agent from it; `login ... --terminal` sets {{.EnvLogin}} here.
+# Everything else goes straight to the binary.
+{{.Name}}() {
+  case "$1" in
+    {{.PlanCase}})
+      local __{{.Name}}_cmd __{{.Name}}_plan __{{.Name}}_dir __{{.Name}}_rc
+      __{{.Name}}_cmd=$1
+      shift
+      __{{.Name}}_plan=$(command mktemp "${TMPDIR:-/tmp}/{{.Name}}-plan.XXXXXX") || return {{.ExitLaunch}}
+      {{.Bin}} "$__{{.Name}}_cmd" {{.PlanFlag}} "$__{{.Name}}_plan" "$@"
+      __{{.Name}}_rc=$?
+      if [ "$__{{.Name}}_rc" -ne 0 ] || [ ! -s "$__{{.Name}}_plan" ]; then
+        command rm -f -- "$__{{.Name}}_plan"
+        return "$__{{.Name}}_rc"
+      fi
+      __{{.Name}}_dir=$(command {{.Name}} plan show {{.PlanFlag}} "$__{{.Name}}_plan" --field {{.DirField}}) &&
+        builtin cd -- "$__{{.Name}}_dir" || {
+        command rm -f -- "$__{{.Name}}_plan"
+        return {{.ExitLaunch}}
+      }
+{{- if .OSC7}}
+      __{{.Name}}_osc7
+{{- end}}
+      command {{.Name}} launch {{.PlanFlag}} "$__{{.Name}}_plan"
+      __{{.Name}}_rc=$?
+      command rm -f -- "$__{{.Name}}_plan"
+      return "$__{{.Name}}_rc"
+      ;;
+    login)
+      local __{{.Name}}_out __{{.Name}}_rc
+      if __{{.Name}}_has {{.TerminalFlag}} "$@"; then
+        __{{.Name}}_out=$({{.Bin}} "$@")
+        __{{.Name}}_rc=$?
+        case "$__{{.Name}}_out" in
+          "{{.ExportPrefix}}"*)
+            export {{.EnvLogin}}="${__{{.Name}}_out#"{{.ExportPrefix}}"}"
+            builtin printf "%s\n" "{{.Name}}: {{.EnvLogin}}=${{.EnvLogin}} in this shell" >&2
+            ;;
+          "{{.UnsetLine}}")
+            unset {{.EnvLogin}}
+            builtin printf "%s\n" "{{.Name}}: {{.EnvLogin}} unset in this shell" >&2
+            ;;
+          *)
+            [ -n "$__{{.Name}}_out" ] && builtin printf "%s\n" "$__{{.Name}}_out"
+            ;;
+        esac
+        return "$__{{.Name}}_rc"
+      fi
+      {{.Bin}} "$@"
+      ;;
+    *)
+      {{.Bin}} "$@"
+      ;;
+  esac
+}
+{{- range .Aliases}}
+{{.Name}}() { {{$.Name}} {{.Args}} "$@"; }
+{{- end}}

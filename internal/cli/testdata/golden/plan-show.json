@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "command": "plan show",
+  "ok": true,
+  "data": {
+    "schema_version": 1,
+    "created_at": "<time>",
+    "dir": "<root>/work",
+    "mode": "run",
+    "agent": "claude",
+    "profile": "other",
+    "home": "<root>/home/.claude-other",
+    "login": "home",
+    "binary": "<root>/bin/claude",
+    "folder": "<root>/work",
+    "command": {
+      "line": "claude",
+      "path": "claude",
+      "args": [],
+      "dir": "<root>/work",
+      "env": [
+        "set AGX_RUN_ID=<run-id>",
+        "set AGX_RUN_AGENT=claude",
+        "set AGX_RUN_PROFILE=other",
+        "set AGX_RUN_LOGIN=home",
+        "set AGX_RUN_HOME=<root>/home/.claude-other",
+        "set CLAUDE_CONFIG_DIR=<root>/home/.claude-other"
+      ]
+    }
+  },
+  "decisions": [],
+  "warnings": [],
+  "error": null
+}

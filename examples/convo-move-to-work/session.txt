@@ -1,0 +1,20 @@
+#options dir=~/projects/client
+#: ~/projects/client has one conversation in each Claude home. Move the personal one to work.
+#region plan
+$ agx conversation move --to-profile work --dry-run
+would move 1 claude conversation(s) of ~/projects/client from ~/.claude to ~/.claude-work
+  3f2a9c1e-0000-4000-8000-000000000001
+dry run: nothing changed
+
+#endregion
+#region move
+$ agx conversation move --to-profile work
+moved 1 claude conversation(s) of ~/projects/client from ~/.claude to ~/.claude-work
+  3f2a9c1e-0000-4000-8000-000000000001
+...
+
+$ agx conversation list
+5 d ago      claude work       Review the API                   ~/projects/client             7b1d4e20
+8 d ago      claude work       Fix the parser                   ~/projects/client             3f2a9c1e
+
+#endregion

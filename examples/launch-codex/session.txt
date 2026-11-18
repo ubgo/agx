@@ -1,0 +1,46 @@
+#: Codex: settings become -c, typed options come from the codex block or --option.
+#region setting
+$ agx run --profile codex --model gpt-5 --autonomy ask --setting model_reasoning_effort=high --dry-run --quiet --json --field data.command.line
+codex -c "model_reasoning_effort=\"high\"" -m gpt-5 -s workspace-write -a on-request
+#endregion
+#region option
+$ agx run --profile codex --option sandbox=workspace-write --dry-run --quiet --json --field data.command.line -- --search
+codex -s workspace-write --search
+#endregion
+#region block
+$ agx run --profile deep --dry-run --quiet
+...
+options   codex_profile=deep                                           from profile deep
+          search=true                                                  from profile deep
+settings  model_reasoning_effort                                       from profile deep
+...
+command   codex -c "model_reasoning_effort=\"high\"" -p deep --search  from built by agentio
+...
+note      installed codex version unknown; flags not checked against it
+#endregion
+#region bad-value
+$ agx run --profile codex --option sandbox=everything --dry-run --quiet
+agx: --option sandbox: invalid launch option: sandbox="everything": one of read-only, workspace-write, danger-full-access
+[exit 125]
+$ agx run --profile codex --setting model_reasoning_effort=12 --dry-run --quiet
+agx: --setting model_reasoning_effort: expected string, found integer
+[exit 125]
+#endregion
+#region unknown-setting
+$ agx run --profile codex --setting my_new_key=on --dry-run --quiet
+...
+settings  my_new_key                            from --setting
+...
+command   codex -c "my_new_key=\"on\""          from built by agentio
+...
+note      --setting my_new_key: not modelled
+          installed codex version unknown; flags not checked against it
+#endregion
+#region no-token-login
+$ agx run --profile codex --login carol --dry-run --quiet
+agx: login carol serves claude; this run is codex
+[exit 125]
+$ agx run --profile codex --token-ref plain-value --dry-run --quiet
+agx: codex has no token login (Codex has no token login: it logs in with `codex login` (ChatGPT, API key or access token on stdin)); log in inside the home instead
+[exit 125]
+#endregion

@@ -1,0 +1,96 @@
+#: Two conversations exist in ~/projects/client: 3f2a9c1e (stored in ~/.claude) and 7b1d4e20 (stored in ~/.claude-work).
+#options dir=~/projects/client
+#region list
+$ agx profile list
+PROFILE   PROVIDER  HOME            ACCOUNT  STATE  LOGIN       BILLING
+personal  claude    ~/.claude                none   home login  plan
+kimi      claude    ~/.claude                none   home login  plan
+work      claude    ~/.claude-work           none   home login  plan
+#endregion
+#region ambiguous
+$ agx resume --id 3f2a9c1e --dry-run
+agx: ~/.claude has 2 profiles (kimi, personal) and no default; add --profile
+[exit 125]
+#endregion
+#region profile-flag
+$ agx resume --id 3f2a9c1e --profile kimi --dry-run
+agx: warning: installed Claude Code version unknown; flags not checked
+agent    claude                                                    from conversation 3f2a9c1e-0000-4000-8000-000000000001
+profile  kimi                                                      from --profile
+home     ~/.claude                                                 from conversation 3f2a9c1e-0000-4000-8000-000000000001 (stored there)
+login    home login                                                from default (no login named)
+binary   /usr/local/bin/claude version unknown                     from no install metadata
+folder   ~/projects/client                                         from conversation 3f2a9c1e-0000-4000-8000-000000000001
+...
+#endregion
+#region billing
+$ agx profile edit --id kimi --billing api
+profile kimi: changed
+  billing              plan  ->  api
+$ agx resume --id 3f2a9c1e --dry-run
+agx: profile personal from home ~/.claude (plan profile)
+agx: warning: installed Claude Code version unknown; flags not checked
+agent    claude                                                from conversation 3f2a9c1e-0000-4000-8000-000000000001
+profile  personal                                              from home ~/.claude (plan profile)
+home     ~/.claude                                             from conversation 3f2a9c1e-0000-4000-8000-000000000001 (stored there)
+login    home login                                            from default (no login named)
+binary   /usr/local/bin/claude version unknown                 from no install metadata
+folder   ~/projects/client                                     from conversation 3f2a9c1e-0000-4000-8000-000000000001
+...
+#endregion
+#region default
+$ agx profile use --id personal
+profile personal is the default claude profile
+$ agx resume --id 3f2a9c1e --dry-run
+agx: profile personal from home ~/.claude (default)
+agx: warning: installed Claude Code version unknown; flags not checked
+agent    claude                                                from conversation 3f2a9c1e-0000-4000-8000-000000000001
+profile  personal                                              from home ~/.claude (default)
+home     ~/.claude                                             from conversation 3f2a9c1e-0000-4000-8000-000000000001 (stored there)
+login    home login                                            from default (no login named)
+binary   /usr/local/bin/claude version unknown                 from no install metadata
+folder   ~/projects/client                                     from conversation 3f2a9c1e-0000-4000-8000-000000000001
+...
+#endregion
+#region one-profile
+$ agx resume --id 7b1d4e20 --dry-run
+agx: profile work from home ~/.claude-work
+agx: warning: installed Claude Code version unknown; flags not checked
+agent    claude                                                from conversation 7b1d4e20-0000-4000-8000-000000000002
+profile  work                                                  from home ~/.claude-work
+home     ~/.claude-work                                        from conversation 7b1d4e20-0000-4000-8000-000000000002 (stored there)
+login    home login                                            from default (no login named)
+binary   /usr/local/bin/claude version unknown                 from no install metadata
+folder   ~/projects/client                                     from conversation 7b1d4e20-0000-4000-8000-000000000002
+...
+#endregion
+#region launch
+$ agx run --profile kimi --dry-run
+agx: warning: installed Claude Code version unknown; flags not checked
+agent    claude                                                    from profile kimi
+profile  kimi                                                      from --profile
+home     ~/.claude                                                 from profile kimi
+login    home login                                                from default (no login named)
+binary   /usr/local/bin/claude version unknown                     from no install metadata
+folder   ~/projects/client                                         from current folder
+env      ANTHROPIC_BASE_URL                                        from profile kimi env
+         ANTHROPIC_AUTH_TOKEN                                      from profile kimi env_refs
+run      ~/.agx/runs/20261118-061238-k2ly                          from AGX_RUN_ID=20261118-061238-k2ly
+command  claude                                                    from built by agentio
+env      set ANTHROPIC_BASE_URL=https://api.moonshot.ai/anthropic  from launch environment
+         set ANTHROPIC_AUTH_TOKEN=[redacted]                       from launch environment
+         set AGX_RUN_ID=20261118-061238-k2ly                       from launch environment
+         set AGX_RUN_AGENT=claude                                  from launch environment
+         set AGX_RUN_PROFILE=kimi                                  from launch environment
+         set AGX_RUN_LOGIN=home                                    from launch environment
+         set AGX_RUN_HOME=~/.claude                                from launch environment
+note     installed Claude Code version unknown; flags not checked
+#endregion
+#region usage
+$ agx usage --cached
+personal  personal · claude  ~/.claude
+  no cache: no reading on disk: Claude Code 2.1.323 and later no longer store a usage reading on disk (an existing one is not refreshed); use live usage
+
+work  work · claude  ~/.claude-work
+  no cache: no reading on disk: Claude Code 2.1.323 and later no longer store a usage reading on disk (an existing one is not refreshed); use live usage
+#endregion

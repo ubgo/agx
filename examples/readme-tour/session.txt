@@ -1,0 +1,82 @@
+#: The README quick start on a machine with Claude Code (homes ~/.claude and ~/.claude-work), Codex, Gemini CLI and pi installed and no agx config yet.
+#: The commands run in ~/projects/client, which has two earlier Claude conversations.
+#options dir=~/projects/client env=NO_COLOR=1
+#region setup
+$ agx config init --default-agent claude --discovered
+wrote ~/.agx/config.jsonc (2 profiles)
+
+$ agx profile list
+PROFILE    PROVIDER  HOME            ACCOUNT  STATE  LOGIN       BILLING
+*personal  claude    ~/.claude                none   home login  plan
+work       claude    ~/.claude-work           none   home login  plan
+
+#endregion
+#region login
+$ agx login add --name carol --agent claude --kind oauth-token --token-ref '${gopass:personal/claude/carol}'
+added login carol (oauth-token, reference gopass)
+
+$ agx run --profile work --login carol --model opus --dry-run
+agx: warning: installed Claude Code version unknown; flags not checked
+agent    claude                                  from profile work
+profile  work                                    from --profile
+home     ~/.claude-work                          from profile work
+login    carol (not resolved: --dry-run)         from --login
+binary   /usr/local/bin/claude version unknown   from no install metadata
+folder   ~/projects/client                       from current folder
+options  model=opus                              from --model
+run      ~/.agx/runs/20261114-101500-k3x9        from AGX_RUN_ID=20261114-101500-k3x9
+command  claude --model opus                     from built by agentio
+env      set AGX_RUN_ID=20261114-101500-k3x9     from launch environment
+         set AGX_RUN_AGENT=claude                from launch environment
+         set AGX_RUN_PROFILE=work                from launch environment
+         set AGX_RUN_LOGIN=carol                 from launch environment
+         set AGX_RUN_HOME=~/.claude-work         from launch environment
+         set CLAUDE_CODE_OAUTH_TOKEN=[redacted]  from launch environment
+         set CLAUDE_CONFIG_DIR=~/.claude-work    from launch environment
+note     installed Claude Code version unknown; flags not checked
+
+#endregion
+#region project
+$ agx project use --profile work
+~/projects/client: claude profile work
+
+$ agx run --dry-run
+agx: agent claude (folder binding ~/projects/client)
+agx: profile work (folder binding ~/projects/client)
+agx: warning: installed Claude Code version unknown; flags not checked
+agent    claude                                 from folder binding ~/projects/client
+profile  work                                   from folder binding ~/projects/client
+home     ~/.claude-work                         from profile work
+login    home login                             from default (no login named)
+...
+
+#endregion
+#region codex
+$ agx profile add --name codex --agent codex --home ~/.codex
+added profile codex: codex home ~/.codex (--home), login home login, billing plan, default (first codex profile)
+
+$ agx run --agent codex --autonomy ask
+agx: warning: installed codex version unknown; flags not checked against it
+agent codex
+argv [-s] [workspace-write] [-a] [on-request]
+pwd ~/projects/client
+...
+
+#endregion
+#region resume
+$ agx conversation list
+5 d ago      claude work       Review the API                   ~/projects/client             7b1d4e20
+8 d ago      claude personal   Fix the parser                   ~/projects/client             3f2a9c1e
+
+$ agx resume --id 3f2a9c1e --dry-run
+agx: profile personal from home ~/.claude (default)
+agx: warning: installed Claude Code version unknown; flags not checked
+agent    claude                                                from conversation 3f2a9c1e-0000-4000-8000-000000000001
+profile  personal                                              from home ~/.claude (default)
+home     ~/.claude                                             from conversation 3f2a9c1e-0000-4000-8000-000000000001 (stored there)
+login    home login                                            from default (no login named)
+...
+command  claude --resume 3f2a9c1e-0000-4000-8000-000000000001  from built by agentio
+...
+
+#endregion

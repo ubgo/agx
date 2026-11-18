@@ -1,0 +1,75 @@
+#: ~/.claude holds an old usage reading from Claude Code before 2.1.323; ~/.claude-work has none.
+#region notes
+$ agx usage --cached --profile work --profile codex --profile gem
+work  work · claude  ~/.claude-work
+  no cache: no reading on disk: Claude Code 2.1.323 and later no longer store a usage reading on disk (an existing one is not refreshed); use live usage
+
+codex  codex · codex  ~/.codex
+  no cache: no reading on disk yet; run the agent once, or drop --cached
+
+gem  gem · gemini  ~/.gemini
+  unsupported: Gemini CLI leaves no usage or quota cache on disk; per-message token counts in chats are not plan usage
+
+#endregion
+#region table
+$ agx usage --cached --table --profile work --profile codex --profile gem --sort login
+#  PROFILE  PROVIDER  ACCOUNT  5H USED  5H RESETS  WEEKLY USED  WEEKLY RESETS  RESET DAY  RESETS ON  LEFT  STATUS
+5  codex    codex     —        —        —          —            —              —          —          —     no cache
+6  gem      gemini    —        —        —          —            —              —          —          —     unsupported
+3  work     claude    —        —        —          —            —              —          —          —     no cache
+  codex: no reading on disk yet; run the agent once, or drop --cached
+  gem: Gemini CLI leaves no usage or quota cache on disk; per-message token counts in chats are not plan usage
+  work: no reading on disk: Claude Code 2.1.323 and later no longer store a usage reading on disk (an existing one is not refreshed); use live usage
+
+#endregion
+#region stale
+$ agx usage --cached --profile personal --json --field data.*.status
+["stale"]
+
+$ agx usage --cached --profile personal --json --field data.0.windows --tz UTC
+[{"class":"short","label":"Current session","percent":6,"resets_at":"2026-10-28T12:59:59.902135Z","reset":"Wed 28 Oct 13:00"},{"class":"week","label":"All models","percent":42,"resets_at":"2026-11-04T05:59:59.902151Z","reset":"Wed 4 Nov 06:00"}]
+
+$ agx usage --cached --plan --profile personal --json --field data.0.plan
+{"plan":"Max","source":"cached"}
+
+#endregion
+#region footer
+$ agx usage --cached --agent claude --json --field warnings
+[{"code":"unconfigured-home","message":"claude home ~/.claude-client is not in config; agx profile import --discovered"}]
+[exit 3]
+
+#endregion
+#region partial
+$ agx usage --cached --profile work --profile old
+agx: 1 of 2 rows failed: old (home-missing)
+work  work · claude  ~/.claude-work
+  no cache: no reading on disk: Claude Code 2.1.323 and later no longer store a usage reading on disk (an existing one is not refreshed); use live usage
+
+old  old · claude  ~/.claude-old
+  home missing: home ~/.claude-old does not exist
+[exit 3]
+
+$ agx usage --cached --profile old
+agx: no row answered: old (home-missing)
+[exit 1]
+
+#endregion
+#region refusals
+$ agx usage --cached --login-probes
+agx: --cached reads disk only and --login-probes probes logins (spends quota); pick one
+[exit 2]
+
+$ agx usage --cached --all-logins
+agx: --cached reads disk only and --all-logins probes logins (spends quota); pick one
+[exit 2]
+
+$ agx usage --login-picker
+agx: no terminal for the picker; pass --login NAME (repeat) or --all-logins
+[exit 2]
+
+$ agx usage --login nosuch
+agx: unknown login nosuch
+  agx login list
+[exit 1]
+
+#endregion

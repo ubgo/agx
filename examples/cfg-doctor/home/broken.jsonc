@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "profiles": {
+    "personal": { "agent": "claude", "home": "~/.claude", "default": true },
+    "work": { "agent": "claude", "home": "~/.claude-work", "login": "carol", "env_refs": { "API_KEY": "${gopas:work/api-key}" } }
+  },
+  "logins": {
+    "carol": { "agents": ["claude"], "kind": "oauth-token", "token": "$(op read op://work/claude/token)" },
+    "stash": { "agents": ["claude"], "kind": "oauth-token", "stored": true }
+  }
+}

@@ -1,0 +1,25 @@
+#: From a folder with no conversations of its own (the default ~/projects/app).
+#region here
+$ agx conversation list
+
+#endregion
+#region all
+$ agx conversation list --scope all
+5 d ago      claude work       Review the API                   ~/projects/client             7b1d4e20
+8 d ago      claude personal   Fix the parser                   ~/projects/client             3f2a9c1e
+
+$ agx conversation list --scope all --by-folder
+5 d ago      2 chats   work,personal        ~/projects/client
+
+#endregion
+#region errors
+$ agx conversation show --id 0000
+agx: no conversation 0000 in any configured home
+  agx conversation list --scope all
+[exit 1]
+
+$ agx conversation list --scope everywhere
+agx: --scope "everywhere": use folder or all
+[exit 2]
+
+#endregion

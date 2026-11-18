@@ -1,0 +1,87 @@
+#: A settings file, a settings object, one key for one run, and how they reach Claude.
+#region file
+$ agx run --profile strict --dry-run --quiet
+agent     claude                                                                                        from profile strict
+profile   strict                                                                                        from --profile
+home      ~/.claude-work                                                                                from profile strict
+login     home login                                                                                    from default (no login named)
+binary    /usr/local/bin/claude version unknown                                                         from no install metadata
+folder    ~/projects/app                                                                                from current folder
+settings  cleanupPeriodDays, permissions.deny                                                           from profile strict (file ~/.config/claude/strict.json)
+          delivered as file ~/.agx/runs/20261118-061036-h9dl/settings-20261118-061036-h9dl.json (0600)  from settings_delivery file
+run       ~/.agx/runs/20261118-061036-h9dl                                                              from AGX_RUN_ID=20261118-061036-h9dl
+command   claude --settings ~/.agx/runs/20261118-061036-h9dl/settings-20261118-061036-h9dl.json         from built by agentio
+env       set AGX_RUN_ID=20261118-061036-h9dl                                                           from launch environment
+          set AGX_RUN_AGENT=claude                                                                      from launch environment
+          set AGX_RUN_PROFILE=strict                                                                    from launch environment
+          set AGX_RUN_LOGIN=home                                                                        from launch environment
+          set AGX_RUN_HOME=~/.claude-work                                                               from launch environment
+          set CLAUDE_CONFIG_DIR=~/.claude-work                                                          from launch environment
+note      installed Claude Code version unknown; flags not checked
+#endregion
+#region object
+$ agx run --profile work --dry-run --quiet
+...
+settings  cleanupPeriodDays, statusLine.command, statusLine.type                                        from profile work
+          delivered as file ~/.agx/runs/20261118-061036-urz6/settings-20261118-061036-urz6.json (0600)  from settings_delivery file
+...
+command   claude --settings ~/.agx/runs/20261118-061036-urz6/settings-20261118-061036-urz6.json         from built by agentio
+...
+#endregion
+#region one-run
+$ agx run --profile work --setting cleanupPeriodDays=30 --setting 'permissions.allow=["Read"]' --settings-delivery inline --dry-run --quiet --json --field data.command.line
+claude --settings "{\"cleanupPeriodDays\":30,\"permissions\":{\"allow\":[\"Read\"]},\"statusLine\":{\"command\":\"~/bin/status.sh\",\"type\":\"command\"}}"
+#endregion
+#region string-value
+$ agx run --profile work --setting 'model="30"' --settings-delivery inline --dry-run --quiet --json --field data.command.line
+claude --settings "{\"cleanupPeriodDays\":20,\"model\":\"30\",\"statusLine\":{\"command\":\"~/bin/status.sh\",\"type\":\"command\"}}"
+#endregion
+#region not-modelled
+$ agx run --profile work --setting cleanupPeriodDay=30 --dry-run --quiet
+...
+settings  cleanupPeriodDays, statusLine.command, statusLine.type                                        from profile work
+          cleanupPeriodDay                                                                              from --setting
+          delivered as file ~/.agx/runs/20261118-061036-7axa/settings-20261118-061036-7axa.json (0600)  from settings_delivery file
+...
+note      --setting cleanupPeriodDay: not modelled (did you mean cleanupPeriodDays?)
+          installed Claude Code version unknown; flags not checked
+#endregion
+#region wrong-type
+$ agx run --profile work --setting cleanupPeriodDays=soon --dry-run --quiet
+agx: --setting cleanupPeriodDays: expected int
+[exit 125]
+#endregion
+#region inline-profile
+$ agx run --profile visible --dry-run --quiet
+...
+settings  cleanupPeriodDays                               from profile visible
+...
+command   claude --settings "{\"cleanupPeriodDays\":20}"  from built by agentio
+...
+note      settings are visible in ps (inline delivery, from profile visible)
+          installed Claude Code version unknown; flags not checked
+#endregion
+#region file-merge
+$ agx run --profile strict --setting cleanupPeriodDays=5 --settings-delivery file --dry-run --quiet --json --field data.command.line
+claude --settings ~/.agx/runs/20261118-061036-phkv/settings-20261118-061036-phkv.json
+#endregion
+#region missing-file
+$ agx run --profile missing --dry-run --quiet
+agx: profile missing: settings file ~/.config/claude/nope.json not found
+[exit 125]
+#endregion
+#region profile-type
+$ agx run --profile typo --dry-run --quiet
+agx: config.jsonc:32:86: profile typo settings cleanupPeriodDays: expected int
+[exit 125]
+#endregion
+#region key-helper
+$ agx run --profile work --setting 'apiKeyHelper=gopass show -o work/anthropic-api-key' --dry-run --quiet
+...
+settings  cleanupPeriodDays, statusLine.command, statusLine.type                                        from profile work
+          apiKeyHelper                                                                                  from --setting
+note      --setting apiKeyHelper supplies the credential; no agx login is used for this run             from one input per concern; the command line wins
+settings  delivered as file ~/.agx/runs/20261118-061054-2vzs/settings-20261118-061054-2vzs.json (0600)  from settings_delivery file
+...
+note      installed Claude Code version unknown; flags not checked
+#endregion

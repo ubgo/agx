@@ -1,0 +1,150 @@
+{
+  "schema_version": 1,
+  "command": "config show",
+  "ok": true,
+  "data": [
+    {
+      "key": "version",
+      "value": "1",
+      "source": "config.jsonc:2:3"
+    },
+    {
+      "key": "default_agent",
+      "value": "claude",
+      "source": "config.jsonc:3:3"
+    },
+    {
+      "key": "agents.claude.defaults.args",
+      "value": "--chrome",
+      "source": "config.jsonc:5:41"
+    },
+    {
+      "key": "profiles.codex.agent",
+      "value": "codex",
+      "source": "config.jsonc:18:16"
+    },
+    {
+      "key": "profiles.codex.home",
+      "value": "~/.codex",
+      "source": "config.jsonc:18:34"
+    },
+    {
+      "key": "profiles.codex.default",
+      "value": "true",
+      "source": "config.jsonc:18:54"
+    },
+    {
+      "key": "profiles.kimi.agent",
+      "value": "claude",
+      "source": "config.jsonc:10:7"
+    },
+    {
+      "key": "profiles.kimi.home",
+      "value": "~/.claude",
+      "source": "config.jsonc:11:7"
+    },
+    {
+      "key": "profiles.kimi.billing",
+      "value": "api",
+      "source": "config.jsonc:12:7"
+    },
+    {
+      "key": "profiles.kimi.args",
+      "value": "--verbose",
+      "source": "config.jsonc:14:7"
+    },
+    {
+      "key": "profiles.kimi.inherit_defaults",
+      "value": "false",
+      "source": "config.jsonc:13:7"
+    },
+    {
+      "key": "profiles.kimi.env.ANTHROPIC_AUTH_TOKEN",
+      "value": "(set)",
+      "source": "config.jsonc:15:16"
+    },
+    {
+      "key": "profiles.kimi.env_refs.OTHER",
+      "value": "${TOKVAR}",
+      "source": "config.jsonc:16:21"
+    },
+    {
+      "key": "profiles.personal.agent",
+      "value": "claude",
+      "source": "config.jsonc:7:19"
+    },
+    {
+      "key": "profiles.personal.home",
+      "value": "~/.claude",
+      "source": "config.jsonc:7:38"
+    },
+    {
+      "key": "profiles.personal.default",
+      "value": "true",
+      "source": "config.jsonc:7:59"
+    },
+    {
+      "key": "profiles.work.agent",
+      "value": "claude",
+      "source": "config.jsonc:8:15"
+    },
+    {
+      "key": "profiles.work.home",
+      "value": "~/.claude-work",
+      "source": "config.jsonc:8:34"
+    },
+    {
+      "key": "logins.carol.agents",
+      "value": "claude",
+      "source": "config.jsonc:21:16"
+    },
+    {
+      "key": "logins.carol.kind",
+      "value": "oauth-token",
+      "source": "config.jsonc:21:38"
+    },
+    {
+      "key": "logins.carol.token",
+      "value": "(reference)",
+      "source": "config.jsonc:21:61"
+    },
+    {
+      "key": "sessions.root",
+      "value": "~/.agx/sessions",
+      "source": "default"
+    },
+    {
+      "key": "profiles.codex.billing",
+      "value": "plan",
+      "source": "default"
+    },
+    {
+      "key": "profiles.codex.inherit_defaults",
+      "value": "true",
+      "source": "default"
+    },
+    {
+      "key": "profiles.personal.billing",
+      "value": "plan",
+      "source": "default"
+    },
+    {
+      "key": "profiles.personal.inherit_defaults",
+      "value": "true",
+      "source": "default"
+    },
+    {
+      "key": "profiles.work.billing",
+      "value": "plan",
+      "source": "default"
+    },
+    {
+      "key": "profiles.work.inherit_defaults",
+      "value": "true",
+      "source": "default"
+    }
+  ],
+  "decisions": [],
+  "warnings": [],
+  "error": null
+}

@@ -1,0 +1,54 @@
+#: Two Claude homes, two plan-token logins, and two conversations that ran in ~/projects/client.
+#options dir=~/projects/client
+#region list
+$ agx conversation list
+5 d ago      claude work       Review the API                   ~/projects/client             7b1d4e20
+8 d ago      claude personal   Fix the parser                   ~/projects/client             3f2a9c1e
+
+#endregion
+#region resume-login
+$ agx resume --id 3f2a9c1e --login carol --dry-run --quiet
+agent    claude                                                from conversation 3f2a9c1e-0000-4000-8000-000000000001
+profile  personal                                              from home ~/.claude (default)
+home     ~/.claude                                             from conversation 3f2a9c1e-0000-4000-8000-000000000001 (stored there)
+login    carol (not resolved: --dry-run)                       from --login
+binary   /usr/local/bin/claude version unknown                 from no install metadata
+folder   ~/projects/client                                     from conversation 3f2a9c1e-0000-4000-8000-000000000001
+run      ~/.agx/runs/20261114-101500-k3x9                      from AGX_RUN_ID=20261114-101500-k3x9
+command  claude --resume 3f2a9c1e-0000-4000-8000-000000000001  from built by agentio
+env      set AGX_RUN_ID=20261114-101500-k3x9                   from launch environment
+         set AGX_RUN_AGENT=claude                              from launch environment
+         set AGX_RUN_PROFILE=personal                          from launch environment
+         set AGX_RUN_LOGIN=carol                               from launch environment
+         set AGX_RUN_HOME=~/.claude                            from launch environment
+         set CLAUDE_CODE_OAUTH_TOKEN=[redacted]                from launch environment
+note     installed Claude Code version unknown; flags not checked
+
+#endregion
+#region live
+$ agx run --login carol --live-login --dry-run --quiet --json --field decisions.6
+{"name":"note","value":"live login: switch with agx live use --id 20261114-101500-k3x9 --login NAME (refresh 10s)","source":"--live-login"}
+
+$ agx live list
+RUN  AGENT  PROFILE  STARTED ON  NEXT  IN USE  LIVENESS
+
+#endregion
+#region live-refused
+$ agx run --live-login --dry-run --quiet
+agx: --live-login needs a stored login; this run starts on the home login (default (no login named))
+  agx run --login NAME --live-login
+[exit 125]
+
+$ agx live use --id 20261114-101500-k3x9 --login alice
+agx: no run 20261114-101500-k3x9
+  agx live list
+[exit 1]
+
+#endregion
+#region move
+$ agx conversation move --dir ~/projects/client --from-profile personal --to-profile work --dry-run
+would move 1 claude conversation(s) of ~/projects/client from ~/.claude to ~/.claude-work
+  3f2a9c1e-0000-4000-8000-000000000001
+dry run: nothing changed
+
+#endregion

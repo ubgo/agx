@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "command": "usage",
+  "ok": true,
+  "data": [
+    {
+      "kind": "home",
+      "index": 1,
+      "name": "work",
+      "agent": "claude",
+      "home": "~/.claude-work",
+      "profile": "work",
+      "profiles": [
+        "work"
+      ],
+      "source": "cached",
+      "observed_at": "<time>",
+      "age": "2h",
+      "status": "ok",
+      "left": 70,
+      "windows": [
+        {
+          "class": "short",
+          "label": "Current session",
+          "percent": 30,
+          "resets_at": "<time>",
+          "reset": "Fri 13 Nov 14:00"
+        },
+        {
+          "class": "week",
+          "label": "All models",
+          "percent": 10,
+          "resets_at": "<time>",
+          "reset": "Mon 16 Nov 06:00"
+        }
+      ]
+    },
+    {
+      "kind": "home",
+      "index": 2,
+      "name": "side",
+      "agent": "claude",
+      "home": "~/.claude-side",
+      "profile": "side",
+      "profiles": [
+        "side"
+      ],
+      "source": "cached",
+      "observed_at": "<time>",
+      "age": "2h",
+      "status": "ok",
+      "left": 30,
+      "windows": [
+        {
+          "class": "short",
+          "label": "Current session",
+          "percent": 5,
+          "resets_at": "<time>",
+          "reset": "Fri 13 Nov 14:00"
+        },
+        {
+          "class": "week",
+          "label": "All models",
+          "percent": 70,
+          "resets_at": "<time>",
+          "reset": "Mon 16 Nov 06:00"
+        }
+      ]
+    },
+    {
+      "kind": "home",
+      "index": 3,
+      "name": "pi",
+      "agent": "pi",
+      "home": "~/.pi-home",
+      "profile": "pi",
+      "profiles": [
+        "pi"
+      ],
+      "source": "none",
+      "status": "unsupported",
+      "reason": "pi has no plan or quota; it records per-message token cost in session files (pi.Agent.SessionUsage)",
+      "windows": []
+    }
+  ],
+  "decisions": [],
+  "warnings": [
+    {
+      "code": "unconfigured-home",
+      "message": "claude home ~/.claude-extra is not in config; agx profile import --discovered"
+    }
+  ],
+  "error": null
+}

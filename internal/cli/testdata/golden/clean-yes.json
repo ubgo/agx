@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "command": "clean",
+  "ok": true,
+  "data": {
+    "runs": [
+      {
+        "id": "<run-id>",
+        "dir": "<root>/home/.agx/runs/<run-id>",
+        "agent": "claude",
+        "pid": 0,
+        "liveness": "alive",
+        "reason": "running",
+        "action": "keep"
+      },
+      {
+        "id": "<run-id>",
+        "dir": "<root>/home/.agx/runs/<run-id>",
+        "agent": "claude",
+        "pid": 0,
+        "liveness": "ended",
+        "reason": "process ended",
+        "action": "deleted"
+      },
+      {
+        "id": "<run-id>",
+        "dir": "<root>/home/.agx/runs/<run-id>",
+        "agent": "",
+        "pid": 0,
+        "liveness": "unknown",
+        "reason": "process info unreadable: no run.jsonc yet",
+        "action": "keep"
+      },
+      {
+        "id": "<run-id>",
+        "dir": "<root>/home/.agx/runs/<run-id>",
+        "agent": "claude",
+        "pid": 0,
+        "liveness": "ended",
+        "reason": "process ended",
+        "action": "deleted"
+      }
+    ],
+    "applied": true,
+    "deleted": 2,
+    "kept": 2
+  },
+  "decisions": [],
+  "warnings": [
+    {
+      "code": "kept-unknown",
+      "message": "kept <run-id>: process info unreadable: no run.jsonc yet"
+    }
+  ],
+  "error": null
+}

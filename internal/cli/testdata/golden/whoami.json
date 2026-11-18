@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "command": "whoami",
+  "ok": true,
+  "data": {
+    "in_session": true,
+    "run_id": "<run-id>",
+    "agent": "claude",
+    "profile": "work",
+    "login": "carol",
+    "home": "<root>/home/.claude-work",
+    "run_dir": "<root>/home/.agx/runs/<run-id>",
+    "live": {
+      "run_id": "<run-id>",
+      "agent": "claude",
+      "start_login": "carol",
+      "helper": "agx credential"
+    },
+    "terminal_logins": [
+      {
+        "variable": "AGX_LOGIN",
+        "login": "carol"
+      },
+      {
+        "variable": "AGX_LOGIN_CLAUDE",
+        "login": "alice"
+      }
+    ]
+  },
+  "decisions": [],
+  "warnings": [],
+  "error": null
+}

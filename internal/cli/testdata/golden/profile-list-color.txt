@@ -1,0 +1,6 @@
+[1mPROFILE[0m    [1mPROVIDER[0m  [1mHOME[0m                     [1mACCOUNT[0m                     [1mSTATE[0m          [1mLOGIN[0m          [1mBILLING[0m
+*personal  claude    ~/.claude                me@example.com · Max (20x)  [34mok (5 d 3 hr)[0m  home login     plan
+work       claude    ~/.claude-work           work@example.com            [33mexpired[0m        carol          plan
+old        claude    [31m~/.claude-old (missing)[0m                              [33mnone[0m           home login     plan
+*codex     codex     ~/.codex                                             [33mnone[0m           home login     plan
+*pi        pi        ~/.pi/agent                                          [2munknown[0m        anthropic-key  api

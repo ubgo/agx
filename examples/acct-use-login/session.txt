@@ -1,0 +1,80 @@
+#: Claude runs default to login carol (agents.claude.defaults.login); profile work names carol itself; profile isolated keeps its home login.
+#region per-run
+$ agx run --profile work --dry-run --quiet --json --field data.decisions.3
+{"name":"login","value":"carol (not resolved: --dry-run)","source":"profile work"}
+
+$ agx run --profile work --login dave --dry-run --quiet --json --field data.decisions.3
+{"name":"login","value":"dave (not resolved: --dry-run)","source":"--login"}
+
+$ agx run --profile work --home-login --dry-run --quiet --json --field data.decisions.3
+{"name":"login","value":"home login","source":"--home-login"}
+
+#endregion
+#region home-login
+$ agx run --profile personal --dry-run --quiet --json --field data.decisions.3
+{"name":"login","value":"carol (not resolved: --dry-run)","source":"agents.claude.defaults"}
+
+$ agx run --profile isolated --dry-run --quiet --json --field data.decisions.3
+{"name":"login","value":"home login","source":"profile isolated"}
+
+#endregion
+#region one-off
+$ agx run --profile personal --token-ref '${gopass:personal/claude/eve}' --token-kind oauth-token --dry-run --quiet
+agent    claude                                   from profile personal
+profile  personal                                 from --profile
+home     ~/.claude                                from profile personal
+login    one-off token (not resolved: --dry-run)  from --token-ref
+binary   /usr/local/bin/claude version unknown    from no install metadata
+folder   ~/projects/app                           from current folder
+run      ~/.agx/runs/20261118-061056-j2p5         from AGX_RUN_ID=20261118-061056-j2p5
+command  claude                                   from built by agentio
+env      set AGX_RUN_ID=20261118-061056-j2p5      from launch environment
+         set AGX_RUN_AGENT=claude                 from launch environment
+         set AGX_RUN_PROFILE=personal             from launch environment
+         set AGX_RUN_LOGIN=token-ref              from launch environment
+         set AGX_RUN_HOME=~/.claude               from launch environment
+         set CLAUDE_CODE_OAUTH_TOKEN=[redacted]   from launch environment
+note     installed Claude Code version unknown; flags not checked
+
+#endregion
+#region terminal
+$ AGX_LOGIN=dave agx run --profile personal --dry-run --quiet --json --field data.decisions.3
+{"name":"login","value":"dave (not resolved: --dry-run)","source":"AGX_LOGIN"}
+
+$ AGX_LOGIN=dave AGX_LOGIN_CLAUDE=carol agx run --profile personal --dry-run --quiet --json --field data.decisions.3
+{"name":"login","value":"carol (not resolved: --dry-run)","source":"AGX_LOGIN_CLAUDE"}
+
+$ agx login use --id dave --terminal
+export AGX_LOGIN=dave
+
+$ agx login use --home-login --terminal
+unset AGX_LOGIN
+
+#endregion
+#region terminal-wrong-agent
+$ AGX_LOGIN=dave agx run --agent gemini --dry-run --quiet
+agx: login dave serves claude; this run is gemini
+[exit 125]
+
+$ AGX_LOGIN_CLAUDE=dave agx run --agent gemini --dry-run --quiet --json --field data.decisions.3
+{"name":"login","value":"gem-work (not resolved: --dry-run)","source":"profile gem"}
+
+#endregion
+#region folder
+$ agx project use --dir ~/projects/client --agent claude --login dave
+~/projects/client: claude login dave
+
+$ agx run --dir ~/projects/client --profile personal --dry-run --quiet --json --field data.decisions.3
+{"name":"login","value":"dave (not resolved: --dry-run)","source":"folder binding ~/projects/client"}
+
+#endregion
+#region conflict
+$ agx run --profile work --login dave --home-login --dry-run
+agx: --login and --home-login both choose the login; pick one
+[exit 125]
+
+$ agx run --profile work --login dave --token-ref '${gopass:x}' --dry-run
+agx: --token-ref and --login both choose the login; pick one
+[exit 125]
+
+#endregion

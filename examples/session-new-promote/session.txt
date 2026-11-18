@@ -1,0 +1,67 @@
+#: The machine already holds one session folder from an earlier agx new: ~/.agx/sessions/pglite_golang_20261114_101500 with main.go in it.
+#region new-dry-run
+$ agx new --name "pglite golang" --dry-run --quiet
+agent    claude                                         from default_agent
+profile  personal                                       from default profile of claude
+home     ~/.claude                                      from profile personal
+login    home login                                     from default (no login named)
+binary   /usr/local/bin/claude version unknown          from no install metadata
+folder   ~/.agx/sessions/pglite_golang_20261118_061109  from new session folder
+run      ~/.agx/runs/20261118-061109-uw4u               from AGX_RUN_ID=20261118-061109-uw4u
+command  claude                                         from built by agentio
+env      set AGX_RUN_ID=20261118-061109-uw4u            from launch environment
+         set AGX_RUN_AGENT=claude                       from launch environment
+         set AGX_RUN_PROFILE=personal                   from launch environment
+         set AGX_RUN_LOGIN=home                         from launch environment
+         set AGX_RUN_HOME=~/.claude                     from launch environment
+note     installed Claude Code version unknown; flags not checked
+
+#endregion
+#region new
+$ agx new --name "pglite golang"
+agx: agent claude (default_agent)
+agx: warning: installed Claude Code version unknown; flags not checked
+agent claude
+argv
+pwd ~/.agx/sessions/pglite_golang_20261118_061109
+...
+
+#endregion
+#region list
+$ agx session list --field data.*.name --field data.*.files --field data.*.history --field data.*.path
+NAME                           FILES  HISTORY  PATH
+pglite_golang_20261118_061241  0      —        ~/.agx/sessions/pglite_golang_20261118_061241
+pglite_golang_20261114_101500  1      —        ~/.agx/sessions/pglite_golang_20261114_101500
+
+#endregion
+#region promote-plan
+$ agx session promote --id pglite_golang_20261114_101500 --dry-run
+would promote ~/.agx/sessions/pglite_golang_20261114_101500 to ~/projects/pglite_golang
+dry run: nothing changed
+
+#endregion
+#region promote
+$ agx session promote --id pglite_golang_20261114_101500 --name pglite-go --git-repo
+promoted ~/.agx/sessions/pglite_golang_20261114_101500 to ~/projects/pglite-go
+  git init in ~/projects/pglite-go
+
+$ agx session list --field data.*.name --field data.*.files --field data.*.history --field data.*.path
+NAME                           FILES  HISTORY  PATH
+pglite_golang_20261118_061241  0      —        ~/.agx/sessions/pglite_golang_20261118_061241
+
+#endregion
+#region promote-refusals
+$ agx session promote --id pglite_golang_20261114_101500
+agx: no session folder pglite_golang_20261114_101500 in ~/.agx/sessions
+  agx session list
+[exit 1]
+
+$ agx session promote --id ~/projects/app
+agx: --id "~/projects/app": give a session folder's name, not a path
+[exit 2]
+
+$ agx session promote
+agx: --id is required: the session folder's name (agx session list)
+[exit 2]
+
+#endregion

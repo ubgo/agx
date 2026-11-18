@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "command": "project show",
+  "ok": true,
+  "data": {
+    "dir": "<root>/work/client",
+    "agent": "claude",
+    "profile": "work",
+    "home": "~/.claude-work",
+    "login": "carol",
+    "binding": "<root>/work/client",
+    "notes": [
+      "agent claude (default_agent)",
+      "profile work (folder binding <root>/work/client)",
+      "login carol (folder binding <root>/work/client)"
+    ]
+  },
+  "decisions": [
+    {
+      "name": "agent",
+      "value": "claude",
+      "source": "default_agent"
+    },
+    {
+      "name": "profile",
+      "value": "work",
+      "source": "folder binding <root>/work/client"
+    },
+    {
+      "name": "home",
+      "value": "~/.claude-work",
+      "source": "profile work"
+    },
+    {
+      "name": "login",
+      "value": "carol",
+      "source": "folder binding <root>/work/client"
+    },
+    {
+      "name": "folder",
+      "value": "<root>/work/client",
+      "source": "current folder"
+    }
+  ],
+  "warnings": [],
+  "error": null
+}

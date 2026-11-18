@@ -1,0 +1,53 @@
+#region profile-none
+$ agx run --agent claude --auto-profile --dry-run
+agx: auto profile: none eligible: kimi (bills per token); kimi-work (bills per token); old (home ~/.claude-old does not exist)
+[exit 125]
+
+#endregion
+#region profile-per-token
+$ agx profile remove --id old --yes
+removed profile old (home ~/.claude-old is kept)
+
+$ agx run --agent claude --auto-profile --dry-run
+agx: auto profile: every candidate bills per token
+[exit 125]
+
+#endregion
+#region profile-unsupported
+$ agx run --agent gemini --auto-profile --dry-run
+agx: gemini has no usage; choose a profile
+  agx run --profile gem
+[exit 125]
+
+$ agx run --agent codex --auto-profile --dry-run
+agx: auto profile: none eligible: codex (not-logged-in)
+[exit 125]
+
+#endregion
+#region login-none
+$ agx run --agent claude --auto-login --dry-run
+agx: auto login: none eligible: carol (login carol: CAROL_TOKEN is not set); console (bills per token)
+[exit 125]
+
+#endregion
+#region login-unsupported
+$ agx run --agent gemini --auto-login --dry-run
+agx: gemini cannot probe a login's usage (probing a Gemini key spends quota through a model call that is not modelled); choose a login
+  agx run --login gem-work
+[exit 125]
+
+$ agx run --agent codex --auto-login --dry-run
+agx: auto login: no stored login serves codex
+[exit 125]
+
+#endregion
+#region conflict
+$ agx run --profile kimi --auto-profile --dry-run
+agx: --profile and --auto-profile both choose the profile; pick one
+[exit 125]
+
+$ agx run --login carol --auto-login --dry-run
+agx: --login and --auto-login both choose the login; pick one
+[exit 125]
+
+#endregion

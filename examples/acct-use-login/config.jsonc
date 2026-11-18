@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "default_agent": "claude",
+  // #region defaults
+  "agents": {
+    "claude": { "defaults": { "login": "carol" } }
+  },
+  // #endregion
+  "profiles": {
+    "personal": { "agent": "claude", "home": "~/.claude", "default": true },
+    "work": { "agent": "claude", "home": "~/.claude-work", "login": "carol" },
+    // #region isolated
+    "isolated": { "agent": "claude", "home": "~/.claude-work", "home_login": true },
+    // #endregion
+    "gem": { "agent": "gemini", "home": "~/.gemini", "default": true, "login": "gem-work" }
+  },
+  "logins": {
+    "carol": { "agents": ["claude"], "kind": "oauth-token", "token": "${gopass:personal/claude/carol}" },
+    "dave": { "agents": ["claude"], "kind": "oauth-token", "token": "${gopass:personal/claude/dave}" },
+    "gem-work": { "agents": ["gemini"], "kind": "api-key", "token": "${gopass:google/gemini-key}" }
+  }
+}

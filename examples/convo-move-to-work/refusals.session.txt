@@ -1,0 +1,23 @@
+#options dir=~/projects/client
+#region refusals
+$ agx conversation move --dry-run
+agx: --to-profile is required: the profile whose home receives the conversations
+[exit 2]
+
+$ agx conversation move --to-profile codex
+agx: codex cannot move conversations between homes: Codex indexes conversations in its own SQLite database with absolute paths (state_5.sqlite threads.rollout_path), so moving its files would break its index; continue Codex work in the original home
+[exit 4]
+
+$ agx conversation move --to-profile personal --from-profile personal
+agx: --from-profile personal and --to-profile personal share the home ~/.claude; nothing to move
+[exit 2]
+
+$ agx conversation move --to-profile work --picker chat
+agx: no terminal for the picker; pass --id (repeat) to name the conversations
+[exit 2]
+
+$ agx conversation move --to-profile work --id 0000
+agx: not found: conversation "0000" for ~/projects/client
+[exit 1]
+
+#endregion

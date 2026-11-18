@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "profiles": {
+    "personal": { "agent": "claude", "home": "~/.claude", "default": true },
+    "work": { "agent": "claude", "home": "~/.claude-work", "default": true, "login": "dave" }
+  },
+  "aliases": { "x": "launch --now" }
+}

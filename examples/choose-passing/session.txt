@@ -1,0 +1,47 @@
+#: One Claude profile with env, a typed option and a settings object; a Codex and a Gemini profile. Each command passes the model, or another value, by a different road.
+#region profile
+$ agx run --dry-run --quiet --json --field data.command.line
+claude --effort high --settings ~/.agx/runs/20261114-101500-k3x9/settings-20261114-101500-k3x9.json
+
+#endregion
+#region roads
+$ agx run --model opus --dry-run --quiet --json --field data.command.line
+claude --model opus --effort high --settings ~/.agx/runs/20261114-101500-k3x9/settings-20261114-101500-k3x9.json
+
+$ agx run --option effort=max --dry-run --quiet --json --field data.command.line
+claude --effort max --settings ~/.agx/runs/20261114-101500-k3x9/settings-20261114-101500-k3x9.json
+
+$ agx run --setting model=opus --settings-delivery inline --dry-run --quiet --json --field data.command.line
+claude --effort high --settings "{\"cleanupPeriodDays\":20,\"model\":\"opus\"}"
+
+$ agx run --dry-run --quiet --json --field data.command.line -- --model opus
+claude --effort high --settings ~/.agx/runs/20261114-101500-k3x9/settings-20261114-101500-k3x9.json --model opus
+
+#endregion
+#region env
+$ agx run --env DEBUG=2 --dry-run --quiet --json --field data.command.env
+["set DEBUG=2","set AGX_RUN_ID=20261114-101500-k3x9","set AGX_RUN_AGENT=claude","set AGX_RUN_PROFILE=work","set AGX_RUN_LOGIN=home","set AGX_RUN_HOME=~/.claude-work","set CLAUDE_CONFIG_DIR=~/.claude-work"]
+
+#endregion
+#region conflict
+$ agx run --model opus --setting model=sonnet --dry-run --quiet
+agx: --model and --setting model both set the model; pick one
+[exit 125]
+
+$ agx run --model opus --dry-run --json --field data.command.line -- --model sonnet
+agx: agent claude (default_agent)
+claude --model opus --effort high --settings ~/.agx/runs/20261114-101500-k3x9/settings-20261114-101500-k3x9.json --model sonnet
+
+#endregion
+#region other-agents
+$ agx run --profile codex --setting model_reasoning_effort=high --option sandbox=workspace-write --dry-run --quiet --json --field data.command.line
+codex -c "model_reasoning_effort=\"high\"" -s workspace-write
+
+$ agx run --profile gem --setting theme=dark --dry-run --quiet
+agx: gemini has no --option or --setting (Gemini CLI has no settings flag and no typed launch options in agentio; pass flags as raw args); pass its flags after --
+[exit 125]
+
+$ agx run --profile gem --model gemini-2.5-pro --dry-run --quiet --json --field data.command.line -- --sandbox
+gemini --model gemini-2.5-pro --sandbox
+
+#endregion

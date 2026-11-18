@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "default_agent": "claude",
+  // #region agents
+  "agents": {
+    // every Claude profile without its own login uses carol
+    "claude": { "defaults": { "login": "carol" } }
+  },
+  // #endregion
+  // #region profiles
+  "profiles": {
+    "personal": { "agent": "claude", "home": "~/.claude", "default": true },
+    "work": { "agent": "claude", "home": "~/.claude-work", "login": "dave" },
+    // the same home as work, on the home's own login: overrides agents.claude.defaults.login
+    "work-home": { "agent": "claude", "home": "~/.claude-work", "home_login": true },
+    "codex": { "agent": "codex", "home": "~/.codex", "default": true }
+  },
+  // #endregion
+  // #region logins
+  "logins": {
+    "carol": { "agents": ["claude"], "kind": "oauth-token", "token": "${gopass:personal/claude/carol}" },
+    "dave": { "agents": ["claude"], "kind": "oauth-token", "token": "${gopass:work/claude/dave}" }
+  },
+  // #endregion
+  // #region projects
+  "projects": {
+    "~/projects/client": { "claude": { "login": "dave" } },
+    "~/projects/client/vendor": { "claude": { "home_login": true } }
+  }
+  // #endregion
+}

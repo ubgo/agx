@@ -1,0 +1,26 @@
+#: Each script is long; the first lines show which shell it is for.
+#region completion
+$ agx completion --shell zsh
+#compdef agx
+compdef _agx agx
+...
+
+$ agx completion --shell bash
+# bash completion V2 for agx -*- shell-script -*-
+...
+
+$ agx completion --shell fish
+# fish completion for agx -*- shell-script -*-
+...
+
+$ agx completion --shell pwsh
+# powershell completion for agx -*- shell-script -*-
+...
+
+#endregion
+#region completion-refusal
+$ agx completion
+agx: --shell is required: one of zsh, bash, fish, pwsh
+[exit 2]
+
+#endregion

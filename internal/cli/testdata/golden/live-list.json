@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "command": "live list",
+  "ok": true,
+  "data": [
+    {
+      "id": "<run-id>",
+      "dir": "<root>/home/.agx/runs/<run-id>",
+      "agent": "claude",
+      "profile": "work",
+      "home": "<root>/home/.claude-work",
+      "folder": "<root>/work",
+      "start_login": "carol",
+      "chosen_login": "",
+      "in_use": "",
+      "next": "carol",
+      "liveness": "alive",
+      "reason": "running"
+    }
+  ],
+  "decisions": [],
+  "warnings": [],
+  "error": null
+}

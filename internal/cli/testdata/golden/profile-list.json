@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "command": "profile list",
+  "ok": true,
+  "data": [
+    {
+      "name": "personal",
+      "agent": "claude",
+      "home": "~/.claude",
+      "default": true,
+      "billing": "plan",
+      "login": "home login",
+      "home_exists": true,
+      "state": "none"
+    },
+    {
+      "name": "work",
+      "agent": "claude",
+      "home": "~/.claude-work",
+      "default": false,
+      "billing": "plan",
+      "login": "home login",
+      "home_exists": true,
+      "state": "none"
+    },
+    {
+      "name": "kimi",
+      "agent": "claude",
+      "home": "~/.claude",
+      "default": false,
+      "billing": "api",
+      "login": "home login",
+      "home_exists": true,
+      "state": "none"
+    },
+    {
+      "name": "codex",
+      "agent": "codex",
+      "home": "~/.codex",
+      "default": true,
+      "billing": "plan",
+      "login": "home login",
+      "home_exists": true,
+      "state": "none"
+    }
+  ],
+  "decisions": [],
+  "warnings": [],
+  "error": null
+}

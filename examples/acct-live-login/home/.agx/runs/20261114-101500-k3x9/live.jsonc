@@ -1,0 +1,6 @@
+{
+  "run_id": "20261114-101500-k3x9",
+  "agent": "claude",
+  "start_login": "carol",
+  "helper": "agx credential"
+}

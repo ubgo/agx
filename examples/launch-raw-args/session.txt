@@ -1,0 +1,90 @@
+#: Raw args come from three places, in this order: the agent's defaults, the profile, then everything after --.
+#region defaults
+$ agx run --profile personal --dry-run --quiet
+agent    claude                                 from profile personal
+profile  personal                               from --profile
+home     ~/.claude                              from profile personal
+login    home login                             from default (no login named)
+binary   /usr/local/bin/claude version unknown  from no install metadata
+folder   ~/projects/app                         from current folder
+args     --chrome                               from agents.claude.defaults.args
+run      ~/.agx/runs/20261118-061043-j98j       from AGX_RUN_ID=20261118-061043-j98j
+command  claude --chrome                        from built by agentio
+env      set AGX_RUN_ID=20261118-061043-j98j    from launch environment
+         set AGX_RUN_AGENT=claude               from launch environment
+         set AGX_RUN_PROFILE=personal           from launch environment
+         set AGX_RUN_LOGIN=home                 from launch environment
+         set AGX_RUN_HOME=~/.claude             from launch environment
+note     installed Claude Code version unknown; flags not checked
+#endregion
+#region profile
+$ agx run --profile work --dry-run --quiet --json --field data.command.line
+claude --chrome --verbose
+#endregion
+#region after
+$ agx run --profile work --dry-run --quiet --json --field data.command.line -- --add-dir ../shared
+claude --chrome --verbose --add-dir ../shared
+#endregion
+#region no-inherit
+$ agx run --profile kimi --dry-run --quiet --json --field data.command.line
+claude --strict-mcp-config
+#endregion
+#region duplicate
+$ agx run --profile personal --model opus --dry-run --quiet -- --model sonnet
+agent    claude                                       from profile personal
+profile  personal                                     from --profile
+home     ~/.claude                                    from profile personal
+login    home login                                   from default (no login named)
+binary   /usr/local/bin/claude version unknown        from no install metadata
+folder   ~/projects/app                               from current folder
+options  model=opus                                   from --model
+args     --chrome --model sonnet                      from agents.claude.defaults.args, after --
+run      ~/.agx/runs/20261118-061043-67cw             from AGX_RUN_ID=20261118-061043-67cw
+command  claude --model opus --chrome --model sonnet  from built by agentio
+env      set AGX_RUN_ID=20261118-061043-67cw          from launch environment
+         set AGX_RUN_AGENT=claude                     from launch environment
+         set AGX_RUN_PROFILE=personal                 from launch environment
+         set AGX_RUN_LOGIN=home                       from launch environment
+         set AGX_RUN_HOME=~/.claude                   from launch environment
+note     raw --model repeats a typed model; both are passed and the agent uses the raw one (last)
+         installed Claude Code version unknown; flags not checked
+#endregion
+#region raw-settings
+$ agx run --profile personal --setting cleanupPeriodDays=30 --dry-run --quiet -- --settings '{"theme":"dark"}'
+agent     claude                                                                                          from profile personal
+profile   personal                                                                                        from --profile
+home      ~/.claude                                                                                       from profile personal
+login     home login                                                                                      from default (no login named)
+binary    /usr/local/bin/claude version unknown                                                           from no install metadata
+folder    ~/projects/app                                                                                  from current folder
+args      --chrome                                                                                        from agents.claude.defaults.args
+settings  cleanupPeriodDays                                                                               from --setting
+          theme                                                                                           from raw --settings
+          delivered as file ~/.agx/runs/20261118-091339-fb1a/settings-20261118-091339-fb1a.json (0600)    from settings_delivery file
+run       ~/.agx/runs/20261118-091339-fb1a                                                                from AGX_RUN_ID=20261118-091339-fb1a
+command   claude --settings ~/.agx/runs/20261118-091339-fb1a/settings-20261118-091339-fb1a.json --chrome  from built by agentio
+env       set AGX_RUN_ID=20261118-091339-fb1a                                                             from launch environment
+          set AGX_RUN_AGENT=claude                                                                        from launch environment
+          set AGX_RUN_PROFILE=personal                                                                    from launch environment
+          set AGX_RUN_LOGIN=home                                                                          from launch environment
+          set AGX_RUN_HOME=~/.claude                                                                      from launch environment
+note      installed Claude Code version unknown; flags not checked
+#endregion
+#region edit
+$ agx profile edit --id work --no-inherit-defaults --args --verbose --args --debug
+profile work: changed
+  args              --verbose  ->  --verbose --debug
+  inherit_defaults  true       ->  false
+$ agx run --profile work --dry-run --quiet --json --field data.command.line
+claude --verbose --debug
+$ agx profile edit --id work --args ''
+profile work: changed
+  args                 --verbose --debug  ->  —
+$ agx profile edit --id work --inherit-defaults --no-inherit-defaults
+agx: --inherit-defaults and --no-inherit-defaults both set inherit_defaults; pick one
+[exit 2]
+#endregion
+#region dashes
+$ agx run --profile personal --dry-run --quiet --json --field data.command.line -- --resume
+claude --chrome --resume
+#endregion

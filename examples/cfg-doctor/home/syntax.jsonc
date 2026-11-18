@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "profiles": {
+    "personal": { "agent": "claude", "home": "~/.claude" "default": true }
+  }
+}

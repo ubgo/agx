@@ -1,0 +1,27 @@
+#: Every refusal names its reason and ends with a non-zero exit code.
+#region conflict
+$ agx run --login carol --home-login
+agx: --login and --home-login both choose the login; pick one
+[exit 125]
+
+#endregion
+#region unknown-profile
+$ agx run --profile nosuch --dry-run
+agx: unknown profile nosuch
+  agx profile list
+[exit 125]
+
+#endregion
+#region usage-error
+$ agx run --no-such-flag
+agx: unknown flag: --no-such-flag
+[exit 125]
+
+#endregion
+#: The same mistake on a command that launches nothing exits 2, not 125.
+#region other-usage-error
+$ agx profile list --no-such-flag
+agx: unknown flag: --no-such-flag
+[exit 2]
+
+#endregion

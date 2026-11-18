@@ -1,0 +1,5 @@
+{
+  // the team's shared hooks and theme
+  "theme": "dark",
+  "hooks": { "Stop": [{ "hooks": [{ "type": "command", "command": "~/bin/notify.sh" }] }] },
+}

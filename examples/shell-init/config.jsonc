@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "default_agent": "claude",
+  "profiles": {
+    "personal": { "agent": "claude", "home": "~/.claude", "default": true },
+    "work": { "agent": "claude", "home": "~/.claude-work" }
+  },
+  // #region aliases
+  "aliases": {
+    "cl": "run --profile personal",
+    "clw": "run --profile work"
+  }
+  // #endregion
+}

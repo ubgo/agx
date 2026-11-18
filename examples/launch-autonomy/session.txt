@@ -1,0 +1,115 @@
+#: Every level on every agent, shown as the command agx would run.
+#region claude
+$ agx run --agent claude --autonomy read-only --dry-run --quiet --json --field data.command.line
+claude --permission-mode plan
+$ agx run --agent claude --autonomy ask --dry-run --quiet --json --field data.command.line
+claude --permission-mode manual
+$ agx run --agent claude --autonomy accept-edits --dry-run --quiet --json --field data.command.line
+claude --permission-mode acceptEdits
+$ agx run --agent claude --autonomy full --consent full-autonomy --dry-run --quiet --json --field data.command.line
+claude --dangerously-skip-permissions
+#endregion
+#region codex
+$ agx run --agent codex --autonomy read-only --dry-run --quiet --json --field data.command.line
+codex -s read-only -a on-request
+$ agx run --agent codex --autonomy ask --dry-run --quiet --json --field data.command.line
+codex -s workspace-write -a on-request
+$ agx run --agent codex --autonomy full --consent full-autonomy --dry-run --quiet --json --field data.command.line
+codex --dangerously-bypass-approvals-and-sandbox
+$ agx run --agent codex --autonomy accept-edits --dry-run --quiet
+agx: codex: autonomy accept-edits: Codex has no edits-only mode; never mapped to a more permissive one
+[exit 125]
+#endregion
+#region gemini
+$ agx run --agent gemini --autonomy read-only --dry-run --quiet --json --field data.command.line
+gemini --approval-mode plan
+$ agx run --agent gemini --autonomy ask --dry-run --quiet --json --field data.command.line
+gemini --approval-mode default
+$ agx run --agent gemini --autonomy accept-edits --dry-run --quiet --json --field data.command.line
+gemini --approval-mode auto_edit
+$ agx run --agent gemini --autonomy full --consent full-autonomy --dry-run --quiet --json --field data.command.line
+gemini --approval-mode yolo
+#endregion
+#region pi
+$ agx run --agent pi --dry-run --quiet
+agent    pi                                   from --agent
+profile  pi                                   from default profile of pi
+home     ~/.pi/agent                          from profile pi
+login    home login                           from default (no login named)
+binary   /usr/local/bin/pi version unknown    from no install metadata
+folder   ~/projects/app                       from current folder
+run      ~/.agx/runs/20261118-060944-wzua     from AGX_RUN_ID=20261118-060944-wzua
+command  pi                                   from built by agentio
+env      set AGX_RUN_ID=20261118-060944-wzua  from launch environment
+         set AGX_RUN_AGENT=pi                 from launch environment
+         set AGX_RUN_PROFILE=pi               from launch environment
+         set AGX_RUN_LOGIN=home               from launch environment
+         set AGX_RUN_HOME=~/.pi/agent         from launch environment
+note     pi runs with full autonomy and never asks
+$ agx run --agent pi --autonomy read-only --dry-run --quiet --json --field data.command.line
+pi --tools read,grep,find,ls --no-mcp --no-extensions
+$ agx run --agent pi --autonomy ask --dry-run --quiet
+agx: pi: autonomy ask: pi has no permission modes; it always runs without prompts
+[exit 125]
+#endregion
+#region default
+$ agx run --agent claude --autonomy default --dry-run --quiet --json --field data.command.line
+claude
+#endregion
+#region profile
+$ agx run --profile reviewer --dry-run --quiet
+agent    claude                                 from profile reviewer
+profile  reviewer                               from --profile
+home     ~/.claude-work                         from profile reviewer
+login    home login                             from default (no login named)
+binary   /usr/local/bin/claude version unknown  from no install metadata
+folder   ~/projects/app                         from current folder
+options  autonomy=accept-edits                  from profile reviewer
+run      ~/.agx/runs/20261118-060944-nph4       from AGX_RUN_ID=20261118-060944-nph4
+command  claude --permission-mode acceptEdits   from built by agentio
+env      set AGX_RUN_ID=20261118-060944-nph4    from launch environment
+         set AGX_RUN_AGENT=claude               from launch environment
+         set AGX_RUN_PROFILE=reviewer           from launch environment
+         set AGX_RUN_LOGIN=home                 from launch environment
+         set AGX_RUN_HOME=~/.claude-work        from launch environment
+         set CLAUDE_CONFIG_DIR=~/.claude-work   from launch environment
+note     installed Claude Code version unknown; flags not checked
+$ agx run --profile reviewer --autonomy read-only --dry-run --quiet --json --field data.command.line
+claude --permission-mode plan
+#endregion
+#region consent
+$ agx run --agent claude --autonomy full --dry-run --quiet
+agx: --autonomy full needs --consent full-autonomy
+[exit 125]
+$ agx run --agent claude --autonomy everything --dry-run --quiet
+agx: --autonomy "everything": use one of default, read-only, ask, accept-edits, full
+[exit 125]
+$ agx run --agent claude --autonomy full --consent yes --dry-run --quiet
+agx: --consent "yes": the only consent is full-autonomy
+[exit 125]
+#endregion
+#region custom
+$ agx run --agent mycli --autonomy read-only --dry-run --quiet --json --field data.command.line
+pi --plan
+$ agx run --agent mycli --autonomy ask --dry-run --quiet
+agx: mycli: autonomy ask: not described by the agent spec
+[exit 125]
+#endregion
+#region field-error
+$ agx run --agent codex --autonomy accept-edits --dry-run --quiet --json --field error.message
+codex: autonomy accept-edits: Codex has no edits-only mode; never mapped to a more permissive one
+[exit 125]
+#endregion
+#region concern
+$ agx run --agent claude --autonomy ask --option permission_mode=plan --dry-run --quiet
+agx: --autonomy and --option permission_mode both set the autonomy; pick one
+[exit 125]
+$ agx run --profile reviewer --option permission_mode=plan --dry-run --quiet --json --field data.command.line
+claude --permission-mode plan
+$ agx run --agent claude --autonomy read-only --dry-run --quiet --json --field data.command.line -- --dangerously-skip-permissions
+claude --permission-mode plan --dangerously-skip-permissions
+#endregion
+#region pi-full
+$ agx run --agent pi --autonomy full --consent full-autonomy --dry-run --quiet --json --field data.command.line
+pi
+#endregion

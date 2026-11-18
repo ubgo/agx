@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "command": "profile add",
+  "ok": true,
+  "data": {
+    "name": "team",
+    "agent": "claude",
+    "home": "~/.claude-team",
+    "home_source": "derived from the agent's default home and --name",
+    "home_created": true,
+    "default": false,
+    "login": "home login",
+    "billing": "plan",
+    "links": [
+      {
+        "name": "CLAUDE.md",
+        "from": "~/.claude/CLAUDE.md",
+        "to": "~/.claude-team/CLAUDE.md",
+        "exists": false
+      },
+      {
+        "name": "skills",
+        "from": "~/.claude/skills",
+        "to": "~/.claude-team/skills",
+        "exists": false
+      },
+      {
+        "name": "settings.json",
+        "from": "~/.claude/settings.json",
+        "to": "~/.claude-team/settings.json",
+        "exists": false
+      }
+    ],
+    "written": false
+  },
+  "decisions": [],
+  "warnings": [],
+  "error": null
+}

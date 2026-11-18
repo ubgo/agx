@@ -1,0 +1,26 @@
+#: Two run folders copied in from home/.agx/runs: one whose agent ended (its pid no longer runs), one without run.jsonc (a launch in progress, or one that never started).
+#region clean
+$ agx clean
+agx: warning: kept 20261118-101500-k3x9: process info unreadable: no run.jsonc yet
+RUN                   AGENT   PID       LIVENESS  ACTION  REASON
+20261116-090000-ab12  claude  99999999  ended     delete  process ended
+20261118-101500-k3x9  —       0         unknown   keep    process info unreadable: no run.jsonc yet
+would delete 1, keep 1; run agx clean --yes to delete
+$ agx clean --dry-run
+agx: warning: kept 20261118-101500-k3x9: process info unreadable: no run.jsonc yet
+RUN                   AGENT   PID       LIVENESS  ACTION  REASON
+20261116-090000-ab12  claude  99999999  ended     delete  process ended
+20261118-101500-k3x9  —       0         unknown   keep    process info unreadable: no run.jsonc yet
+would delete 1, keep 1; run agx clean --yes to delete
+$ agx clean --yes --dry-run
+agx: --yes and --dry-run: one deletes, one only shows; pick one
+[exit 2]
+$ agx clean --yes
+agx: warning: kept 20261118-101500-k3x9: process info unreadable: no run.jsonc yet
+RUN                   AGENT   PID       LIVENESS  ACTION   REASON
+20261116-090000-ab12  claude  99999999  ended     deleted  process ended
+20261118-101500-k3x9  —       0         unknown   keep     process info unreadable: no run.jsonc yet
+deleted 1, kept 1
+$ agx clean --json --field data.runs.*.id
+["20261118-101500-k3x9"]
+#endregion

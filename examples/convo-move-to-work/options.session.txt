@@ -1,0 +1,14 @@
+#region explicit
+$ agx conversation move --dir ~/projects/client --from-profile personal --to-profile work --id 3f2a --no-backup
+moved 1 claude conversation(s) of ~/projects/client from ~/.claude to ~/.claude-work
+  3f2a9c1e-0000-4000-8000-000000000001
+
+#endregion
+#region all
+$ agx conversation move --scope all --from-profile work --to-profile personal --dry-run
+would move 2 claude conversation(s) of ~/projects/client from ~/.claude-work to ~/.claude
+  3f2a9c1e-0000-4000-8000-000000000001
+  7b1d4e20-0000-4000-8000-000000000002
+dry run: nothing changed
+
+#endregion

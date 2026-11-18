@@ -1,0 +1,24 @@
+#: whoami reads the AGX_RUN_* variables a launch set; outside a session it lists the AGX_LOGIN variables of this shell.
+#region outside
+$ agx whoami
+session:  not inside a session started by agx (AGX_RUN_ID is not set)
+$ AGX_LOGIN=carol agx whoami
+session:   not inside a session started by agx (AGX_RUN_ID is not set)
+AGX_LOGIN: carol
+#endregion
+#region inside
+$ AGX_RUN_ID=20261118-101500-k3x9 AGX_RUN_AGENT=claude AGX_RUN_PROFILE=work AGX_RUN_LOGIN=home AGX_RUN_HOME=~/.claude-work agx whoami
+run:      20261118-101500-k3x9
+agent:    claude
+profile:  work
+login:    home
+home:     ~/.claude-work
+$ AGX_RUN_ID=20261118-101500-k3x9 AGX_RUN_AGENT=claude AGX_RUN_PROFILE=work AGX_RUN_LOGIN=home AGX_RUN_HOME=~/.claude-work agx whoami --json --field data.profile
+work
+$ AGX_RUN_ID=20261118-101500-k3x9 agx whoami --json --field data.run_dir
+~/.agx/runs/20261118-101500-k3x9
+#endregion
+#region nested
+$ AGX_RUN_ID=20261118-101500-k3x9 AGX_RUN_PROFILE=work agx run --profile personal --dry-run --quiet --json --field data.profile
+personal
+#endregion

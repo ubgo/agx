@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "default_agent": "claude",
+  "profiles": {
+    "personal": { "agent": "claude", "home": "~/.claude", "default": true }
+  },
+  "logins": {
+    "carol": { "agents": ["claude"], "kind": "oauth-token", "token": "${gopass:personal/claude/carol}" }
+  },
+  "aliases": { "cl": "run --profile personal" }
+}

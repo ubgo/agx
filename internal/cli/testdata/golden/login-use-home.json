@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "command": "login use",
+  "ok": true,
+  "data": {
+    "login": "",
+    "home_login": true,
+    "target": "profile",
+    "name": "work"
+  },
+  "decisions": [],
+  "warnings": [],
+  "error": null
+}

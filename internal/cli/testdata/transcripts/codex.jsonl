@@ -1,0 +1,2 @@
+{"timestamp":"{{TIME}}","type":"session_meta","payload":{"id":"{{ID}}","session_id":"{{ID}}","timestamp":"{{TIME}}","cwd":"{{CWD}}","originator":"codex-tui","cli_version":"0.162.1","source":"cli","model_provider":"openai"}}
+{"timestamp":"{{TIME}}","type":"event_msg","payload":{"type":"user_message","message":"{{TITLE}}"}}

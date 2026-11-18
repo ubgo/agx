@@ -1,0 +1,84 @@
+#: A machine with Claude Code, Codex, Gemini CLI and pi installed and no agx config yet.
+#region init
+$ agx config init --default-agent claude
+wrote ~/.agx/config.jsonc (0 profiles)
+
+#endregion
+#region import
+$ agx profile import --discovered --yes
+NAME      AGENT   HOME            DEFAULT  FOUND BY
+personal  claude  ~/.claude       yes      default home
+work      claude  ~/.claude-work  no       pattern .claude-*
+skipped codex ~/.codex: name only, no home markers (import it with --id)
+skipped gemini ~/.gemini: name only, no home markers (import it with --id)
+skipped pi ~/.pi/agent: name only, no home markers (import it with --id)
+wrote 2 profiles
+
+$ agx profile list
+PROFILE    PROVIDER  HOME            ACCOUNT  STATE  LOGIN       BILLING
+*personal  claude    ~/.claude                none   home login  plan
+work       claude    ~/.claude-work           none   home login  plan
+
+#endregion
+#region import-id
+$ agx profile import --id ~/.codex --yes
+NAME   AGENT  HOME      DEFAULT  FOUND BY
+codex  codex  ~/.codex  yes      default home
+wrote 1 profile
+
+#endregion
+#region usage
+$ agx usage --cached
+personal  personal · claude  ~/.claude
+  no cache: no reading on disk: Claude Code 2.1.323 and later no longer store a usage reading on disk (an existing one is not refreshed); use live usage
+
+work  work · claude  ~/.claude-work
+  no cache: no reading on disk: Claude Code 2.1.323 and later no longer store a usage reading on disk (an existing one is not refreshed); use live usage
+
+codex  codex · codex  ~/.codex
+  no cache: no reading on disk yet; run the agent once, or drop --cached
+
+#endregion
+#region dry-run
+$ agx run --dry-run
+agx: agent claude (default_agent)
+agx: warning: installed Claude Code version unknown; flags not checked
+agent    claude                                 from default_agent
+profile  personal                               from default profile of claude
+home     ~/.claude                              from profile personal
+login    home login                             from default (no login named)
+binary   /usr/local/bin/claude version unknown  from no install metadata
+folder   ~/projects/app                         from current folder
+run      ~/.agx/runs/20261114-101500-k3x9       from AGX_RUN_ID=20261114-101500-k3x9
+command  claude                                 from built by agentio
+env      set AGX_RUN_ID=20261114-101500-k3x9    from launch environment
+         set AGX_RUN_AGENT=claude               from launch environment
+         set AGX_RUN_PROFILE=personal           from launch environment
+         set AGX_RUN_LOGIN=home                 from launch environment
+         set AGX_RUN_HOME=~/.claude             from launch environment
+note     installed Claude Code version unknown; flags not checked
+
+#endregion
+#region run
+$ agx run --profile work -- --verbose
+agx: warning: installed Claude Code version unknown; flags not checked
+agent claude
+argv [--verbose]
+pwd ~/projects/app
+...
+env AGX_RUN_AGENT=claude
+env AGX_RUN_HOME=~/.claude-work
+env AGX_RUN_ID=20261114-101500-k3x9
+env AGX_RUN_LOGIN=home
+env AGX_RUN_PROFILE=work
+env CLAUDE_CONFIG_DIR=~/.claude-work
+...
+
+#endregion
+#region refused
+$ agx run --profile nosuch
+agx: unknown profile nosuch
+  agx profile list
+[exit 125]
+
+#endregion

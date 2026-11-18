@@ -1,0 +1,4 @@
+[1mFOLDER[0m              [1mLAST ACTIVITY[0m  [1mFILES[0m  [1mHISTORY[0m
+20261118-1130-api   3 min ago      4      claude,codex
+20261116-0900-demo  2 d ago        0      [2m—[0m
+scratch             2 hr ago       1      [33munknown[0m

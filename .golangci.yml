@@ -1,0 +1,7 @@
+# golangci-lint v2. Default linters: errcheck, govet, ineffassign,
+# staticcheck, unused. No exclusions: findings are fixed, never silenced.
+version: "2"
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

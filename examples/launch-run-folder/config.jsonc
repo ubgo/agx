@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "default_agent": "claude",
+  "profiles": {
+    // #region profiles
+    "personal": { "agent": "claude", "home": "~/.claude", "default": true },
+    "work": { "agent": "claude", "home": "~/.claude-work", "claude": { "settings": { "cleanupPeriodDays": 20 } } },
+    // #endregion
+    // #region other-agents
+    "codex": { "agent": "codex", "home": "~/.codex", "default": true },
+    "codex-work": { "agent": "codex", "home": "~/.codex-work" },
+    "gemini-work": { "agent": "gemini", "home": "~/.gemini-work/.gemini", "default": true },
+    "pi-work": { "agent": "pi", "home": "~/.pi-work", "default": true }
+    // #endregion
+  }
+}

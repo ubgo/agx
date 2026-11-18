@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "command": "config check",
+  "ok": true,
+  "data": {
+    "file": "<root>/home/.agx/config.jsonc",
+    "exists": true,
+    "agents": 1,
+    "profiles": 4,
+    "logins": 1,
+    "projects": 0,
+    "aliases": 0
+  },
+  "decisions": [],
+  "warnings": [],
+  "error": null
+}

@@ -1,0 +1,205 @@
+{
+  "schema_version": 1,
+  "command": "resume",
+  "ok": true,
+  "data": {
+    "run_id": "<run-id>",
+    "run_dir": "<root>/home/.agx/runs/<run-id>",
+    "agent": "claude",
+    "profile": "work",
+    "home": "<root>/home/.claude-work",
+    "login": "carol",
+    "login_kind": "named",
+    "folder": "<root>/proj",
+    "resume_id": "3f2a9c1e-0000-4000-8000-000000000001",
+    "binary": "<root>/bin/claude",
+    "command": {
+      "line": "claude --resume 3f2a9c1e-0000-4000-8000-000000000001",
+      "path": "claude",
+      "args": [
+        "--resume",
+        "3f2a9c1e-0000-4000-8000-000000000001"
+      ],
+      "dir": "<root>/proj",
+      "env": [
+        "set AGX_RUN_ID=<run-id>",
+        "set AGX_RUN_AGENT=claude",
+        "set AGX_RUN_PROFILE=work",
+        "set AGX_RUN_LOGIN=carol",
+        "set AGX_RUN_HOME=<root>/home/.claude-work",
+        "set CLAUDE_CODE_OAUTH_TOKEN=[redacted]",
+        "set CLAUDE_CONFIG_DIR=<root>/home/.claude-work"
+      ]
+    },
+    "decisions": [
+      {
+        "name": "agent",
+        "value": "claude",
+        "source": "conversation 3f2a9c1e-0000-4000-8000-000000000001"
+      },
+      {
+        "name": "profile",
+        "value": "work",
+        "source": "home ~/.claude-work"
+      },
+      {
+        "name": "home",
+        "value": "~/.claude-work",
+        "source": "conversation 3f2a9c1e-0000-4000-8000-000000000001 (stored there)"
+      },
+      {
+        "name": "login",
+        "value": "carol (not resolved: --dry-run)",
+        "source": "--login"
+      },
+      {
+        "name": "binary",
+        "value": "<root>/bin/claude version unknown",
+        "source": "no install metadata"
+      },
+      {
+        "name": "folder",
+        "value": "<root>/proj",
+        "source": "conversation 3f2a9c1e-0000-4000-8000-000000000001"
+      },
+      {
+        "name": "run",
+        "value": "~/.agx/runs/<run-id>",
+        "source": "AGX_RUN_ID=<run-id>"
+      },
+      {
+        "name": "command",
+        "value": "claude --resume 3f2a9c1e-0000-4000-8000-000000000001",
+        "source": "built by agentio"
+      },
+      {
+        "name": "env",
+        "value": "set AGX_RUN_ID=<run-id>",
+        "source": "launch environment"
+      },
+      {
+        "name": "env",
+        "value": "set AGX_RUN_AGENT=claude",
+        "source": "launch environment"
+      },
+      {
+        "name": "env",
+        "value": "set AGX_RUN_PROFILE=work",
+        "source": "launch environment"
+      },
+      {
+        "name": "env",
+        "value": "set AGX_RUN_LOGIN=carol",
+        "source": "launch environment"
+      },
+      {
+        "name": "env",
+        "value": "set AGX_RUN_HOME=<root>/home/.claude-work",
+        "source": "launch environment"
+      },
+      {
+        "name": "env",
+        "value": "set CLAUDE_CODE_OAUTH_TOKEN=[redacted]",
+        "source": "launch environment"
+      },
+      {
+        "name": "env",
+        "value": "set CLAUDE_CONFIG_DIR=<root>/home/.claude-work",
+        "source": "launch environment"
+      }
+    ],
+    "warnings": [
+      {
+        "code": "version",
+        "message": "installed Claude Code version unknown; flags not checked"
+      }
+    ],
+    "notes": [
+      "profile work from home ~/.claude-work"
+    ]
+  },
+  "decisions": [
+    {
+      "name": "agent",
+      "value": "claude",
+      "source": "conversation 3f2a9c1e-0000-4000-8000-000000000001"
+    },
+    {
+      "name": "profile",
+      "value": "work",
+      "source": "home ~/.claude-work"
+    },
+    {
+      "name": "home",
+      "value": "~/.claude-work",
+      "source": "conversation 3f2a9c1e-0000-4000-8000-000000000001 (stored there)"
+    },
+    {
+      "name": "login",
+      "value": "carol (not resolved: --dry-run)",
+      "source": "--login"
+    },
+    {
+      "name": "binary",
+      "value": "<root>/bin/claude version unknown",
+      "source": "no install metadata"
+    },
+    {
+      "name": "folder",
+      "value": "<root>/proj",
+      "source": "conversation 3f2a9c1e-0000-4000-8000-000000000001"
+    },
+    {
+      "name": "run",
+      "value": "~/.agx/runs/<run-id>",
+      "source": "AGX_RUN_ID=<run-id>"
+    },
+    {
+      "name": "command",
+      "value": "claude --resume 3f2a9c1e-0000-4000-8000-000000000001",
+      "source": "built by agentio"
+    },
+    {
+      "name": "env",
+      "value": "set AGX_RUN_ID=<run-id>",
+      "source": "launch environment"
+    },
+    {
+      "name": "env",
+      "value": "set AGX_RUN_AGENT=claude",
+      "source": "launch environment"
+    },
+    {
+      "name": "env",
+      "value": "set AGX_RUN_PROFILE=work",
+      "source": "launch environment"
+    },
+    {
+      "name": "env",
+      "value": "set AGX_RUN_LOGIN=carol",
+      "source": "launch environment"
+    },
+    {
+      "name": "env",
+      "value": "set AGX_RUN_HOME=<root>/home/.claude-work",
+      "source": "launch environment"
+    },
+    {
+      "name": "env",
+      "value": "set CLAUDE_CODE_OAUTH_TOKEN=[redacted]",
+      "source": "launch environment"
+    },
+    {
+      "name": "env",
+      "value": "set CLAUDE_CONFIG_DIR=<root>/home/.claude-work",
+      "source": "launch environment"
+    }
+  ],
+  "warnings": [
+    {
+      "code": "version",
+      "message": "installed Claude Code version unknown; flags not checked"
+    }
+  ],
+  "error": null
+}

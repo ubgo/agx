@@ -1,0 +1,4 @@
+FOLDER              LAST ACTIVITY  FILES  HISTORY
+20261118-1130-api   3 min ago      4      claude,codex
+20261116-0900-demo  2 d ago        0      —
+scratch             2 hr ago       1      unknown

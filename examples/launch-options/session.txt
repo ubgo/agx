@@ -1,0 +1,67 @@
+#: Typed launch options from the profile's claude block, overridden for one run.
+#region profile-block
+$ agx run --profile work --dry-run --quiet
+...
+options  model=sonnet                                   from profile work
+         effort=high                                    from profile work
+         extra_args=["--verbose"]                       from profile work
+...
+command  claude --model sonnet --effort high --verbose  from built by agentio
+...
+#endregion
+#region option
+$ agx run --profile work --option effort=max --dry-run --quiet --json --field data.command.line
+claude --model sonnet --effort max --verbose
+#endregion
+#region model-add-dir
+$ agx run --profile work --model opus --add-dir ~/projects/client --prompt 'Fix the failing test' --dry-run --quiet --json --field data.command.line
+claude --model opus --effort high --add-dir ~/projects/client --verbose -- "Fix the failing test"
+#endregion
+#region extra-args-raw
+$ agx run --profile work --dry-run --quiet -- --debug
+...
+args     --debug                                                from after --
+options  effort=high                                            from profile work
+         extra_args=["--verbose"]                               from profile work
+...
+command  claude --model sonnet --effort high --verbose --debug  from built by agentio
+...
+#endregion
+#region block-prompt
+$ agx run --profile review --dry-run --quiet --json --field data.command.line
+claude -- "Review the open diff"
+$ agx run --profile review --prompt 'Summarise the README' --dry-run --quiet --json --field data.command.line
+claude -- "Summarise the README"
+#endregion
+#region override
+$ agx run --profile work --model opus --option effort=max --dry-run --quiet
+...
+options  model=opus                                  from --model
+         effort=max                                  from --option (overrides profile work: high)
+         extra_args=["--verbose"]                    from profile work
+...
+command  claude --model opus --effort max --verbose  from built by agentio
+...
+#endregion
+#region unknown-option
+$ agx run --profile work --option efort=max --dry-run --quiet
+agx: --option efort: unknown key (did you mean effort?); valid keys: prompt, print, output_format, input_format, include_partial_messages, include_hook_events, replay_user_messages, forward_subagent_text, verbose, json_schema, max_budget_usd, no_session_persistence, model, fallback_models, effort, agent, agents, permission_mode, permission_prompts, dangerously_skip_permissions, allow_dangerously_skip_permissions, allowed_tools, disallowed_tools, tools, add_dirs, mcp_configs, strict_mcp_config, setting_sources, system_prompt, append_system_prompt, system_prompt_file, append_system_prompt_file, system_prompt_snapshot, exclude_dynamic_system_prompt_sections, plugin_dirs, plugin_urls, bare, safe_mode, restricted, disable_slash_commands, resume, continue, fork_session, session_id, name, from_pr, worktree, tmux, background, debug, debug_file, ide, chrome, no_chrome, brief, autocompact, remote_control, betas, files, extra_args
+[exit 125]
+#endregion
+#region conflict
+$ agx run --profile work --model opus --setting model=sonnet --dry-run --quiet
+agx: --model and --setting model both set the model; pick one
+[exit 125]
+$ agx run --profile work --model opus --option model=sonnet --dry-run --quiet
+agx: --model and --option model both set the model; pick one
+[exit 125]
+#endregion
+#region no-quoting
+$ agx run --profile review --setting 'permissions.allow=["Bash(git status)","Read"]' --settings-delivery inline
+agx: warning: settings are visible in ps (inline delivery, from --settings-delivery)
+agx: warning: installed Claude Code version unknown; flags not checked
+agent claude
+argv [--settings] [{"permissions":{"allow":["Bash(git status)","Read"]}}] [--] [Review the open diff]
+pwd ~/projects/app
+...
+#endregion

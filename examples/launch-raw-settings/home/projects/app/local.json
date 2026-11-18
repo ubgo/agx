@@ -1,0 +1,1 @@
+{ "theme": "light", "permissions": { "deny": ["Bash(rm:*)"] } }

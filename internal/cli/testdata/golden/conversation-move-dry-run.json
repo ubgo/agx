@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "command": "conversation move",
+  "ok": true,
+  "data": {
+    "agent": "claude",
+    "from": {
+      "profiles": [
+        "personal"
+      ],
+      "home": "~/.claude"
+    },
+    "to": {
+      "profiles": [
+        "work"
+      ],
+      "home": "~/.claude-work"
+    },
+    "dry_run": true,
+    "folders": [
+      {
+        "folder": "<root>/work/proj",
+        "conversations": [
+          "aaaaaaaa-0000-4000-8000-000000000001",
+          "aaaabbbb-0000-4000-8000-000000000002"
+        ],
+        "items": [
+          {
+            "from": "<root>/home/.claude/projects/<root-key>-work-proj/aaaaaaaa-0000-4000-8000-000000000001.jsonl",
+            "to": "<root>/home/.claude-work/projects/<root-key>-work-proj/aaaaaaaa-0000-4000-8000-000000000001.jsonl"
+          },
+          {
+            "from": "<root>/home/.claude/projects/<root-key>-work-proj/aaaabbbb-0000-4000-8000-000000000002.jsonl",
+            "to": "<root>/home/.claude-work/projects/<root-key>-work-proj/aaaabbbb-0000-4000-8000-000000000002.jsonl"
+          }
+        ],
+        "left": [],
+        "blockers": []
+      }
+    ],
+    "backups": []
+  },
+  "decisions": [],
+  "warnings": [],
+  "error": null
+}

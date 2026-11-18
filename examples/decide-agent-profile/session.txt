@@ -1,0 +1,67 @@
+#: No "default_agent" in the config yet, and ~/projects/app has no binding.
+#region no-agent
+$ agx run --dry-run
+agx: no profile, binding or agent given, and "default_agent" is not set
+  agx run --agent claude  (default profile: personal)
+  agx run --agent codex   (default profile: codex)
+  agx run --agent gemini
+  agx config set --key default_agent --value claude
+[exit 125]
+#endregion
+#region agent-from-profile
+$ agx project show --profile work
+agent    claude          from profile work
+profile  work            from --profile
+home     ~/.claude-work  from profile work
+login    home login      from default (no login named)
+folder   ~/projects/app  from current folder
+#endregion
+#region agent-flag
+$ agx project show --agent codex
+agent    codex           from --agent
+profile  codex           from default profile of codex
+home     ~/.codex        from profile codex
+login    home login      from default (no login named)
+folder   ~/projects/app  from current folder
+#endregion
+#region agent-conflict
+$ agx project show --agent codex --profile work
+agx: --agent codex and --profile work (a claude profile) disagree; pick one
+[exit 2]
+#endregion
+#region agent-binding
+$ agx project show --dir ~/projects/client
+agx: agent codex (folder binding ~/projects/client)
+agx: profile codex (folder binding ~/projects/client)
+agent    codex              from folder binding ~/projects/client
+profile  codex              from folder binding ~/projects/client
+home     ~/.codex           from profile codex
+login    home login         from default (no login named)
+folder   ~/projects/client  from --dir
+#endregion
+#region no-default-profile
+$ agx project show --agent gemini
+agx: no profile chosen for gemini and none is its default
+  agx run --profile gem
+  agx profile use --id gem
+[exit 2]
+#endregion
+#region default-agent
+$ agx config set --key default_agent --value claude
+default_agent = claude
+$ agx run --dry-run
+agx: agent claude (default_agent)
+agx: warning: installed Claude Code version unknown; flags not checked
+agent    claude                                 from default_agent
+profile  personal                               from default profile of claude
+home     ~/.claude                              from profile personal
+login    home login                             from default (no login named)
+binary   /usr/local/bin/claude version unknown  from no install metadata
+folder   ~/projects/app                         from current folder
+...
+#endregion
+#region auto-conflict
+$ agx run --profile work --auto-profile --dry-run
+agx: --profile and --auto-profile both choose the profile; pick one
+[exit 125]
+#endregion

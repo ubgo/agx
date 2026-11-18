@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "default_agent": "claude",
+  "profiles": {
+    // #region profiles
+    "work": {
+      "agent": "claude",
+      "home": "~/.claude-work",
+      "default": true,
+      "before_run": "scripts/work-env.sh"            // relative to the config dir (~/.agx)
+    },
+    "repo": {
+      "agent": "claude",
+      "home": "~/.claude",
+      "before_run": "scripts/setup.sh",
+      "before_run_from": "folder"                    // relative to the launch folder instead
+    },
+    // #endregion
+    // #region env
+    "hidden": {
+      "agent": "claude",
+      "home": "~/.claude",
+      "login": "carol",
+      "before_run": "scripts/show-token.sh"          // credential variables removed (the default)
+    },
+    "full": {
+      "agent": "claude",
+      "home": "~/.claude",
+      "login": "carol",
+      "before_run": "scripts/show-token.sh",
+      "before_run_env": "full"                       // the script sees the token too
+    }
+    // #endregion
+  },
+  "logins": {
+    "carol": { "agents": ["claude"], "kind": "oauth-token", "token": "${gopass:personal/claude/carol}" }
+  }
+}

@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "command": "login list",
+  "ok": true,
+  "data": [
+    {
+      "name": "personal",
+      "agents": [
+        "claude"
+      ],
+      "kind": "oauth-token",
+      "source": "reference gopass",
+      "source_type": "reference",
+      "account": "me@example.com",
+      "users": [
+        {
+          "type": "profile",
+          "name": "work",
+          "agent": "claude"
+        },
+        {
+          "type": "agent-default",
+          "name": "claude",
+          "agent": "claude"
+        },
+        {
+          "type": "binding",
+          "name": "/p/client",
+          "agent": "claude"
+        }
+      ]
+    },
+    {
+      "name": "plainval",
+      "agents": [
+        "claude"
+      ],
+      "kind": "oauth-token",
+      "source": "plain",
+      "source_type": "plain",
+      "account": "",
+      "users": []
+    },
+    {
+      "name": "derek",
+      "agents": [
+        "claude"
+      ],
+      "kind": "oauth-token",
+      "source": "env OSKAR_TOK",
+      "source_type": "env",
+      "account": "",
+      "users": []
+    },
+    {
+      "name": "pasted",
+      "agents": [
+        "claude"
+      ],
+      "kind": "oauth-token",
+      "source": "stored (tokens.jsonc)",
+      "source_type": "stored",
+      "account": "",
+      "users": []
+    },
+    {
+      "name": "helper",
+      "agents": [
+        "claude"
+      ],
+      "kind": "api-key-helper",
+      "source": "helper gopass",
+      "source_type": "helper",
+      "account": "ops@example.com",
+      "users": []
+    },
+    {
+      "name": "key",
+      "agents": [
+        "claude"
+      ],
+      "kind": "api-key",
+      "source": "command op",
+      "source_type": "command",
+      "account": "",
+      "users": []
+    }
+  ],
+  "decisions": [],
+  "warnings": [],
+  "error": null
+}

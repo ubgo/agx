@@ -1,0 +1,41 @@
+#: A machine with Claude Code, Codex, Gemini CLI and pi installed and no agx config yet.
+#region discover
+$ agx profile list --discovered
+AGENT   PATH            PROFILE  FOUND BY           LOOKS LIKE A HOME
+claude  ~/.claude       —        default home       yes
+claude  ~/.claude-work  —        pattern .claude-*  yes
+codex   ~/.codex        —        default home       no (name only)
+gemini  ~/.gemini       —        default home       no (name only)
+pi      ~/.pi/agent     —        default home       no (name only)
+
+#endregion
+#region init
+$ agx config init --default-agent claude --discovered
+wrote ~/.agx/config.jsonc (2 profiles)
+
+$ agx profile list
+PROFILE    PROVIDER  HOME            ACCOUNT  STATE  LOGIN       BILLING
+*personal  claude    ~/.claude                none   home login  plan
+work       claude    ~/.claude-work           none   home login  plan
+
+#endregion
+#region dry-run
+$ agx run --dry-run
+agx: agent claude (default_agent)
+agx: warning: installed Claude Code version unknown; flags not checked
+agent    claude                                 from default_agent
+profile  personal                               from default profile of claude
+home     ~/.claude                              from profile personal
+login    home login                             from default (no login named)
+binary   /usr/local/bin/claude version unknown  from no install metadata
+folder   ~/projects/app                         from current folder
+run      ~/.agx/runs/20261114-101500-k3x9       from AGX_RUN_ID=20261114-101500-k3x9
+command  claude                                 from built by agentio
+env      set AGX_RUN_ID=20261114-101500-k3x9    from launch environment
+         set AGX_RUN_AGENT=claude               from launch environment
+         set AGX_RUN_PROFILE=personal           from launch environment
+         set AGX_RUN_LOGIN=home                 from launch environment
+         set AGX_RUN_HOME=~/.claude             from launch environment
+note     installed Claude Code version unknown; flags not checked
+
+#endregion

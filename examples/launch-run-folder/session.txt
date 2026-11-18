@@ -1,0 +1,71 @@
+#: Each launch gets its own run folder and AGX_RUN_* variables; agx clean deletes the folders of runs that ended. The clean commands pick columns with --field to leave out the PID, which differs on every run.
+#region launch
+$ agx run --profile work
+agx: warning: installed Claude Code version unknown; flags not checked
+agent claude
+argv [--settings] [~/.agx/runs/20261118-061107-6gmx/settings-20261118-061107-6gmx.json]
+pwd ~/projects/app
+env AGX_CONFIG_DIR=~/.agx
+env AGX_RUN_AGENT=claude
+env AGX_RUN_HOME=~/.claude-work
+env AGX_RUN_ID=20261118-061107-6gmx
+env AGX_RUN_LOGIN=home
+env AGX_RUN_PROFILE=work
+env CLAUDE_CONFIG_DIR=~/.claude-work
+env COLUMNS=400
+env HOME=~
+env LANG=C
+env PATH=/usr/local/bin:/usr/bin:/bin
+env PWD=~/projects/app
+env TMPDIR=/tmp/agx-demo/tmp
+env TZ=UTC
+#endregion
+#region dir
+$ agx run --profile personal --dir ~/projects/client
+agx: warning: installed Claude Code version unknown; flags not checked
+agent claude
+argv
+pwd ~/projects/client
+env AGX_CONFIG_DIR=~/.agx
+env AGX_RUN_AGENT=claude
+env AGX_RUN_HOME=~/.claude
+env AGX_RUN_ID=20261118-061107-qz8a
+env AGX_RUN_LOGIN=home
+env AGX_RUN_PROFILE=personal
+env COLUMNS=400
+env HOME=~
+env LANG=C
+env PATH=/usr/local/bin:/usr/bin:/bin
+env PWD=~/projects/client
+env TMPDIR=/tmp/agx-demo/tmp
+env TZ=UTC
+#endregion
+#region home-vars
+$ agx run --profile codex --dry-run --quiet --json --field data.command.env
+["set AGX_RUN_ID=20261118-061107-xw4d","set AGX_RUN_AGENT=codex","set AGX_RUN_PROFILE=codex","set AGX_RUN_LOGIN=home","set AGX_RUN_HOME=~/.codex"]
+$ agx run --profile codex-work --dry-run --quiet --json --field data.command.env
+["set AGX_RUN_ID=20261118-061107-sts5","set AGX_RUN_AGENT=codex","set AGX_RUN_PROFILE=codex-work","set AGX_RUN_LOGIN=home","set AGX_RUN_HOME=~/.codex-work","set CODEX_HOME=~/.codex-work"]
+$ agx run --profile gemini-work --dry-run --quiet --json --field data.command.env
+["set AGX_RUN_ID=20261118-061107-by9p","set AGX_RUN_AGENT=gemini","set AGX_RUN_PROFILE=gemini-work","set AGX_RUN_LOGIN=home","set AGX_RUN_HOME=~/.gemini-work/.gemini","set GEMINI_CLI_HOME=~/.gemini-work"]
+$ agx run --profile pi-work --dry-run --quiet --json --field data.command.env
+["set AGX_RUN_ID=20261118-061107-dr1b","set AGX_RUN_AGENT=pi","set AGX_RUN_PROFILE=pi-work","set AGX_RUN_LOGIN=home","set AGX_RUN_HOME=~/.pi-work","set PI_CODING_AGENT_DIR=~/.pi-work"]
+$ CLAUDE_CONFIG_DIR=~/.claude-work agx run --profile personal --dry-run --quiet --json --field data.command.env
+["set AGX_RUN_ID=20261118-061328-igl8","set AGX_RUN_AGENT=claude","set AGX_RUN_PROFILE=personal","set AGX_RUN_LOGIN=home","set AGX_RUN_HOME=~/.claude","removed CLAUDE_CONFIG_DIR"]
+$ agx run --profile work --env CLAUDE_CONFIG_DIR=~/.claude --dry-run --quiet
+agx: CLAUDE_CONFIG_DIR is set by the profile's home; use --profile
+[exit 125]
+#endregion
+#region dir-missing
+$ agx run --profile personal --dir ~/projects/nope --dry-run --quiet
+agx: folder ~/projects/nope does not exist
+[exit 125]
+#endregion
+#region exit-code
+$ FAKE_AGENT_EXIT=3 agx run --profile personal
+agx: warning: installed Claude Code version unknown; flags not checked
+agent claude
+...
+env FAKE_AGENT_EXIT=3
+...
+[exit 3]
+#endregion

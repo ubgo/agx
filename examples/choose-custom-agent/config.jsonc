@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "default_agent": "claude",
+  "profiles": {
+    "personal": { "agent": "claude", "home": "~/.claude", "default": true, "args": ["--verbose"] },
+    "mine": { "agent": "mycli", "home": "~/.mycli", "default": true }
+  },
+  "logins": {
+    "my-key": { "agents": ["mycli"], "kind": "api-key", "token": "${gopass:mycli/key}" }
+  },
+  "agents": {
+    "mycli": {
+      "spec": {
+        "name": "My CLI",
+        "binary": "pi",
+        "default_home": ".mycli",
+        "home_env": "MYCLI_HOME",
+        "new_args": ["{args}"],
+        "model_args": ["--model", "{model}"],
+        "autonomy_args": { "read-only": ["--plan"], "full": ["--yolo"] },
+        "token_env": [{ "kind": "api-key", "env": "MYCLI_API_KEY" }]
+      }
+    }
+  }
+}

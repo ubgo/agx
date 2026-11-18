@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "default_agent": "claude",
+  "profiles": {
+    "personal": { "agent": "claude", "home": "~/.claude", "default": true },
+    "work": { "agent": "claude", "home": "~/.claude-work" },
+    "pi": { "agent": "pi", "home": "~/.pi/agent", "default": true }
+  },
+  // #region logins
+  "logins": {
+    "carol": { "agents": ["claude"], "kind": "oauth-token", "token": "${gopass:personal/claude/carol}" },
+    "derek": { "agents": ["claude"], "kind": "oauth-token", "token": "$(gopass show -o personal/claude/derek)", "account": "e@example.com" },
+    "console": { "agents": ["claude"], "kind": "api-key-helper", "command": "gopass show -o work/anthropic-api-key" },
+    "anthropic-key": { "agents": ["claude", "pi"], "kind": "api-key", "provider": "anthropic", "token": "${gopass:work/anthropic-api-key}" },
+    "spare": { "agents": ["claude"], "kind": "oauth-token", "token": "${SPARE_CLAUDE_TOKEN}" }
+  }
+  // #endregion
+}

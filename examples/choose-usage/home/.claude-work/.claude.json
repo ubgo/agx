@@ -1,0 +1,1 @@
+{"cachedUsageUtilization":{"fetchedAtMs":1762000000000,"utilization":{"limits":[{"kind":"session","group":"session","percent":42,"resets_at":"2025-11-01T14:00:00Z"},{"kind":"weekly_all","group":"weekly","percent":17,"resets_at":"2025-11-05T06:00:00Z"}]}}}

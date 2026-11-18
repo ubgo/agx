@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "command": "alias add",
+  "ok": true,
+  "data": {
+    "name": "cl",
+    "args": "run --profile work",
+    "replaced": true,
+    "previous": "run --profile personal"
+  },
+  "decisions": [],
+  "warnings": [],
+  "error": null
+}

@@ -1,0 +1,31 @@
+#: These commands run without the shell layer, as any script would; AGX_SHELL=zsh stands in for a loaded layer.
+#region terminal
+$ agx login use --id carol --terminal
+export AGX_LOGIN=carol
+
+$ agx login use --home-login --terminal
+unset AGX_LOGIN
+
+#endregion
+#region doctor
+$ agx doctor --json --field data.3.message
+shell layer not loaded: new and resume leave this shell where it is
+
+$ AGX_SHELL=zsh agx doctor --json --field data.3.message
+shell layer loaded (zsh)
+
+#endregion
+#region alias
+$ agx cl
+agx: unknown command "cl"; see agx --help
+[exit 2]
+
+$ agx run --profile personal --dry-run --quiet --json --field data.profile
+personal
+
+#endregion
+#region new
+$ agx new --name demo --dry-run --quiet --json --field data.folder
+~/.agx/sessions/demo_20261114_101500
+
+#endregion

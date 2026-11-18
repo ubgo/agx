@@ -1,0 +1,5 @@
+// Comments are fine: agx reads this file as JSONC.
+{
+  "permissions": { "deny": ["Bash(rm -rf:*)"] },
+  "cleanupPeriodDays": 10
+}

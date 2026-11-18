@@ -1,0 +1,42 @@
+#: What passes to Gemini CLI and pi.
+#region gemini
+$ agx run --profile gemini --model gemini-2.5-pro --add-dir ~/projects/client --prompt 'Explain the build' --autonomy accept-edits --dry-run --quiet --json --field data.command.line
+...
+$ agx run --profile gemini --login gem --dry-run --quiet
+...
+login    gem (not resolved: --dry-run)          from --login
+...
+env      set AGX_RUN_ID=20261118-061250-ipx5    from launch environment
+         set AGX_RUN_AGENT=gemini               from launch environment
+         set AGX_RUN_PROFILE=gemini             from launch environment
+         set AGX_RUN_LOGIN=gem                  from launch environment
+         set AGX_RUN_HOME=~/.gemini             from launch environment
+         set GEMINI_API_KEY=[redacted]          from launch environment
+#endregion
+#region pi
+$ agx run --profile pi --model sonnet --autonomy read-only --dry-run --quiet
+...
+options  model=sonnet                                                          from --model
+         autonomy=read-only                                                    from --autonomy
+...
+command  pi --model sonnet --tools read,grep,find,ls --no-mcp --no-extensions  from built by agentio
+...
+$ agx run --profile pi
+agx: warning: pi runs with full autonomy and never asks
+...
+$ agx run --profile pi --autonomy ask --dry-run --quiet
+agx: pi: autonomy ask: pi has no permission modes; it always runs without prompts
+[exit 125]
+#endregion
+#region no-setting
+$ agx run --profile gemini --setting theme=dark --dry-run --quiet
+agx: gemini has no --option or --setting (Gemini CLI has no settings flag and no typed launch options in agentio; pass flags as raw args); pass its flags after --
+[exit 125]
+$ agx run --profile pi --setting theme=dark --dry-run --quiet
+agx: pi has no --option or --setting (pi has no settings flag and no typed launch options in agentio; pass flags as raw args); pass its flags after --
+[exit 125]
+#endregion
+#region raw
+$ agx run --profile gemini --dry-run --quiet --json --field data.command.line -- --sandbox
+gemini --sandbox
+#endregion

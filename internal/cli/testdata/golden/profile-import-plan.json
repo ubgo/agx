@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "command": "profile import",
+  "ok": true,
+  "data": {
+    "profiles": [
+      {
+        "name": "personal",
+        "agent": "claude",
+        "home": "~/.claude",
+        "default": true,
+        "found_by": [
+          "default home"
+        ]
+      },
+      {
+        "name": "acmecorp",
+        "agent": "claude",
+        "home": "~/.claude-acmecorp",
+        "default": false,
+        "found_by": [
+          "pattern .claude-*"
+        ]
+      },
+      {
+        "name": "codex",
+        "agent": "codex",
+        "home": "~/.codex",
+        "default": true,
+        "found_by": [
+          "default home"
+        ]
+      }
+    ],
+    "skipped": [
+      {
+        "agent": "claude",
+        "home": "~/.claude-old",
+        "reason": "name only, no home markers (import it with --id)"
+      }
+    ],
+    "written": false
+  },
+  "decisions": [],
+  "warnings": [],
+  "error": null
+}

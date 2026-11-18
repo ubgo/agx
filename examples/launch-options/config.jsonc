@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "default_agent": "claude",
+  "profiles": {
+    // #region profiles
+    // #region work
+    "work": {
+      "agent": "claude",
+      "home": "~/.claude-work",
+      "default": true,
+      "model": "sonnet",
+      "claude": {
+        "effort": "high",
+        "extra_args": ["--verbose"]
+      }
+    },
+    // #endregion work
+    // #region review
+    "review": {
+      "agent": "claude",
+      "home": "~/.claude",
+      "claude": { "prompt": "Review the open diff" }
+    }
+    // #endregion review
+    // #endregion
+  }
+}

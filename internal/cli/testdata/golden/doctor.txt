@@ -1,0 +1,8 @@
+✓ config                 ~/.agx/config.jsonc is valid
+! reference              logins.nora.token: NORA_TOKEN is not set in this environment
+· shell                  shell layer not loaded: new and resume leave this shell where it is
+                         fix: eval "$(agx shell-init --shell zsh)"
+✗ home claude ~/.claude  enabled but not installed: plugin-name@claude-plugins-official
+                         plugin-name@claude-plugins-official plugin-name@claude-plugins-official
+                         plugin-name@claude-plugins-official
+- home codex ~/.codex    not checked

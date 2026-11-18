@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "command": "project list",
+  "ok": true,
+  "data": [
+    {
+      "dir": "<root>/work/client",
+      "agent": "claude",
+      "profile": "work",
+      "login": "carol"
+    },
+    {
+      "dir": "<root>/work/client",
+      "agent": "codex",
+      "profile": "codex",
+      "login": ""
+    }
+  ],
+  "decisions": [],
+  "warnings": [],
+  "error": null
+}

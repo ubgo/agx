@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "command": "login remove",
+  "ok": true,
+  "data": {
+    "name": "personal",
+    "cleared": [
+      {
+        "type": "profile",
+        "name": "work",
+        "agent": "claude"
+      },
+      {
+        "type": "agent-default",
+        "name": "claude",
+        "agent": "claude"
+      },
+      {
+        "type": "binding",
+        "name": "/p/client",
+        "agent": "claude"
+      }
+    ]
+  },
+  "decisions": [],
+  "warnings": [],
+  "error": null
+}

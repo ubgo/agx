@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "default_agent": "claude",
+  "profiles": {
+    // #region profiles
+    "personal": { "agent": "claude", "home": "~/.claude", "default": true },
+    "reviewer": { "agent": "claude", "home": "~/.claude-work", "autonomy": "accept-edits" },
+    "codex": { "agent": "codex", "home": "~/.codex", "default": true },
+    "gemini": { "agent": "gemini", "home": "~/.gemini", "default": true },
+    "pi": { "agent": "pi", "home": "~/.pi/agent", "default": true },
+    // #endregion
+    "mine": { "agent": "mycli", "home": "~/.mycli", "default": true }
+  },
+  // #region custom
+  "agents": {
+    "mycli": {
+      "spec": {
+        "name": "My CLI",
+        "binary": "pi",
+        "default_home": ".mycli",
+        "home_env": "MYCLI_HOME",
+        "new_args": ["{args}"],
+        "autonomy_args": { "default": [], "read-only": ["--plan"], "full": ["--yolo"] }
+      }
+    }
+  }
+  // #endregion
+}

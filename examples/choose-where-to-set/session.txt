@@ -1,0 +1,123 @@
+#: Two Claude profiles; work defaults to login carol; ~/projects/client binds Claude to work with login bob. Each command shows which profile and login win, and why.
+#region default
+$ agx run --dry-run --json --field decisions.1 --field decisions.3
+agx: agent claude (default_agent)
+{
+  "decisions.1": {
+    "name": "profile",
+    "value": "personal",
+    "source": "default profile of claude"
+  },
+  "decisions.3": {
+    "name": "login",
+    "value": "home login",
+    "source": "default (no login named)"
+  }
+}
+
+#endregion
+#region binding
+$ agx run --dir ~/projects/client --dry-run --json --field decisions.1 --field decisions.3
+agx: agent claude (folder binding ~/projects/client)
+agx: profile work (folder binding ~/projects/client)
+agx: login bob (folder binding ~/projects/client)
+{
+  "decisions.1": {
+    "name": "profile",
+    "value": "work",
+    "source": "folder binding ~/projects/client"
+  },
+  "decisions.3": {
+    "name": "login",
+    "value": "bob (not resolved: --dry-run)",
+    "source": "folder binding ~/projects/client"
+  }
+}
+
+#endregion
+#region terminal
+$ AGX_LOGIN=alice agx run --dir ~/projects/client --dry-run --json --field decisions.1 --field decisions.3
+agx: agent claude (folder binding ~/projects/client)
+agx: profile work (folder binding ~/projects/client)
+agx: login alice (AGX_LOGIN)
+{
+  "decisions.1": {
+    "name": "profile",
+    "value": "work",
+    "source": "folder binding ~/projects/client"
+  },
+  "decisions.3": {
+    "name": "login",
+    "value": "alice (not resolved: --dry-run)",
+    "source": "AGX_LOGIN"
+  }
+}
+
+#endregion
+#region flag
+$ AGX_LOGIN=alice agx run --dir ~/projects/client --login carol --dry-run --json --field decisions.1 --field decisions.3
+agx: agent claude (folder binding ~/projects/client)
+agx: profile work (folder binding ~/projects/client)
+{
+  "decisions.1": {
+    "name": "profile",
+    "value": "work",
+    "source": "folder binding ~/projects/client"
+  },
+  "decisions.3": {
+    "name": "login",
+    "value": "carol (not resolved: --dry-run)",
+    "source": "--login"
+  }
+}
+
+#endregion
+#region profile-flag
+$ agx run --dir ~/projects/client --profile personal --dry-run --json --field decisions.1 --field decisions.3
+agx: login bob (folder binding ~/projects/client)
+{
+  "decisions.1": {
+    "name": "profile",
+    "value": "personal",
+    "source": "--profile"
+  },
+  "decisions.3": {
+    "name": "login",
+    "value": "bob (not resolved: --dry-run)",
+    "source": "folder binding ~/projects/client"
+  }
+}
+
+$ agx run --profile work --dry-run --json --field decisions.1 --field decisions.3
+{
+  "decisions.1": {
+    "name": "profile",
+    "value": "work",
+    "source": "--profile"
+  },
+  "decisions.3": {
+    "name": "login",
+    "value": "carol (not resolved: --dry-run)",
+    "source": "profile work"
+  }
+}
+
+#endregion
+#region show
+$ agx project show --dir ~/projects/client
+agx: agent claude (folder binding ~/projects/client)
+agx: profile work (folder binding ~/projects/client)
+agx: login bob (folder binding ~/projects/client)
+agent    claude             from folder binding ~/projects/client
+profile  work               from folder binding ~/projects/client
+home     ~/.claude-work     from profile work
+login    bob                from folder binding ~/projects/client
+folder   ~/projects/client  from --dir
+
+#endregion
+#region conflict
+$ agx run --login carol --home-login --dry-run --quiet
+agx: --login and --home-login both choose the login; pick one
+[exit 125]
+
+#endregion

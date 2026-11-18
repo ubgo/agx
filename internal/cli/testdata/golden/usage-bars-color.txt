@@ -1,0 +1,16 @@
+[1mme@example.com[0m[2m  Max (20x)[0m[2m  personal · claude  ~/.claude[0m
+  Current session    [34m████[0m[2m░░░░░░░░░░░░░░░░░░░░░░░░░░[0m   13% used[2m  resets in 2 hr 50 min[0m
+  [1mWeekly limits[0m
+  All models         [34m███████████████[0m[2m░░░░░░░░░░░░░░░[0m   49% used[2m  resets in 5 d 11 hr[0m
+  Sonnet             [34m█[0m[2m░░░░░░░░░░░░░░░░░░░░░░░░░░░░░[0m    3% used[2m  resets in 5 d 11 hr[0m
+
+[1mwork@example.com[0m[2m  Pro[0m[2m  work · claude  ~/.claude-work[0m
+  Current session    [31m██████████████████████████████[0m  110% used[2m  resets in 40 min[0m
+  [1mWeekly limits[0m
+  All models         [33m████████████████████████████[0m[2m░░[0m   93% used[2m  resets in 3 hr 40 min[0m
+
+[1mcodex[0m[2m  codex · codex  ~/.codex[0m
+  [31mnot logged in; run the agent once in this home[0m
+
+[1mside@example.com[0m[2m  side · claude  ~/.claude-side[0m
+  [33mexpired: login expired at 2026-11-17T09:00:00Z: run claude once in this home to refresh it[0m

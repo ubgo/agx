@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "default_agent": "claude",
+  "profiles": {
+    "personal": { "agent": "claude", "home": "~/.claude", "default": true },
+    "work": { "agent": "claude", "home": "~/.claude-work", "login": "carol", "env_refs": { "API_KEY": "${gopass:work/api-key}" } },
+    "gem": { "agent": "gemini", "home": "~/.gemini", "default": true, "login": "gem-work" }
+  },
+  "logins": {
+    "carol": { "agents": ["claude"], "kind": "oauth-token", "token": "${gopass:personal/claude/carol}" },
+    // a plain value: allowed, reported as information, redacted everywhere
+    "gem-work": { "agents": ["gemini"], "kind": "api-key", "token": "plain-fake-gemini-key" }
+  }
+}

@@ -1,0 +1,115 @@
+#: ~/projects/app has no binding. Each command shows one source of the login chain, from the last to the first.
+#region home-default
+$ agx run --profile codex --dry-run
+agx: warning: installed codex version unknown; flags not checked against it
+agent    codex                                 from profile codex
+profile  codex                                 from --profile
+home     ~/.codex                              from profile codex
+login    home login                            from default (no login named)
+...
+#endregion
+#region agent-default
+$ agx run --dry-run
+agx: agent claude (default_agent)
+agx: warning: installed Claude Code version unknown; flags not checked
+agent    claude                                  from default_agent
+profile  personal                                from default profile of claude
+home     ~/.claude                               from profile personal
+login    carol (not resolved: --dry-run)         from agents.claude.defaults
+...
+#endregion
+#region profile-login
+$ agx run --profile work --dry-run
+agx: warning: installed Claude Code version unknown; flags not checked
+agent    claude                                  from profile work
+profile  work                                    from --profile
+home     ~/.claude-work                          from profile work
+login    dave (not resolved: --dry-run)          from profile work
+...
+$ agx run --profile work-home --dry-run
+agx: warning: installed Claude Code version unknown; flags not checked
+agent    claude                                 from profile work-home
+profile  work-home                              from --profile
+home     ~/.claude-work                         from profile work-home
+login    home login                             from profile work-home
+...
+#endregion
+#region binding
+$ agx run --dir ~/projects/client --dry-run
+agx: agent claude (folder binding ~/projects/client)
+agx: login dave (folder binding ~/projects/client)
+agx: warning: installed Claude Code version unknown; flags not checked
+agent    claude                                  from folder binding ~/projects/client
+profile  personal                                from default profile of claude
+home     ~/.claude                               from profile personal
+login    dave (not resolved: --dry-run)          from folder binding ~/projects/client
+...
+$ agx run --dir ~/projects/client/vendor --dry-run
+agx: agent claude (folder binding ~/projects/client/vendor)
+agx: home login (folder binding ~/projects/client/vendor)
+agx: warning: installed Claude Code version unknown; flags not checked
+agent    claude                                 from folder binding ~/projects/client/vendor
+profile  personal                               from default profile of claude
+home     ~/.claude                              from profile personal
+login    home login                             from folder binding ~/projects/client/vendor
+...
+#endregion
+#region env
+$ AGX_LOGIN=dave agx run --dry-run
+agx: agent claude (default_agent)
+agx: login dave (AGX_LOGIN)
+agx: warning: installed Claude Code version unknown; flags not checked
+agent    claude                                  from default_agent
+profile  personal                                from default profile of claude
+home     ~/.claude                               from profile personal
+login    dave (not resolved: --dry-run)          from AGX_LOGIN
+...
+$ AGX_LOGIN_CLAUDE=carol AGX_LOGIN=dave agx run --profile work --dry-run
+agx: login carol (AGX_LOGIN_CLAUDE)
+agx: warning: installed Claude Code version unknown; flags not checked
+agent    claude                                  from profile work
+profile  work                                    from --profile
+home     ~/.claude-work                          from profile work
+login    carol (not resolved: --dry-run)         from AGX_LOGIN_CLAUDE
+...
+#endregion
+#region flags
+$ AGX_LOGIN=dave agx run --login carol --dry-run
+agx: agent claude (default_agent)
+agx: warning: installed Claude Code version unknown; flags not checked
+agent    claude                                  from default_agent
+profile  personal                                from default profile of claude
+home     ~/.claude                               from profile personal
+login    carol (not resolved: --dry-run)         from --login
+...
+$ agx run --profile work --home-login --dry-run
+agx: warning: installed Claude Code version unknown; flags not checked
+agent    claude                                 from profile work
+profile  work                                   from --profile
+home     ~/.claude-work                         from profile work
+login    home login                             from --home-login
+...
+$ agx run --token-ref '${gopass:shared/claude/ci}' --dry-run
+agx: agent claude (default_agent)
+agx: warning: installed Claude Code version unknown; flags not checked
+agent    claude                                   from default_agent
+profile  personal                                 from default profile of claude
+home     ~/.claude                                from profile personal
+login    one-off token (not resolved: --dry-run)  from --token-ref
+...
+#endregion
+#region refusals
+$ AGX_LOGIN=carol agx run --profile codex --dry-run
+agx: login carol serves claude; this run is codex
+[exit 125]
+$ agx run --login carol --token-ref '${gopass:shared/claude/ci}' --dry-run
+agx: --token-ref and --login both choose the login; pick one
+[exit 125]
+$ agx run --profile codex --auto-login --dry-run
+agx: auto login: no stored login serves codex
+[exit 125]
+$ agx run --login nosuch --dry-run
+agx: unknown login nosuch (from --login)
+  agx login list
+[exit 125]
+#endregion

@@ -1,0 +1,25 @@
+#: The kimi profile of config.jsonc, made with commands instead of by hand: remove it, then add it back on the same home.
+#region add
+$ agx profile remove --id kimi --yes
+removed profile kimi (home ~/.claude is kept)
+
+$ agx profile add --name kimi --agent claude --home ~/.claude --billing api --dry-run
+would add profile kimi: claude home ~/.claude (--home), login home login, billing api
+
+$ agx profile add --name kimi --agent claude --home ~/.claude --billing api
+added profile kimi: claude home ~/.claude (--home), login home login, billing api
+
+$ agx profile edit --id kimi --env ANTHROPIC_BASE_URL=https://api.moonshot.ai/anthropic
+profile kimi: changed
+  env.ANTHROPIC_BASE_URL  —  ->  (set)
+
+$ agx profile use --id personal
+profile personal is the default claude profile
+
+$ agx profile list
+PROFILE    PROVIDER  HOME            ACCOUNT  STATE  LOGIN       BILLING
+*personal  claude    ~/.claude                none   home login  plan
+work       claude    ~/.claude-work           none   home login  plan
+kimi       claude    ~/.claude                none   home login  api
+
+#endregion

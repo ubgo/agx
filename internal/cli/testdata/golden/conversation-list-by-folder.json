@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "command": "conversation list",
+  "ok": true,
+  "data": [
+    {
+      "folder": "<root>/work/other",
+      "conversations": 1,
+      "updated": "<time>",
+      "agents": [
+        "claude"
+      ],
+      "profiles": [
+        "personal"
+      ]
+    },
+    {
+      "folder": "<root>/work/proj",
+      "conversations": 3,
+      "updated": "<time>",
+      "agents": [
+        "claude"
+      ],
+      "profiles": [
+        "personal",
+        "work"
+      ]
+    }
+  ],
+  "decisions": [],
+  "warnings": [],
+  "error": null
+}

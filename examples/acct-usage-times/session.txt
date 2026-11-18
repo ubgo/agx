@@ -1,0 +1,89 @@
+#: The machine's clock is Wed 18 Nov 2026 12:00 UTC; ~/.claude holds a reading taken 30 minutes earlier whose windows reset today at 15:10, on Friday and in seven days.
+#region relative
+$ agx usage --cached --profile personal
+you@example.com  Max  personal · claude  ~/.claude  cached 30 min ago
+  Current session    ████░░░░░░░░░░░░░░░░░░░░░░░░░░   13% used  resets in 3 hr 10 min
+  Weekly limits
+  All models         ███████████████░░░░░░░░░░░░░░░   49% used  resets in 2 d 4 hr
+  Sonnet             █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░    3% used  resets in 7 d 6 hr
+#endregion
+#region both
+$ agx usage --cached --profile personal --time-format both
+you@example.com  Max  personal · claude  ~/.claude  cached 30 min ago
+  Current session    ████░░░░░░░░░░░░░░░░░░░░░░░░░░   13% used  resets in 3 hr 10 min (15:10)
+  Weekly limits
+  All models         ███████████████░░░░░░░░░░░░░░░   49% used  resets in 2 d 4 hr (Fri 16:30)
+  Sonnet             █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░    3% used  resets in 7 d 6 hr (Wed 25 Nov 18:00)
+
+$ agx usage --cached --profile personal --time-format both --table
+#  PROFILE   PROVIDER  ACCOUNT          5H USED  5H RESETS            WEEKLY USED  WEEKLY RESETS         RESET DAY  RESETS ON         SONNET WEEKLY USED  SONNET WEEKLY RESETS         LEFT  STATUS
+1  personal  claude    you@example.com  13%      3 hr 10 min (15:10)  49%          2 d 4 hr (Fri 16:30)  Fri        Fri 20 Nov 16:30  3%                  7 d 6 hr (Wed 25 Nov 18:00)  51%   ok
+Weekly resets: Fri 1 (+49%)
+#endregion
+#region day-absolute
+$ agx usage --cached --profile personal --time-format day
+you@example.com  Max  personal · claude  ~/.claude  cached 30 min ago
+  Current session    ████░░░░░░░░░░░░░░░░░░░░░░░░░░   13% used  resets Wed 15:10
+  Weekly limits
+  All models         ███████████████░░░░░░░░░░░░░░░   49% used  resets Fri 16:30
+  Sonnet             █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░    3% used  resets Wed 18:00
+
+$ agx usage --cached --profile personal --time-format absolute
+you@example.com  Max  personal · claude  ~/.claude  cached 30 min ago
+  Current session    ████░░░░░░░░░░░░░░░░░░░░░░░░░░   13% used  resets Wed 18 Nov 15:10
+  Weekly limits
+  All models         ███████████████░░░░░░░░░░░░░░░   49% used  resets Fri 20 Nov 16:30
+  Sonnet             █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░    3% used  resets Wed 25 Nov 18:00
+#endregion
+#region formats
+$ agx usage --cached --profile personal --time-format both --date-format us
+you@example.com  Max  personal · claude  ~/.claude  cached 30 min ago
+  Current session    ████░░░░░░░░░░░░░░░░░░░░░░░░░░   13% used  resets in 3 hr 10 min (3:10 PM)
+  Weekly limits
+  All models         ███████████████░░░░░░░░░░░░░░░   49% used  resets in 2 d 4 hr (Fri 4:30 PM)
+  Sonnet             █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░    3% used  resets in 7 d 6 hr (Nov 25 6:00 PM)
+
+$ agx usage --cached --profile personal --time-format absolute --date-format iso
+you@example.com  Max  personal · claude  ~/.claude  cached 30 min ago
+  Current session    ████░░░░░░░░░░░░░░░░░░░░░░░░░░   13% used  resets 2026-11-18 15:10
+  Weekly limits
+  All models         ███████████████░░░░░░░░░░░░░░░   49% used  resets 2026-11-20 16:30
+  Sonnet             █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░    3% used  resets 2026-11-25 18:00
+
+$ agx usage --cached --profile personal --time-format absolute --date-format "dddd D MMM [at] h:mm a"
+you@example.com  Max  personal · claude  ~/.claude  cached 30 min ago
+  Current session    ████░░░░░░░░░░░░░░░░░░░░░░░░░░   13% used  resets Wednesday 18 Nov at 3:10 pm
+  Weekly limits
+  All models         ███████████████░░░░░░░░░░░░░░░   49% used  resets Friday 20 Nov at 4:30 pm
+  Sonnet             █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░    3% used  resets Wednesday 25 Nov at 6:00 pm
+#endregion
+#region config
+$ agx config set --key usage.time_format --value both
+usage.time_format = both
+
+$ agx config set --key date_format --value us
+date_format = us
+
+$ agx usage --cached --profile personal --table
+#  PROFILE   PROVIDER  ACCOUNT          5H USED  5H RESETS              WEEKLY USED  WEEKLY RESETS           RESET DAY  RESETS ON       SONNET WEEKLY USED  SONNET WEEKLY RESETS       LEFT  STATUS
+1  personal  claude    you@example.com  13%      3 hr 10 min (3:10 PM)  49%          2 d 4 hr (Fri 4:30 PM)  Fri        Nov 20 4:30 PM  3%                  7 d 6 hr (Nov 25 6:00 PM)  51%   ok
+Weekly resets: Fri 1 (+49%)
+
+$ agx usage --cached --profile personal --table --time-format relative --date-format long
+#  PROFILE   PROVIDER  ACCOUNT          5H USED  5H RESETS    WEEKLY USED  WEEKLY RESETS  RESET DAY  RESETS ON         SONNET WEEKLY USED  SONNET WEEKLY RESETS  LEFT  STATUS
+1  personal  claude    you@example.com  13%      3 hr 10 min  49%          2 d 4 hr       Fri        Fri 20 Nov 16:30  3%                  7 d 6 hr              51%   ok
+Weekly resets: Fri 1 (+49%)
+#endregion
+#region refusals
+$ agx usage --cached --profile personal --date-format "YYYY-MM-DD HH:MM:SS"
+agx: --date-format "YYYY-MM-DD HH:MM:SS": unknown token "SS"; tokens: YYYY MMM MM DD D dddd ddd HH H hh h mm ss a A, literal text in [brackets]; presets: iso, short, long, us
+[exit 2]
+
+$ agx usage --cached --profile personal --date-format ""
+agx: --date-format "": empty format; tokens: YYYY MMM MM DD D dddd ddd HH H hh h mm ss a A, literal text in [brackets]; presets: iso, short, long, us
+[exit 2]
+
+$ agx usage --cached --profile personal --time-format clock
+agx: --time-format "clock": use one of relative, day, absolute, both
+[exit 2]
+#endregion

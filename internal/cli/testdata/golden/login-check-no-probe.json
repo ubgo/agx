@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "command": "login check",
+  "ok": true,
+  "data": [
+    {
+      "name": "plainval",
+      "kind": "oauth-token",
+      "source": "plain",
+      "resolve": "ok",
+      "probe": "skipped",
+      "agent": "",
+      "detail": "--no-probe",
+      "windows": []
+    },
+    {
+      "name": "good",
+      "kind": "oauth-token",
+      "source": "reference gopass",
+      "resolve": "ok",
+      "probe": "skipped",
+      "agent": "",
+      "detail": "--no-probe",
+      "windows": []
+    }
+  ],
+  "decisions": [],
+  "warnings": [],
+  "error": null
+}

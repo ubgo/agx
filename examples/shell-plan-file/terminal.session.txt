@@ -1,0 +1,21 @@
+#region login-terminal
+$ agx login use --id carol --terminal
+export AGX_LOGIN=carol
+
+$ agx login use --home-login --terminal
+unset AGX_LOGIN
+
+#endregion
+#region doctor
+$ agx doctor
+...
+· shell                  shell layer not loaded: new and resume leave this shell where it is
+                         fix: eval "$(agx shell-init --shell zsh)"
+...
+
+$ AGX_SHELL=zsh agx doctor
+...
+✓ shell                  shell layer loaded (zsh)
+...
+
+#endregion

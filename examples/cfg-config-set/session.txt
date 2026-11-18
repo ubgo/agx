@@ -1,0 +1,111 @@
+#: config set changes one scalar key and keeps comments, order and layout.
+#region set
+$ agx config set --key default_agent --value codex
+default_agent = codex
+
+$ agx config set --key profiles.work.model --value opus
+profiles.work.model = opus
+
+$ agx config set --key profiles.work.live_login --value true
+profiles.work.live_login = true
+
+$ agx config set --key sessions.root --value ~/sessions
+sessions.root = ~/sessions
+
+#endregion
+#region show-file
+$ agx config show --field data.*.key --field data.*.value --field data.*.source
+KEY                                 VALUE                                                                      SOURCE
+$schema                             https://raw.githubusercontent.com/ubgo/agx/main/schema/config.schema.json  config.jsonc:2:3
+version                             1                                                                          config.jsonc:3:3
+default_agent                       codex                                                                      config.jsonc:5:3
+sessions.root                       ~/sessions                                                                 config.jsonc:12:5
+profiles.personal.agent             claude                                                                     config.jsonc:8:19
+profiles.personal.home              ~/.claude                                                                  config.jsonc:8:38
+profiles.personal.default           true                                                                       config.jsonc:8:59
+profiles.work.agent                 claude                                                                     config.jsonc:9:15
+profiles.work.home                  ~/.claude-work                                                             config.jsonc:9:34
+profiles.work.model                 opus                                                                       config.jsonc:9:60
+profiles.work.live_login            true                                                                       config.jsonc:9:77
+profiles.personal.billing           plan                                                                       default
+profiles.personal.inherit_defaults  true                                                                       default
+profiles.work.billing               plan                                                                       default
+profiles.work.inherit_defaults      true                                                                       default
+
+#endregion
+#region set-refused
+$ agx config set --key profiles.work.live_login --value yes
+agx: --key profiles.work.live_login takes true or false, not "yes"
+[exit 2]
+
+$ agx config set --key profiles --value work
+agx: --key profiles is an object, not a scalar; use its own command (profile edit, project use, alias add) or edit config.jsonc
+[exit 2]
+
+$ agx config set --key profiles.work.modle --value opus
+agx: --key profiles.work.modle: unknown key profiles.work.modle
+  keys: agent, home, default, billing, login, home_login, args, inherit_defaults, model, autonomy, env, env_refs, env_file, env_file_commands, before_run, before_run_from, before_run_env, settings_delivery, live_login
+[exit 2]
+
+$ agx config set --key profiles.work.home --value ''
+agx: refused: the change would make config.jsonc invalid: home is empty
+  home is empty
+[exit 2]
+
+#endregion
+#: Where the config lives: --config, then AGX_CONFIG_DIR, then AGX_HOME, then ~/.agx.
+#region where
+$ agx config path --json --field data.file --field data.source
+{
+  "data.file": "~/.agx/config.jsonc",
+  "data.source": "AGX_CONFIG_DIR"
+}
+
+$ AGX_CONFIG_DIR= AGX_HOME=~/agx-alt agx config path --json --field data.file --field data.source
+{
+  "data.file": "~/agx-alt/config.jsonc",
+  "data.source": "AGX_HOME"
+}
+
+$ AGX_CONFIG_DIR= agx config path --json --field data.file --field data.source
+{
+  "data.file": "~/.agx/config.jsonc",
+  "data.source": "default (~/.agx)"
+}
+
+$ agx config path --config ~/other/agx.jsonc --json --field data.file --field data.exists
+{
+  "data.file": "~/other/agx.jsonc",
+  "data.exists": false
+}
+
+#endregion
+#: config init writes a starter file; --dry-run prints it and writes nothing.
+#region init
+$ AGX_CONFIG_DIR= AGX_HOME=~/fresh agx config init --default-agent claude --discovered --dry-run
+{
+  "$schema": "https://raw.githubusercontent.com/ubgo/agx/main/schema/config.schema.json",
+  // agx config: default_agent, agents, profiles, logins, projects, aliases.
+  // Edit it by hand or with agx profile / login / project / alias / config set; comments and layout
+  // are kept on every write. agx config check validates it; agx config show prints each value's source.
+  "version": 1,
+
+  // The agent used when no --profile, --agent or folder binding names one.
+  "default_agent": "claude",
+
+  // A profile is a name for one agent home plus launch defaults (agx profile add / import).
+  "profiles": {
+    "personal": {
+      "agent": "claude",
+      "home": "~/.claude",
+      "default": true
+    },
+    "work": {
+      "agent": "claude",
+      "home": "~/.claude-work"
+    }
+  }
+}
+(--dry-run: ~/fresh/config.jsonc not written)
+
+#endregion

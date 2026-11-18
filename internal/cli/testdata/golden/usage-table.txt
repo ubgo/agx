@@ -1,0 +1,9 @@
+#   LOGIN   PROVIDER  ACCOUNT             5H USED  5H RESETS    WEEKLY USED  WEEKLY RESETS  RESET DAY  RESETS ON         LEFT  STATUS
+2   nora    claude    nora@example.com    13%      2 hr 50 min  49%          5 d 11 hr      Tue        Tue 24 Nov 05:30  51%   ok
+13  miriam  claude    miriam@example.com  110%     40 min       93%          3 hr 40 min    Wed        Wed 18 Nov 21:30  0%    limit reached
+5   carol   claude    carol@example.com   —        —            —            —              —          —                 —     rejected
+7   key     claude    —                   —        —            —            —              —          —                 —     per token
+9   oskar   claude    oskar@example.com   —        —            —            —              —          —                 —     expired
+Weekly resets: Wed 1 (+93%) · Tue 1 (+49%)
+  carol: the server refused the credential (HTTP 401): token revoked or from another organization
+  oskar: login expired at 2026-11-17T09:00:00Z: run claude once in this home to refresh it

@@ -1,0 +1,6 @@
+PROFILE    PROVIDER  HOME                     ACCOUNT                     STATE          LOGIN          BILLING
+*personal  claude    ~/.claude                me@example.com · Max (20x)  ok (5 d 3 hr)  home login     plan
+work       claude    ~/.claude-work           work@example.com            expired        carol          plan
+old        claude    ~/.claude-old (missing)                              none           home login     plan
+*codex     codex     ~/.codex                                             none           home login     plan
+*pi        pi        ~/.pi/agent                                          unknown        anthropic-key  api

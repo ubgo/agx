@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "command": "config init",
+  "ok": true,
+  "data": {
+    "file": "<root>/home/.agx/config.jsonc",
+    "default_agent": "claude",
+    "profiles": [
+      {
+        "name": "personal",
+        "agent": "claude",
+        "home": "~/.claude",
+        "default": true,
+        "found_by": [
+          "default home"
+        ]
+      },
+      {
+        "name": "codex",
+        "agent": "codex",
+        "home": "~/.codex",
+        "default": true,
+        "found_by": [
+          "default home"
+        ]
+      }
+    ],
+    "content": "{\n  \"$schema\": \"https://raw.githubusercontent.com/ubgo/agx/main/schema/config.schema.json\",\n  // agx config: default_agent, agents, profiles, logins, projects, aliases.\n  // Edit it by hand or with agx profile / login / project / alias / config set; comments and layout\n  // are kept on every write. agx config check validates it; agx config show prints each value's source.\n  \"version\": 1,\n\n  // The agent used when no --profile, --agent or folder binding names one.\n  \"default_agent\": \"claude\",\n\n  // A profile is a name for one agent home plus launch defaults (agx profile add / import).\n  \"profiles\": {\n    \"personal\": {\n      \"agent\": \"claude\",\n      \"home\": \"~/.claude\",\n      \"default\": true\n    },\n    \"codex\": {\n      \"agent\": \"codex\",\n      \"home\": \"~/.codex\",\n      \"default\": true\n    }\n  }\n}\n",
+    "written": false
+  },
+  "decisions": [],
+  "warnings": [],
+  "error": null
+}

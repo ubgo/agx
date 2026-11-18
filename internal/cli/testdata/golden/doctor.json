@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "command": "doctor",
+  "ok": false,
+  "data": [
+    {
+      "area": "config",
+      "id": "config-valid",
+      "status": "ok",
+      "message": "~/.agx/config.jsonc is valid"
+    },
+    {
+      "area": "reference",
+      "id": "reference-scheme",
+      "status": "fail",
+      "message": "profiles.work.env_refs.K: no plugin for scheme gopas (known: gopass)"
+    },
+    {
+      "area": "runs",
+      "id": "run-folder",
+      "status": "ok",
+      "message": "no run folders"
+    },
+    {
+      "area": "shell",
+      "id": "shell-layer",
+      "status": "info",
+      "message": "shell layer not loaded: new and resume leave this shell where it is",
+      "fix": "eval \"$(agx shell-init --shell zsh)\""
+    },
+    {
+      "area": "binary",
+      "agent": "claude",
+      "id": "binary-found",
+      "status": "ok",
+      "message": "<root>/bin/claude (native)"
+    },
+    {
+      "area": "binary",
+      "agent": "claude",
+      "id": "version-tested",
+      "status": "warn",
+      "message": "claude 2.1.330 is newer than tested (2.1.327)"
+    },
+    {
+      "area": "home",
+      "agent": "claude",
+      "home": "~/.claude-work",
+      "id": "home",
+      "status": "warn",
+      "message": "<root>/home/.claude-work is not a home (missing or no marker)"
+    },
+    {
+      "area": "home",
+      "agent": "claude",
+      "home": "~/.claude-work",
+      "id": "login",
+      "status": "warn",
+      "message": "no login found in the credentials file or keychain"
+    },
+    {
+      "area": "home",
+      "agent": "claude",
+      "home": "~/.claude-work",
+      "id": "retention",
+      "status": "info",
+      "message": "transcripts kept 30 days"
+    }
+  ],
+  "decisions": [],
+  "warnings": [],
+  "error": {
+    "code": "checks-failed",
+    "message": "1 check failed"
+  }
+}

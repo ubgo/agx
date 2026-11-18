@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "default_agent": "claude",
+  "profiles": {
+    // #region profiles
+    "work": {
+      "agent": "claude",
+      "home": "~/.claude-work",
+      "default": true,
+      "env": { "DEBUG": "1" },                                     // literal, never expanded
+      "env_refs": { "API_KEY": "${gopass:work/some-api-key}" },    // references, expanded strictly
+      "env_file": "envs/work.env"                                  // relative to the config dir; $(…) off
+    },
+    "builds": {
+      "agent": "claude",
+      "home": "~/.claude",
+      "env_file": "envs/cmds.env",
+      "env_file_commands": true                                    // allow $(…) in env_file
+    },
+    "nocmds": {
+      "agent": "claude",
+      "home": "~/.claude",
+      "env_file": "envs/cmds.env"
+    },
+    "service": {
+      "agent": "claude",
+      "home": "~/.claude",
+      "env": { "MY_SERVICE_TOKEN": "literal-abc123", "SERVICE_TIMEOUT_MS": "3000" }   // literals: shown as written
+    }
+    // #endregion
+  },
+  "logins": {
+    "carol": { "agents": ["claude"], "kind": "oauth-token", "token": "${gopass:personal/claude/carol}" }
+  }
+}

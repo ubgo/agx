@@ -1,0 +1,8 @@
+run:      20261118-120000-abcd
+agent:    claude
+profile:  work
+login:    carol
+home:     ~/.claude-work
+---
+session:          not inside a session started by agx (AGX_RUN_ID is not set)
+AGX_LOGIN_CLAUDE: alice

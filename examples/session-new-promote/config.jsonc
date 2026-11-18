@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "default_agent": "claude",
+  "profiles": {
+    "personal": { "agent": "claude", "home": "~/.claude", "default": true }
+  },
+  // #region sessions
+  "sessions": {
+    "promote_root": "~/projects"
+  }
+  // #endregion
+}

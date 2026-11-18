@@ -1,0 +1,87 @@
+#: --prompt alone starts the interactive UI with a first prompt; --headless with --prompt runs once and streams JSON events.
+#region prompt
+$ agx run --agent claude --prompt 'Summarise the README' --dry-run --quiet --json --field data.command.line
+claude -- "Summarise the README"
+#endregion
+#region claude
+$ agx run --agent claude --headless --prompt 'Summarise the README' --dry-run --quiet --json --field data.command.line
+claude -p --output-format stream-json --verbose -- "Summarise the README"
+#endregion
+#region codex
+$ agx run --agent codex --headless --prompt 'Summarise the README' --dry-run --quiet --json --field data.command.line
+codex exec --json "Summarise the README"
+#endregion
+#region gemini
+$ agx run --agent gemini --prompt 'Summarise the README' --dry-run --quiet --json --field data.command.line
+gemini --prompt-interactive "Summarise the README"
+$ agx run --agent gemini --headless --prompt 'Summarise the README' --dry-run --quiet --json --field data.command.line
+gemini --output-format stream-json --prompt "Summarise the README"
+#endregion
+#region pi
+$ agx run --agent pi --headless --prompt 'Summarise the README' --dry-run --quiet --json --field data.command.line
+pi --mode json -- "Summarise the README"
+#endregion
+#region ci
+$ agx run --agent claude --headless --prompt 'Fix the failing test' --autonomy accept-edits --model sonnet --dry-run --quiet --json --field data.command.line
+claude -p --output-format stream-json --verbose --model sonnet --permission-mode acceptEdits -- "Fix the failing test"
+#endregion
+#region resume
+$ agx resume --id 3f2a --headless --prompt 'Continue' --dry-run --quiet --json --field data.command.line
+claude -p --output-format stream-json --verbose --resume 3f2a9c1e-0000-4000-8000-000000000001 -- Continue
+#endregion
+#region conflict
+$ agx run --agent claude --headless --option print=true --dry-run --quiet
+agx: --headless and --option print both set the headless; pick one
+[exit 125]
+#endregion
+#region launch
+$ agx run --agent claude --headless --prompt 'Summarise the README'
+agx: warning: installed Claude Code version unknown; flags not checked
+agent claude
+argv [-p] [--output-format] [stream-json] [--verbose] [--] [Summarise the README]
+pwd ~/projects/app
+env AGX_CONFIG_DIR=~/.agx
+env AGX_RUN_AGENT=claude
+env AGX_RUN_HOME=~/.claude
+env AGX_RUN_ID=20261118-061029-jl37
+env AGX_RUN_LOGIN=home
+env AGX_RUN_PROFILE=personal
+env COLUMNS=400
+env HOME=~
+env LANG=C
+env PATH=/usr/local/bin:/usr/bin:/bin
+env PWD=~/projects/app
+env TMPDIR=/tmp/agx-demo/tmp
+env TZ=UTC
+#endregion
+#region profile-override
+$ agx run --profile batch --prompt 'Summarise the README' --dry-run --quiet --json --field data.command.line
+claude -p -- "Summarise the README"
+$ agx run --profile batch --headless --prompt 'Summarise the README' --dry-run --quiet
+agent    claude                                                                     from profile batch
+profile  batch                                                                      from --profile
+home     ~/.claude-work                                                             from profile batch
+login    home login                                                                 from default (no login named)
+binary   /usr/local/bin/claude version unknown                                      from no install metadata
+folder   ~/projects/app                                                             from current folder
+note     --headless wins the headless; profile batch claude.print is not used       from one input per concern; the command line wins
+run      ~/.agx/runs/20261118-064744-5pz6                                           from AGX_RUN_ID=20261118-064744-5pz6
+command  claude -p --output-format stream-json --verbose -- "Summarise the README"  from built by agentio
+env      set AGX_RUN_ID=20261118-064744-5pz6                                        from launch environment
+         set AGX_RUN_AGENT=claude                                                   from launch environment
+         set AGX_RUN_PROFILE=batch                                                  from launch environment
+         set AGX_RUN_LOGIN=home                                                     from launch environment
+         set AGX_RUN_HOME=~/.claude-work                                            from launch environment
+         set CLAUDE_CONFIG_DIR=~/.claude-work                                       from launch environment
+note     installed Claude Code version unknown; flags not checked
+#endregion
+#: print and output_format are one concern (headless output): from one input they are kept together, from two command-line inputs they are refused.
+#region print-format
+$ agx run --profile report --prompt 'Summarise the README' --dry-run --quiet --json --field data.command.line
+claude -p --output-format json -- "Summarise the README"
+$ agx run --agent claude --option print=true --option output_format=json --prompt 'Summarise the README' --dry-run --quiet --json --field data.command.line
+claude -p --output-format json -- "Summarise the README"
+$ agx run --agent claude --headless --option output_format=json --dry-run --quiet
+agx: --headless and --option output_format both set the headless; pick one
+[exit 125]
+#endregion

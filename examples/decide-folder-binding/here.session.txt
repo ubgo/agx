@@ -1,0 +1,18 @@
+#: Without --dir, every project command works on the current folder: here ~/projects/client.
+#options dir=~/projects/client
+#region here
+$ agx project use --profile work
+~/projects/client: claude profile work
+$ agx project show
+agx: agent claude (folder binding ~/projects/client)
+agx: profile work (folder binding ~/projects/client)
+agent    claude             from folder binding ~/projects/client
+profile  work               from folder binding ~/projects/client
+home     ~/.claude-work     from profile work
+login    home login         from default (no login named)
+folder   ~/projects/client  from current folder
+$ agx project remove
+removed the claude binding of ~/projects/client
+$ agx project list
+no project bindings — bind this folder with `agx project use --profile PROFILE`
+#endregion

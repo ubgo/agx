@@ -1,0 +1,20 @@
+{
+  "oauthAccount": {
+    "accountUuid": "00000000-0000-4000-8000-00000000000a",
+    "emailAddress": "you@example.com",
+    "organizationUuid": "00000000-0000-4000-8000-00000000000b",
+    "billingType": "stripe_subscription",
+    "subscriptionCreatedAt": "2026-01-02T00:00:00.000000Z",
+    "organizationType": "claude_max",
+    "planDisplayName": "Max"
+  },
+  "cachedUsageUtilization": {
+    "fetchedAtMs": 1795001400000,
+    "accountUuid": "00000000-0000-4000-8000-00000000000a",
+    "utilization": {
+      "five_hour": { "utilization": 13, "resets_at": "2026-11-18T15:10:00+00:00" },
+      "seven_day": { "utilization": 49, "resets_at": "2026-11-20T16:30:00+00:00" },
+      "seven_day_sonnet": { "utilization": 3, "resets_at": "2026-11-25T18:00:00+00:00" }
+    }
+  }
+}

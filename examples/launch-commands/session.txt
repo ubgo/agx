@@ -1,0 +1,76 @@
+#: One try-it per launching command, each as a dry run: every decision with its source, nothing started.
+#region run
+$ agx run --profile work --login carol --model opus --dir ~/projects/client --dry-run --quiet
+agent    claude                                  from profile work
+profile  work                                    from --profile
+home     ~/.claude-work                          from profile work
+login    carol (not resolved: --dry-run)         from --login
+binary   /usr/local/bin/claude version unknown   from no install metadata
+folder   ~/projects/client                       from --dir
+options  model=opus                              from --model
+args     --chrome                                from agents.claude.defaults.args
+run      ~/.agx/runs/20261118-061706-k4vq        from AGX_RUN_ID=20261118-061706-k4vq
+command  claude --model opus --chrome            from built by agentio
+env      set AGX_RUN_ID=20261118-061706-k4vq     from launch environment
+         set AGX_RUN_AGENT=claude                from launch environment
+         set AGX_RUN_PROFILE=work                from launch environment
+         set AGX_RUN_LOGIN=carol                 from launch environment
+         set AGX_RUN_HOME=~/.claude-work         from launch environment
+         set CLAUDE_CODE_OAUTH_TOKEN=[redacted]  from launch environment
+         set CLAUDE_CONFIG_DIR=~/.claude-work    from launch environment
+note     installed Claude Code version unknown; flags not checked
+#endregion
+#region new
+$ agx new --name 'pglite golang' --agent codex --dry-run --quiet
+agent    codex                                          from --agent
+profile  codex                                          from default profile of codex
+home     ~/.codex                                       from profile codex
+login    home login                                     from default (no login named)
+binary   /usr/local/bin/codex version unknown           from no install metadata
+folder   ~/.agx/sessions/pglite_golang_20261118_061706  from new session folder
+run      ~/.agx/runs/20261118-061706-j5zw               from AGX_RUN_ID=20261118-061706-j5zw
+command  codex                                          from built by agentio
+env      set AGX_RUN_ID=20261118-061706-j5zw            from launch environment
+         set AGX_RUN_AGENT=codex                        from launch environment
+         set AGX_RUN_PROFILE=codex                      from launch environment
+         set AGX_RUN_LOGIN=home                         from launch environment
+         set AGX_RUN_HOME=~/.codex                      from launch environment
+note     installed codex version unknown; flags not checked against it
+#endregion
+#region resume
+$ agx resume --id 7b1d --login carol --dry-run --quiet
+agent    claude                                                         from conversation 7b1d4e20-0000-4000-8000-000000000002
+profile  work                                                           from home ~/.claude-work
+home     ~/.claude-work                                                 from conversation 7b1d4e20-0000-4000-8000-000000000002 (stored there)
+login    carol (not resolved: --dry-run)                                from --login
+binary   /usr/local/bin/claude version unknown                          from no install metadata
+folder   ~/projects/client                                              from conversation 7b1d4e20-0000-4000-8000-000000000002
+args     --chrome                                                       from agents.claude.defaults.args
+run      ~/.agx/runs/20261118-061706-s5kf                               from AGX_RUN_ID=20261118-061706-s5kf
+command  claude --resume 7b1d4e20-0000-4000-8000-000000000002 --chrome  from built by agentio
+env      set AGX_RUN_ID=20261118-061706-s5kf                            from launch environment
+         set AGX_RUN_AGENT=claude                                       from launch environment
+         set AGX_RUN_PROFILE=work                                       from launch environment
+         set AGX_RUN_LOGIN=carol                                        from launch environment
+         set AGX_RUN_HOME=~/.claude-work                                from launch environment
+         set CLAUDE_CODE_OAUTH_TOKEN=[redacted]                         from launch environment
+         set CLAUDE_CONFIG_DIR=~/.claude-work                           from launch environment
+note     installed Claude Code version unknown; flags not checked
+#endregion
+#region run-conflicts
+$ agx run --profile work --agent codex --dry-run --quiet
+agx: --agent codex and --profile work (a claude profile) disagree; pick one
+[exit 125]
+$ agx run --login carol --home-login --dry-run --quiet
+agx: --login and --home-login both choose the login; pick one
+[exit 125]
+#endregion
+#region new-dir
+$ agx new --dir ~/projects/client --dry-run --quiet
+agx: unknown flag: --dir
+[exit 125]
+#endregion
+#region whoami
+$ agx whoami
+session:  not inside a session started by agx (AGX_RUN_ID is not set)
+#endregion

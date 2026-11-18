@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "default_agent": "claude",
+  "profiles": {
+    // #region profiles
+    "work": {
+      "agent": "claude",
+      "home": "~/.claude-work",
+      "default": true,
+      "claude": { "settings": { "cleanupPeriodDays": 20, "permissions": { "allow": ["Read"] } } }
+    },
+    "team": { "agent": "claude", "home": "~/.claude-work", "args": ["--settings", "~/.config/claude/team.jsonc"] },
+    "live": { "agent": "claude", "home": "~/.claude-work", "login": "carol", "live_login": true }
+    // #endregion
+  },
+  "logins": {
+    "carol": { "agents": ["claude"], "kind": "oauth-token", "token": "${gopass:personal/claude/carol}" }
+  }
+}

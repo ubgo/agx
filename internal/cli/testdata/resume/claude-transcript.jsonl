@@ -1,0 +1,4 @@
+{"type":"permission-mode","permissionMode":"default","sessionId":"{{ID}}"}
+{"type":"user","uuid":"00000000-0000-4000-8000-000000000001","parentUuid":null,"sessionId":"{{ID}}","timestamp":"2026-11-13T10:00:00.000Z","cwd":"{{CWD}}","gitBranch":"main","version":"2.1.325","entrypoint":"cli","userType":"external","isSidechain":false,"message":{"role":"user","content":"fixture prompt"}}
+{"type":"assistant","uuid":"00000000-0000-4000-8000-000000000002","parentUuid":"00000000-0000-4000-8000-000000000001","sessionId":"{{ID}}","timestamp":"2026-11-13T10:00:05.000Z","cwd":"{{CWD}}","version":"2.1.325","message":{"role":"assistant","content":[{"type":"text","text":"fixture answer"}]}}
+{"type":"ai-title","aiTitle":"{{TITLE}}","sessionId":"{{ID}}"}

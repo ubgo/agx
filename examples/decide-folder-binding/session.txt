@@ -1,0 +1,136 @@
+#: The config starts with no "projects". Every command names its folder with --dir; the commands run in ~/projects/app.
+#region use
+#region use-profile
+$ agx project use --dir ~/projects/client/ --profile work
+~/projects/client: claude profile work
+
+#endregion
+#region use-codex
+$ agx project use --dir ~/projects/client --profile codex-work
+~/projects/client: codex profile codex-work
+
+#endregion
+#region use-login
+$ agx project use --dir ~/projects/client/api --agent claude --login carol
+~/projects/client/api: claude login carol
+
+$ agx project use --dir ~/projects/client/web --agent claude --home-login
+~/projects/client/web: claude home login
+
+#endregion
+#region list
+$ agx project list
+DIR                    AGENT   PROFILE     LOGIN
+~/projects/client      claude  work        —
+~/projects/client      codex   codex-work  —
+~/projects/client/api  claude  —           carol
+~/projects/client/web  claude  —           home login
+
+#endregion
+#endregion
+#region nearest
+$ agx project show --dir ~/projects/client/api
+agx: agent claude (folder binding ~/projects/client/api)
+agx: profile work (folder binding ~/projects/client)
+agx: login carol (folder binding ~/projects/client/api)
+agent    claude                 from folder binding ~/projects/client/api
+profile  work                   from folder binding ~/projects/client
+home     ~/.claude-work         from profile work
+login    carol                  from folder binding ~/projects/client/api
+folder   ~/projects/client/api  from --dir
+#endregion
+#region two-agents
+$ agx project show --dir ~/projects/client
+agx: agent claude (default_agent)
+agx: profile work (folder binding ~/projects/client)
+agent    claude             from default_agent
+profile  work               from folder binding ~/projects/client
+home     ~/.claude-work     from profile work
+login    home login         from default (no login named)
+folder   ~/projects/client  from --dir
+$ agx project show --dir ~/projects/client --agent codex
+agx: profile codex-work (folder binding ~/projects/client)
+agent    codex              from --agent
+profile  codex-work         from folder binding ~/projects/client
+home     ~/.codex-work      from profile codex-work
+login    home login         from default (no login named)
+folder   ~/projects/client  from --dir
+#endregion
+#region override
+$ agx project show --dir ~/projects/client/api --profile personal --login carol
+agent    claude                 from profile personal
+profile  personal               from --profile
+home     ~/.claude              from profile personal
+login    carol                  from --login
+folder   ~/projects/client/api  from --dir
+#endregion
+#region run
+$ agx run --dir ~/projects/client/web --dry-run
+agx: agent claude (folder binding ~/projects/client/web)
+agx: profile work (folder binding ~/projects/client)
+agx: home login (folder binding ~/projects/client/web)
+agx: warning: installed Claude Code version unknown; flags not checked
+agent    claude                                 from folder binding ~/projects/client/web
+profile  work                                   from folder binding ~/projects/client
+home     ~/.claude-work                         from profile work
+login    home login                             from folder binding ~/projects/client/web
+...
+$ agx run --dir ~/projects/client/web --dry-run --quiet
+agent    claude                                 from folder binding ~/projects/client/web
+profile  work                                   from folder binding ~/projects/client
+home     ~/.claude-work                         from profile work
+login    home login                             from folder binding ~/projects/client/web
+...
+#endregion
+#region json
+$ agx project show --dir ~/projects/client/api --json --field data.binding --field data.notes
+agx: agent claude (folder binding ~/projects/client/api)
+agx: profile work (folder binding ~/projects/client)
+agx: login carol (folder binding ~/projects/client/api)
+{
+  "data.binding": "~/projects/client/api",
+  "data.notes": [
+    "agent claude (folder binding ~/projects/client/api)",
+    "profile work (folder binding ~/projects/client)",
+    "login carol (folder binding ~/projects/client/api)"
+  ]
+}
+#endregion
+#region remove
+$ agx project remove --dir ~/projects/client --agent codex
+removed the codex binding of ~/projects/client
+$ agx project remove --dir ~/projects/client/web
+removed the claude binding of ~/projects/client/web
+$ agx project list
+DIR                    AGENT   PROFILE  LOGIN
+~/projects/client      claude  work     —
+~/projects/client/api  claude  —        carol
+#endregion
+#region refusals
+$ agx project use --dir ~/projects/client --agent claude
+agx: give --profile, --login or --home-login
+[exit 2]
+$ agx project use --dir ~/projects/client --login carol
+agx: --agent is required with --login or --home-login alone (a binding is per agent)
+[exit 2]
+$ agx project use --dir ~/projects/client --agent codex --login carol
+agx: login carol serves claude, not codex
+[exit 2]
+$ agx project use --dir ~/projects/client --agent codex --profile work
+agx: --agent codex and --profile work (a claude profile) disagree; pick one
+[exit 2]
+$ agx project use --dir ~/projects/client --agent claude --login carol --home-login
+agx: --login and --home-login both choose the login; pick one
+[exit 2]
+$ agx project use --dir ~/projects/nosuch --profile work
+agx: folder ~/projects/nosuch does not exist
+[exit 1]
+$ agx project remove --dir ~/projects/app
+agx: no binding for ~/projects/app
+  agx project list
+[exit 1]
+$ agx project remove --dir ~/projects/client --agent gemini
+agx: ~/projects/client has no gemini binding
+  agx project list
+[exit 1]
+#endregion

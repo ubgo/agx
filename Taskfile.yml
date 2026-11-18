@@ -1,0 +1,87 @@
+version: '3'
+
+vars:
+  BIN: dist/agx2
+  # Every platform agx claims (spec 17); `task cross` proves each builds.
+  PLATFORMS: darwin/amd64 darwin/arm64 linux/amd64 linux/arm64 windows/amd64 windows/arm64
+
+tasks:
+  build:
+    desc: Build the agx binary as dist/agx2 (never over a live agx on PATH)
+    cmds:
+      - go build -o {{.BIN}} .
+
+  test:
+    desc: Run the tests once, no race detector (uncached - CLI tests build the binary at run time, which go test's cache cannot see)
+    cmds:
+      - go test -count=1 ./...
+
+  test:race:
+    desc: Run every test once with the race detector
+    cmds:
+      - go test -race -count=1 ./...
+
+  fmt:check:
+    desc: Fail when a Go file is not gofmt-clean
+    cmds:
+      - test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+
+  vet:
+    desc: go vet (also the test-clock hook, built only with the agxtestclock tag that internal/testkit uses)
+    cmds:
+      - go vet ./...
+      - go vet -tags agxtestclock ./internal/cli/
+
+  staticcheck:
+    desc: staticcheck
+    cmds:
+      - staticcheck ./...
+
+  lint:
+    desc: golangci-lint (.golangci.yml)
+    cmds:
+      - golangci-lint run ./...
+
+  windows:
+    desc: Compile every package and test for Windows (spec 17)
+    cmds:
+      - GOOS=windows GOARCH=amd64 go build ./...
+      - GOOS=windows GOARCH=amd64 go vet ./...
+
+  cross:
+    desc: Cross-compile the binary for every supported platform
+    cmds:
+      - for: { var: PLATFORMS, split: ' ' }
+        cmd: GOOS={{index (splitList "/" .ITEM) 0}} GOARCH={{index (splitList "/" .ITEM) 1}} go build -o /dev/null .
+
+  docs:check:
+    desc: Docs gates - every flag documented, examples run, markdown rules (internal/docscheck)
+    cmds:
+      - go test -count=1 ./internal/docscheck/
+
+  examples:
+    desc: Run every example session under examples/ on a fixture machine (internal/docscheck)
+    cmds:
+      - go test -count=1 ./internal/docscheck/ -run TestExamples
+
+  schema:
+    desc: Regenerate schema/config.schema.json from the config types (internal/docscheck)
+    cmds:
+      - go test -count=1 ./internal/docscheck/ -run TestConfigSchemaFile -args -update
+
+  check:
+    desc: Everything that must be green before a commit
+    cmds:
+      - task: fmt:check
+      - task: vet
+      - task: staticcheck
+      - task: lint
+      - task: test:race
+      - task: windows
+      - task: cross
+      - task: docs:check
+
+  install:
+    desc: Install as ~/go/bin/agx2 while v0.3 stays the live agx (never overwrites agx)
+    cmds:
+      - go build -o "$(go env GOPATH)/bin/agx2" .

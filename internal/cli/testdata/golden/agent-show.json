@@ -1,0 +1,198 @@
+{
+  "schema_version": 1,
+  "command": "agent show",
+  "ok": true,
+  "data": {
+    "id": "codex",
+    "name": "Codex",
+    "kind": "built-in",
+    "binary": "codex",
+    "path": "",
+    "version": "",
+    "tested": "0.162.1..0.162.1",
+    "compat": "unknown",
+    "capabilities": [
+      "installer",
+      "binary-version",
+      "identity",
+      "usage",
+      "cached-usage",
+      "subscription",
+      "login-commander",
+      "conversations",
+      "history-checker",
+      "prompt-history",
+      "live-sessions",
+      "process-classifier",
+      "turns",
+      "home-linker",
+      "instruction-files",
+      "mcp-servers",
+      "skills",
+      "plugins",
+      "config",
+      "models",
+      "run-events",
+      "doctor",
+      "launch-config"
+    ],
+    "shadowed": [],
+    "autonomy": [
+      "default",
+      "read-only",
+      "ask",
+      "full"
+    ],
+    "token_kinds": [],
+    "capability_detail": [
+      {
+        "name": "installer",
+        "supported": true,
+        "cost": "disk"
+      },
+      {
+        "name": "binary-version",
+        "supported": true,
+        "cost": "process"
+      },
+      {
+        "name": "identity",
+        "supported": true,
+        "cost": "process"
+      },
+      {
+        "name": "usage",
+        "supported": true,
+        "cost": "network"
+      },
+      {
+        "name": "cached-usage",
+        "supported": true,
+        "cost": "disk"
+      },
+      {
+        "name": "subscription",
+        "supported": true,
+        "cost": "network"
+      },
+      {
+        "name": "token-login",
+        "supported": false,
+        "reason": "Codex has no token login: it logs in with `codex login` (ChatGPT, API key or access token on stdin)",
+        "cost": "pure"
+      },
+      {
+        "name": "token-prober",
+        "supported": false,
+        "reason": "Codex has no quota probe: no token login to probe",
+        "cost": "quota"
+      },
+      {
+        "name": "login-commander",
+        "supported": true,
+        "cost": "pure"
+      },
+      {
+        "name": "conversations",
+        "supported": true,
+        "cost": "disk"
+      },
+      {
+        "name": "history-checker",
+        "supported": true,
+        "cost": "disk"
+      },
+      {
+        "name": "history-mover",
+        "supported": false,
+        "reason": "Codex indexes conversations in its own SQLite database with absolute paths (state_5.sqlite threads.rollout_path), so moving its files would break its index; continue Codex work in the original home",
+        "cost": "disk"
+      },
+      {
+        "name": "conversation-mover",
+        "supported": false,
+        "reason": "Codex indexes conversations in its own SQLite database with absolute paths (state_5.sqlite threads.rollout_path), so moving its files would break its index; continue Codex work in the original home",
+        "cost": "disk"
+      },
+      {
+        "name": "prompt-history",
+        "supported": true,
+        "cost": "disk"
+      },
+      {
+        "name": "live-sessions",
+        "supported": true,
+        "cost": "process"
+      },
+      {
+        "name": "process-classifier",
+        "supported": true,
+        "cost": "pure"
+      },
+      {
+        "name": "turns",
+        "supported": true,
+        "cost": "disk"
+      },
+      {
+        "name": "home-linker",
+        "supported": true,
+        "cost": "disk"
+      },
+      {
+        "name": "instruction-files",
+        "supported": true,
+        "cost": "disk"
+      },
+      {
+        "name": "mcp-servers",
+        "supported": true,
+        "cost": "disk"
+      },
+      {
+        "name": "skills",
+        "supported": true,
+        "cost": "disk"
+      },
+      {
+        "name": "plugins",
+        "supported": true,
+        "cost": "disk"
+      },
+      {
+        "name": "config",
+        "supported": true,
+        "cost": "disk"
+      },
+      {
+        "name": "models",
+        "supported": true,
+        "cost": "disk"
+      },
+      {
+        "name": "run-events",
+        "supported": true,
+        "cost": "pure"
+      },
+      {
+        "name": "doctor",
+        "supported": true,
+        "cost": "disk"
+      },
+      {
+        "name": "live-credential",
+        "supported": false,
+        "reason": "Codex reads its login from auth.json or the keyring and refreshes it itself; it has no credential-helper setting",
+        "cost": "pure"
+      },
+      {
+        "name": "launch-config",
+        "supported": true,
+        "cost": "disk"
+      }
+    ]
+  },
+  "decisions": [],
+  "warnings": [],
+  "error": null
+}

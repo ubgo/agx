@@ -1,0 +1,156 @@
+#: Five profiles (two Claude homes, Codex, Gemini, pi) and no logins yet. Add one login of every kind, then see how each reaches its agent.
+#region add
+$ agx login add --name carol --agent claude --kind oauth-token --token-ref '${gopass:personal/claude/carol}'
+added login carol (oauth-token, reference gopass)
+
+$ agx login add --name derek --agent claude --kind oauth-token --token-ref '$(gopass show -o personal/claude/derek)' --account e@example.com
+added login derek (oauth-token, command gopass)
+
+$ agx login add --name pasted --agent claude --kind oauth-token --stdin < ~/token.txt
+added login pasted (oauth-token, stored (tokens.jsonc))
+
+$ agx login add --name console --agent claude --kind api-key-helper --helper-command 'gopass show -o work/anthropic-api-key'
+added login console (api-key-helper, helper gopass)
+
+$ agx login add --name anthropic-key --agent claude --agent pi --kind api-key --provider anthropic --token-ref '${gopass:work/anthropic-api-key}'
+added login anthropic-key (api-key, reference gopass)
+
+$ agx login add --name gem-work --agent gemini --token-ref '${GEMINI_KEY_WORK}'
+added login gem-work (api-key, env GEMINI_KEY_WORK)
+
+#endregion
+#region setup
+$ agx login add --name newco --agent claude --kind oauth-token --login-setup
+agx: no terminal: --login-setup runs the setup command, then asks you to paste the token it prints; pipe the token with --stdin
+[exit 2]
+
+#endregion
+#: pi reads one variable per provider, so a pi token login names its provider: none given, an unknown one, then a real one.
+#region provider
+$ agx login add --name gh --agent pi --kind api-key --token-ref '${COPILOT_GITHUB_TOKEN}'
+agx: pi reads a different variable per provider; pass --provider: one of anthropic, openai, google, google-vertex, azure, deepseek, groq, cerebras, xai, openrouter, mistral, github-copilot, huggingface, fireworks, together, zai, nvidia, vercel-ai-gateway
+[exit 2]
+
+$ agx login add --name gh --agent pi --kind api-key --provider nope --token-ref '${COPILOT_GITHUB_TOKEN}'
+agx: --provider "nope": pi has no api-key provider by that name; use one of anthropic, openai, google, google-vertex, azure, deepseek, groq, cerebras, xai, openrouter, mistral, github-copilot, huggingface, fireworks, together, zai, nvidia, vercel-ai-gateway
+[exit 2]
+
+$ agx login add --name gh --agent pi --kind api-key --provider github-copilot --token-ref '${COPILOT_GITHUB_TOKEN}'
+added login gh (api-key, env COPILOT_GITHUB_TOKEN)
+
+#endregion
+#region list
+$ agx login list
+NAME           AGENTS     KIND            SOURCE                    ACCOUNT
+carol          claude     oauth-token     reference gopass          —
+derek          claude     oauth-token     command gopass            e@example.com
+pasted         claude     oauth-token     stored (tokens.jsonc)     —
+console        claude     api-key-helper  helper gopass             —
+anthropic-key  claude,pi  api-key         reference gopass          —
+gem-work       gemini     api-key         env GEMINI_KEY_WORK       —
+gh             pi         api-key         env COPILOT_GITHUB_TOKEN  —
+
+$ agx login list --agent pi
+NAME           AGENTS     KIND     SOURCE                ACCOUNT
+anthropic-key  claude,pi  api-key  reference gopass      —
+gh             pi         api-key  env COPILOT_GITHUB_TOKEN  —
+
+$ agx login show --id anthropic-key --agent pi
+name     anthropic-key
+agents   claude, pi
+kind     api-key
+source   reference gopass
+account  —
+provider anthropic
+users    —
+
+#endregion
+#region codex
+$ agx login add --name codex-team --agent codex --token-ref '${gopass:work/codex}'
+agx: Codex has no token login: it logs in with `codex login` (ChatGPT, API key or access token on stdin)
+[exit 4]
+
+#endregion
+#: A plan token reaches Claude as CLAUDE_CODE_OAUTH_TOKEN. The variables that would outrank it are removed for the run, and the dry run says so.
+#region oauth
+$ ANTHROPIC_API_KEY=old-key ANTHROPIC_AUTH_TOKEN=old-token agx run --profile work --login carol --dry-run --quiet
+agent    claude                                  from profile work
+profile  work                                    from --profile
+home     ~/.claude-work                          from profile work
+login    carol (not resolved: --dry-run)         from --login
+binary   /usr/local/bin/claude version unknown   from no install metadata
+folder   ~/projects/app                          from current folder
+run      ~/.agx/runs/20261118-061009-7vne        from AGX_RUN_ID=20261118-061009-7vne
+command  claude                                  from built by agentio
+env      set AGX_RUN_ID=20261118-061009-7vne     from launch environment
+         set AGX_RUN_AGENT=claude                from launch environment
+         set AGX_RUN_PROFILE=work                from launch environment
+         set AGX_RUN_LOGIN=carol                 from launch environment
+         set AGX_RUN_HOME=~/.claude-work         from launch environment
+         set CLAUDE_CODE_OAUTH_TOKEN=[redacted]  from launch environment
+         set CLAUDE_CONFIG_DIR=~/.claude-work    from launch environment
+         removed ANTHROPIC_API_KEY               from launch environment
+         removed ANTHROPIC_AUTH_TOKEN            from launch environment
+note     installed Claude Code version unknown; flags not checked
+
+#endregion
+#region helper
+$ agx run --profile work --login console --dry-run --quiet
+agent    claude                                                                                 from profile work
+profile  work                                                                                   from --profile
+home     ~/.claude-work                                                                         from profile work
+login    console (not resolved: --dry-run)                                                      from --login
+binary   /usr/local/bin/claude version unknown                                                  from no install metadata
+folder   ~/projects/app                                                                         from current folder
+run      ~/.agx/runs/20261118-061009-jpdh                                                       from AGX_RUN_ID=20261118-061009-jpdh
+command  claude --settings ~/.agx/runs/20261118-061009-jpdh/settings-20261118-061009-jpdh.json  from built by agentio
+env      set AGX_RUN_ID=20261118-061009-jpdh                                                    from launch environment
+         set AGX_RUN_AGENT=claude                                                               from launch environment
+         set AGX_RUN_PROFILE=work                                                               from launch environment
+         set AGX_RUN_LOGIN=console                                                              from launch environment
+         set AGX_RUN_HOME=~/.claude-work                                                        from launch environment
+         set CLAUDE_CONFIG_DIR=~/.claude-work                                                   from launch environment
+note     installed Claude Code version unknown; flags not checked
+
+#endregion
+#region api-key
+$ agx run --agent pi --login anthropic-key --dry-run --quiet
+agent    pi                                       from --agent
+profile  pi                                       from default profile of pi
+home     ~/.pi/agent                              from profile pi
+login    anthropic-key (not resolved: --dry-run)  from --login
+binary   /usr/local/bin/pi version unknown        from no install metadata
+folder   ~/projects/app                           from current folder
+run      ~/.agx/runs/20261118-061009-1ut7         from AGX_RUN_ID=20261118-061009-1ut7
+command  pi                                       from built by agentio
+env      set AGX_RUN_ID=20261118-061009-1ut7      from launch environment
+         set AGX_RUN_AGENT=pi                     from launch environment
+         set AGX_RUN_PROFILE=pi                   from launch environment
+         set AGX_RUN_LOGIN=anthropic-key          from launch environment
+         set AGX_RUN_HOME=~/.pi/agent             from launch environment
+         set ANTHROPIC_API_KEY=[redacted]         from launch environment
+note     pi runs with full autonomy and never asks
+
+$ agx run --agent gemini --login gem-work --dry-run --quiet
+agent    gemini                                 from --agent
+profile  gem                                    from default profile of gemini
+home     ~/.gemini                              from profile gem
+login    gem-work (not resolved: --dry-run)     from --login
+binary   /usr/local/bin/gemini version unknown  from no install metadata
+folder   ~/projects/app                         from current folder
+run      ~/.agx/runs/20261118-061009-aips       from AGX_RUN_ID=20261118-061009-aips
+command  gemini                                 from built by agentio
+env      set AGX_RUN_ID=20261118-061009-aips    from launch environment
+         set AGX_RUN_AGENT=gemini               from launch environment
+         set AGX_RUN_PROFILE=gem                from launch environment
+         set AGX_RUN_LOGIN=gem-work             from launch environment
+         set AGX_RUN_HOME=~/.gemini             from launch environment
+         set GEMINI_API_KEY=[redacted]          from launch environment
+
+#endregion
+#region wrong-agent
+$ agx run --agent gemini --login carol --dry-run
+agx: login carol serves claude; this run is gemini
+[exit 125]
+
+#endregion

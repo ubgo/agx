@@ -1,0 +1,82 @@
+#: Launching commands (run, new, resume) keep 125 to 127 for agx's own failures; any other code is the agent's.
+#region launch-0
+$ agx run --dry-run --quiet --json --field data.profile
+personal
+
+#endregion
+#region launch-agent-code
+$ FAKE_AGENT_EXIT=3 agx run --quiet
+agent claude
+argv
+pwd ~/projects/app
+...
+[exit 3]
+
+#endregion
+#region launch-125
+$ agx run --profile personal --login carol --home-login
+agx: --login and --home-login both choose the login; pick one
+[exit 125]
+
+#endregion
+#region launch-127
+$ agx run --profile no
+agx: nocli not found on PATH
+[exit 127]
+
+#endregion
+#: Other commands: 1 failure, 2 usage error, 3 partial, 4 unsupported.
+#region other-1
+$ agx agent show --id cursor
+agx: unknown agent cursor; known: claude, codex, gemini, pi, nocli
+[exit 1]
+
+#endregion
+#region other-2
+$ agx profile list personal
+agx: unexpected argument "personal"; every input is a named flag (see agx profile list --help)
+[exit 2]
+
+#endregion
+#region other-3
+$ agx usage
+agx: warning: claude home ~/.claude-work is not in config; agx profile import --discovered
+agx: 2 of 4 rows failed: personal (not-logged-in); codex (not-logged-in)
+personal  personal · claude  ~/.claude
+  not logged in; run the agent once in this home
+
+codex  codex · codex  ~/.codex
+  not logged in; run the agent once in this home
+
+gem  gem · gemini  ~/.gemini
+  unsupported: Gemini CLI quota and tier come from a logged-in Code Assist API call (retrieveUserQuota, loadCodeAssist) whose responses are not recorded yet
+
+no  no · nocli  ~/.nocli
+  unsupported: config-only agent: a spec describes L1 only; this needs code
+[exit 3]
+
+#endregion
+#region other-4
+$ agx conversation move --dir ~/projects/client --to-profile codex --dry-run
+agx: codex cannot move conversations between homes: Codex indexes conversations in its own SQLite database with absolute paths (state_5.sqlite threads.rollout_path), so moving its files would break its index; continue Codex work in the original home
+[exit 4]
+
+#endregion
+#: Every home failed: a plain failure, exit 1.
+#region other-1-usage
+$ agx usage --agent claude
+agx: no row answered: personal (not-logged-in)
+[exit 1]
+
+#endregion
+#: The exit class is in the envelope too, as error.code.
+#region codes
+$ agx usage --agent claude --json --field error.code
+io
+[exit 1]
+
+$ agx conversation move --dir ~/projects/client --to-profile codex --dry-run --json --field error.code
+unsupported
+[exit 4]
+
+#endregion

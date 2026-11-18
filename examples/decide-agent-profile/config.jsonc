@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  // #region profiles
+  "profiles": {
+    "personal": { "agent": "claude", "home": "~/.claude", "default": true },
+    "work": { "agent": "claude", "home": "~/.claude-work" },
+    "codex": { "agent": "codex", "home": "~/.codex", "default": true },
+    // no "default": true on purpose: Gemini has a profile but no default
+    "gem": { "agent": "gemini", "home": "~/.gemini" }
+  },
+  // #endregion
+  // #region projects
+  "projects": {
+    "~/projects/client": { "codex": { "profile": "codex" } }
+  }
+  // #endregion
+}

@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "default_agent": "claude",
+  // #region agents
+  "agents": {
+    "claude": { "defaults": { "args": ["--chrome"] } }
+  },
+  // #endregion
+  "profiles": {
+    // #region profiles
+    "personal": { "agent": "claude", "home": "~/.claude", "default": true },
+    "work": { "agent": "claude", "home": "~/.claude-work", "args": ["--verbose"] },
+    "kimi": { "agent": "claude", "home": "~/.claude-work", "inherit_defaults": false, "args": ["--strict-mcp-config"] }
+    // #endregion
+  }
+}

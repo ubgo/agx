@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "default_agent": "claude",
+  "profiles": {
+    "personal": { "agent": "claude", "home": "~/.claude", "default": true },
+    "work": { "agent": "claude", "home": "~/.claude-work", "login": "carol" }
+  },
+  "logins": {
+    "carol": { "agents": ["claude"], "kind": "oauth-token", "token": "${gopass:personal/claude/carol}" },
+    "alice": { "agents": ["claude"], "kind": "oauth-token", "token": "${gopass:personal/claude/alice}" },
+    "bob": { "agents": ["claude"], "kind": "oauth-token", "token": "${gopass:personal/claude/bob}" }
+  },
+  "projects": {
+    "~/projects/client": { "claude": { "profile": "work", "login": "bob" } }
+  }
+}

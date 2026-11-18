@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  // #region agents
+  "agents": {
+    "mycli": {
+      // The stand-in binary is echo, so a launch prints the arguments agx built.
+      // For a real agent, binary is its executable name, such as "aider".
+      "spec": {
+        "name": "My CLI",
+        "binary": "echo",
+        "default_home": ".mycli",
+        "home_env": "MYCLI_HOME",
+        "home_markers": ["config.json"],
+        "new_args": ["{args}"],
+        "resume_args": ["--resume", "{id}", "{args}"],
+        "model_args": ["--model", "{model}"],
+        "prompt_args": ["--prompt", "{prompt}"],
+        "add_dir_args": ["--add-dir", "{dir}"],
+        "autonomy_args": { "ask": [], "full": ["--yolo"] },
+        "token_env": [{ "kind": "api-key", "env": "MYCLI_API_KEY" }],
+        "process": { "basenames": ["mycli"] }
+      },
+      "defaults": { "args": ["--color=always"] }
+    },
+    // An agent whose binary is not installed.
+    "nocli": {
+      "spec": { "name": "Not installed", "binary": "nocli", "default_home": ".nocli", "new_args": ["{args}"] }
+    }
+  },
+  // #endregion
+  // #region profiles
+  "profiles": {
+    "my": { "agent": "mycli", "home": "~/.mycli", "default": true },
+    "my-work": { "agent": "mycli", "home": "~/.mycli-work" },
+    "no": { "agent": "nocli", "home": "~/.nocli", "default": true }
+  },
+  // #endregion
+  // #region logins
+  "logins": {
+    "my-key": { "agents": ["mycli"], "kind": "api-key", "token": "${gopass:work/mycli-key}" }
+  }
+  // #endregion
+}

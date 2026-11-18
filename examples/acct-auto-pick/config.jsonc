@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "default_agent": "claude",
+  "profiles": {
+    "kimi": { "agent": "claude", "home": "~/.claude", "billing": "api", "default": true },
+    "kimi-work": { "agent": "claude", "home": "~/.claude-work", "billing": "api" },
+    "old": { "agent": "claude", "home": "~/.claude-old" },
+    "codex": { "agent": "codex", "home": "~/.codex", "default": true },
+    "gem": { "agent": "gemini", "home": "~/.gemini", "default": true }
+  },
+  "logins": {
+    "carol": { "agents": ["claude"], "kind": "oauth-token", "token": "${CAROL_TOKEN}" },
+    "console": { "agents": ["claude"], "kind": "api-key-helper", "command": "gopass show -o work/anthropic-api-key" },
+    "gem-work": { "agents": ["gemini"], "kind": "api-key", "token": "${gopass:google/gemini-key}" }
+  }
+}

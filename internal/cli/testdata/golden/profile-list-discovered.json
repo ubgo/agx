@@ -1,0 +1,55 @@
+[
+  {
+    "agent": "claude",
+    "found_by": [
+      "default home"
+    ],
+    "looks_like_home": true,
+    "path": "~/.claude",
+    "profiles": [
+      "kimi",
+      "personal"
+    ]
+  },
+  {
+    "agent": "claude",
+    "found_by": [
+      "pattern .claude-*"
+    ],
+    "looks_like_home": false,
+    "path": "~/.claude-old",
+    "profiles": []
+  },
+  {
+    "agent": "claude",
+    "found_by": [
+      "pattern .claude-*",
+      "variable CLAUDE_CONFIG_DIR"
+    ],
+    "looks_like_home": true,
+    "path": "~/.claude-work",
+    "profiles": [
+      "work"
+    ]
+  },
+  {
+    "agent": "codex",
+    "found_by": [
+      "default home"
+    ],
+    "looks_like_home": true,
+    "path": "~/.codex",
+    "profiles": [
+      "codex"
+    ]
+  },
+  {
+    "agent": "gemini",
+    "found_by": [
+      "search ~/gem"
+    ],
+    "looks_like_home": false,
+    "path": "~/gem/.gemini",
+    "profiles": []
+  }
+]

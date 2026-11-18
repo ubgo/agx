@@ -1,0 +1,11 @@
+#: A second scenario on its own fresh machine: store a plan token read from stdin.
+#options dir=~/projects/client env=NO_COLOR=1
+#region add
+$ agx login add --name pasted --agent claude --kind oauth-token --stdin < ~/token.txt
+added login pasted (oauth-token, stored (tokens.jsonc))
+
+$ agx login list
+NAME    AGENTS  KIND         SOURCE                 ACCOUNT
+pasted  claude  oauth-token  stored (tokens.jsonc)  —
+
+#endregion

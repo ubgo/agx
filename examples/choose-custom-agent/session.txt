@@ -1,0 +1,68 @@
+#: A config-defined agent mycli (its fake binary is pi) next to the built-in Claude agent with a raw arg.
+#region show
+$ agx agent show --id mycli
+agent: mycli (My CLI, custom)
+binary: pi
+path: /usr/local/bin/pi
+version: unknown
+method: unknown
+tested: —
+compat: unknown
+autonomy: default, read-only, full
+token kinds: api-key
+
+CAPABILITY          SUPPORTED  COST     REASON
+installer           yes        disk     —
+binary-version      no         process  spec has no version args
+identity            no         process  config-only agent: a spec describes L1 only; this needs code
+usage               no         network  config-only agent: a spec describes L1 only; this needs code
+...
+token-login         yes        pure     —
+...
+conversations       no         disk     config-only agent: a spec describes L1 only; this needs code
+...
+live-credential     no         pure     config-only agent: a spec describes L1 only; this needs code
+launch-config       no         disk     config-only agent: a spec has no typed launch options and no settings flag; pass vendor flags as raw args
+
+#endregion
+#region launch
+$ agx run --profile mine --model big --autonomy read-only --dry-run --quiet --json --field data.command.line
+pi --plan --model big
+
+$ agx run --profile mine --autonomy ask --dry-run --quiet
+agx: mycli: autonomy ask: not described by the agent spec
+[exit 125]
+
+#endregion
+#region limits
+$ agx run --profile mine --setting theme=dark --dry-run --quiet
+agx: mycli has no --option or --setting (config-only agent: a spec has no typed launch options and no settings flag; pass vendor flags as raw args); pass its flags after --
+[exit 125]
+
+$ agx usage --agent mycli
+mine  mine · mycli  ~/.mycli
+  unsupported: config-only agent: a spec describes L1 only; this needs code
+
+#endregion
+#region raw
+$ agx run --profile personal --dry-run --quiet --json --field data.command.line -- --brand-new-flag
+claude --verbose --brand-new-flag
+
+#endregion
+#region login
+$ agx run --profile mine --login my-key --dry-run --quiet
+...
+login    my-key (not resolved: --dry-run)     from --login
+...
+         set MYCLI_API_KEY=[redacted]         from launch environment
+
+$ agx run --profile mine --token-ref '${gopass:mycli/key}' --token-kind api-key --dry-run --quiet
+...
+login    one-off token (not resolved: --dry-run)  from --token-ref
+...
+         set MYCLI_API_KEY=[redacted]             from launch environment
+
+$ agx login add --name my-key2 --agent mycli --kind api-key --token-ref '${gopass:mycli/key}'
+added login my-key2 (api-key, reference gopass)
+
+#endregion

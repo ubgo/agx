@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "profiles": {
+    "personal": { "agent": "claude", "home": "~/.claude", "default": true, "modle": "x" },
+    "work": { "agent": "claude", "home": "~/.claude-work", "default": "yes" }
+  }
+}

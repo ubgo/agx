@@ -1,0 +1,65 @@
+#: agents.claude.defaults applies to every Claude profile.
+#region personal
+$ agx run --profile personal --dry-run --quiet
+agent    claude                                  from profile personal
+profile  personal                                from --profile
+home     ~/.claude                               from profile personal
+login    carol (not resolved: --dry-run)         from agents.claude.defaults
+binary   /usr/local/bin/claude version unknown   from no install metadata
+folder   ~/projects/app                          from current folder
+args     --chrome                                from agents.claude.defaults.args
+run      ~/.agx/runs/20261118-062216-66fo        from AGX_RUN_ID=20261118-062216-66fo
+command  claude --chrome                         from built by agentio
+env      set AGX_RUN_ID=20261118-062216-66fo     from launch environment
+         set AGX_RUN_AGENT=claude                from launch environment
+         set AGX_RUN_PROFILE=personal            from launch environment
+         set AGX_RUN_LOGIN=carol                 from launch environment
+         set AGX_RUN_HOME=~/.claude              from launch environment
+         set CLAUDE_CODE_OAUTH_TOKEN=[redacted]  from launch environment
+note     installed Claude Code version unknown; flags not checked
+
+#endregion
+#region work
+$ agx run --profile work --dry-run --quiet --json --field data.login --field data.command.args
+{
+  "data.login": "dave",
+  "data.command.args": [
+    "--verbose"
+  ]
+}
+
+#endregion
+#region own
+$ agx run --profile own --dry-run --quiet --json --field data.login --field data.command.args
+{
+  "data.login": "home",
+  "data.command.args": [
+    "--chrome"
+  ]
+}
+
+#endregion
+#region list
+$ agx profile list
+PROFILE    PROVIDER  HOME            ACCOUNT  STATE  LOGIN       BILLING
+*personal  claude    ~/.claude                none   carol       plan
+work       claude    ~/.claude-work           none   dave        plan
+own        claude    ~/.claude-work           none   home login  api
+
+#endregion
+#: A flag still wins over every default.
+#region flag
+$ agx run --profile personal --home-login --dry-run --quiet --json --field data.login
+home
+
+#endregion
+#region default-home-login
+$ agx config set --key agents.claude.defaults.home_login --value true
+agx: refused: the change would make config.jsonc invalid: login and home_login are both set; keep one
+  login and home_login are both set; keep one
+[exit 2]
+
+$ agx config check
+~/.agx/config.jsonc: ok (1 agent, 3 profiles, 2 logins, 0 projects, 0 aliases)
+
+#endregion

@@ -1,0 +1,19 @@
+#region to
+$ agx session promote --id pglite_golang_20261114_101500 --to ~/work --dry-run
+would promote ~/.agx/sessions/pglite_golang_20261114_101500 to ~/work/pglite_golang
+dry run: nothing changed
+
+#endregion
+#region exists
+$ agx session promote --id pglite_golang_20261114_101500 --name app
+agx: promote: destination already exists: ~/projects/app
+[exit 1]
+
+#endregion
+#: --no-codex only matters when the folder has Codex conversations (they stay keyed to the old path); here there are none, so the plan is the same.
+#region no-codex
+$ agx session promote --id pglite_golang_20261114_101500 --no-codex --dry-run
+would promote ~/.agx/sessions/pglite_golang_20261114_101500 to ~/projects/pglite_golang
+dry run: nothing changed
+
+#endregion

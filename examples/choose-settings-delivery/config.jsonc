@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "default_agent": "claude",
+  "profiles": {
+    "work": { "agent": "claude", "home": "~/.claude-work", "default": true, "claude": { "settings": { "cleanupPeriodDays": 20 } } },
+    "visible": { "agent": "claude", "home": "~/.claude-work", "settings_delivery": "inline", "claude": { "settings": { "cleanupPeriodDays": 20 } } },
+    "codex": { "agent": "codex", "home": "~/.codex", "default": true }
+  }
+}

@@ -1,0 +1,153 @@
+#: Environment for one launch: profile env, env_refs and env_file, then --env-file, --env and --no-env.
+#region profile
+$ agx run --profile work --dry-run --quiet
+agent    claude                                 from profile work
+profile  work                                   from --profile
+home     ~/.claude-work                         from profile work
+login    home login                             from default (no login named)
+binary   /usr/local/bin/claude version unknown  from no install metadata
+folder   ~/projects/app                         from current folder
+env      REGION, SERVICE_TOKEN                  from profile work env_file envs/work.env
+         DEBUG                                  from profile work env
+         API_KEY                                from profile work env_refs
+run      ~/.agx/runs/20261118-061119-8qmq       from AGX_RUN_ID=20261118-061119-8qmq
+command  claude                                 from built by agentio
+env      set REGION=[redacted]                  from launch environment
+         set SERVICE_TOKEN=[redacted]           from launch environment
+         set DEBUG=1                            from launch environment
+         set API_KEY=[redacted]                 from launch environment
+         set AGX_RUN_ID=20261118-061119-8qmq    from launch environment
+         set AGX_RUN_AGENT=claude               from launch environment
+         set AGX_RUN_PROFILE=work               from launch environment
+         set AGX_RUN_LOGIN=home                 from launch environment
+         set AGX_RUN_HOME=~/.claude-work        from launch environment
+         set CLAUDE_CONFIG_DIR=~/.claude-work   from launch environment
+note     installed Claude Code version unknown; flags not checked
+#endregion
+#region resolved
+$ agx run --profile work --login carol --dry-run --resolved-secrets
+agx: warning: installed Claude Code version unknown; flags not checked
+...
+login    carol (resolved)                        from --login
+...
+command  claude                                  from built by agentio
+...
+#endregion
+#region resolved-error
+$ agx run --profile work --env 'TOKEN=$(exit 3)' --dry-run --quiet --json --field data.command.line
+claude
+$ agx run --profile work --env 'TOKEN=$(exit 3)' --dry-run --resolved-secrets --quiet
+agx: --env TOKEN: command "exit 3" failed: exit 3
+[exit 125]
+$ agx run --profile work --resolved-secrets
+agx: --resolved-secrets only works with --dry-run; add --dry-run
+[exit 125]
+#endregion
+#region one-run
+$ agx run --profile work --env-file ./local.env --env GITHUB_TOKEN='$(echo gh-fake)' --env NAME=plain-value --no-env HTTP_PROXY --dry-run --quiet
+...
+env      REGION, SERVICE_TOKEN                  from profile work env_file envs/work.env
+         DEBUG                                  from profile work env
+         API_KEY                                from profile work env_refs
+         LOG_LEVEL                              from --env-file ./local.env
+         GITHUB_TOKEN, NAME                     from --env
+         -HTTP_PROXY                            from --no-env
+...
+env      set REGION=[redacted]                  from launch environment
+         set SERVICE_TOKEN=[redacted]           from launch environment
+         set DEBUG=1                            from launch environment
+         set API_KEY=[redacted]                 from launch environment
+         set LOG_LEVEL=[redacted]               from launch environment
+         set GITHUB_TOKEN=[redacted]            from launch environment
+         set NAME=plain-value                   from launch environment
+         set AGX_RUN_ID=20261118-061119-ract    from launch environment
+         set AGX_RUN_AGENT=claude               from launch environment
+         set AGX_RUN_PROFILE=work               from launch environment
+         set AGX_RUN_LOGIN=home                 from launch environment
+         set AGX_RUN_HOME=~/.claude-work        from launch environment
+         set CLAUDE_CONFIG_DIR=~/.claude-work   from launch environment
+...
+#endregion
+#region launch
+$ HTTP_PROXY=http://proxy.example:3128 agx run --profile work --env-file ./local.env --no-env HTTP_PROXY
+agx: warning: installed Claude Code version unknown; flags not checked
+agent claude
+argv
+pwd ~/projects/app
+env AGX_CONFIG_DIR=~/.agx
+env AGX_RUN_AGENT=claude
+env AGX_RUN_HOME=~/.claude-work
+env AGX_RUN_ID=20261118-061119-ug6d
+env AGX_RUN_LOGIN=home
+env AGX_RUN_PROFILE=work
+env API_KEY=fake-token-some-api-key
+env CLAUDE_CONFIG_DIR=~/.claude-work
+env COLUMNS=400
+env DEBUG=1
+env HOME=~
+env LANG=C
+env LOG_LEVEL=debug
+env PATH=/usr/local/bin:/usr/bin:/bin
+env PWD=~/projects/app
+env REGION=eu-west-1
+env SERVICE_TOKEN=fake-token-service-token
+env TMPDIR=/tmp/agx-demo/tmp
+env TZ=UTC
+#endregion
+#region commands
+$ agx run --profile builds --dry-run --quiet --resolved-secrets
+...
+env      BUILD_SHA                              from profile builds env_file envs/cmds.env
+...
+env      set BUILD_SHA=[redacted]               from launch environment
+         set AGX_RUN_ID=20261118-061119-p8oh    from launch environment
+         set AGX_RUN_AGENT=claude               from launch environment
+         set AGX_RUN_PROFILE=builds             from launch environment
+         set AGX_RUN_LOGIN=home                 from launch environment
+         set AGX_RUN_HOME=~/.claude             from launch environment
+...
+#endregion
+#region commands-off
+$ agx run --profile nocmds --dry-run --quiet
+agx: envs/cmds.env:2:11: $(echo abc123) is a command, and env_file_commands is off
+[exit 125]
+#endregion
+#region unset
+$ agx run --profile work --env 'TOKEN=${NOT_SET_ANYWHERE}' --dry-run --quiet
+agx: --env TOKEN: NOT_SET_ANYWHERE is not set
+[exit 125]
+#endregion
+#region scheme
+$ agx run --profile work --env 'TOKEN=${vault:x/y}' --dry-run --quiet
+agx: --env TOKEN: no plugin for scheme vault
+[exit 125]
+#endregion
+#region defaults
+$ agx run --profile work --env 'TOKEN=${NOT_SET_ANYWHERE:-fallback}' --dry-run --quiet --json --field data.command.line
+claude
+#endregion
+#region home-var
+$ agx run --profile work --env CLAUDE_CONFIG_DIR=/tmp/other --dry-run --quiet
+agx: CLAUDE_CONFIG_DIR is set by the profile's home; use --profile
+[exit 125]
+#endregion
+#region credential
+$ agx run --profile work --login carol --env CLAUDE_CODE_OAUTH_TOKEN=x --dry-run --quiet
+agx: --env CLAUDE_CODE_OAUTH_TOKEN and --login carol both set the credential; pick one
+[exit 125]
+#endregion
+#region missing-file
+$ agx run --profile work --env-file ./nope.env --dry-run --quiet
+agx: env file ./nope.env not found (~/projects/app/nope.env)
+[exit 125]
+#endregion
+#: Output redacts by source, never by name: the profile's literals show as written, a reference and an agent's credential variable do not.
+#region redaction
+$ agx run --profile service --env 'EXTRA=${gopass:work/extra}' --env ANTHROPIC_API_KEY=plain-key-value --dry-run --quiet --json --field data.command.env
+["set MY_SERVICE_TOKEN=literal-abc123","set SERVICE_TIMEOUT_MS=3000","set EXTRA=[redacted]","set ANTHROPIC_API_KEY=[redacted]","set AGX_RUN_ID=20261118-074332-qmd1","set AGX_RUN_AGENT=claude","set AGX_RUN_PROFILE=service","set AGX_RUN_LOGIN=home","set AGX_RUN_HOME=~/.claude"]
+$ agx doctor --agent claude --field data.*.status --field data.*.area --field data.*.message
+STATUS  AREA         MESSAGE
+...
+info    plain-token  profiles.service.env.MY_SERVICE_TOKEN looks like a secret written as a literal: shown as written in output; put it in env_refs to keep it redacted
+...
+#endregion

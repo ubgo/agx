@@ -1,0 +1,117 @@
+#: A config-defined agent, mycli, whose stand-in binary is echo.
+#region check
+$ agx config check
+~/.agx/config.jsonc: ok (2 agents, 3 profiles, 1 login, 0 projects, 0 aliases)
+
+#endregion
+#region list
+$ agx agent list --field data.*.id --field data.*.kind --field data.*.binary --field data.*.tested
+ID      KIND      BINARY  TESTED
+claude  built-in  claude  2.1.323..2.1.327
+codex   built-in  codex   0.162.1..0.162.1
+gemini  built-in  gemini  0.68.0..0.68.0
+pi      built-in  pi      1.5.2..1.5.2
+mycli   custom    echo    —
+nocli   custom    nocli   —
+
+#endregion
+#region show
+$ agx agent show --id mycli --json --field data.kind --field data.autonomy --field data.token_kinds
+{
+  "data.kind": "custom",
+  "data.autonomy": [
+    "default",
+    "ask",
+    "full"
+  ],
+  "data.token_kinds": [
+    "api-key"
+  ]
+}
+
+#endregion
+#region dry-run
+$ agx run --agent mycli --dry-run --quiet
+agent    mycli                                from --agent
+profile  my                                   from default profile of mycli
+home     ~/.mycli                             from profile my
+login    home login                           from default (no login named)
+...
+folder   ~/projects/app                       from current folder
+args     --color=always                       from agents.mycli.defaults.args
+run      ~/.agx/runs/20261118-061258-ju3b     from AGX_RUN_ID=20261118-061258-ju3b
+command  echo --color=always                  from built by agentio
+env      set AGX_RUN_ID=20261118-061258-ju3b  from launch environment
+         set AGX_RUN_AGENT=mycli              from launch environment
+         set AGX_RUN_PROFILE=my               from launch environment
+         set AGX_RUN_LOGIN=home               from launch environment
+         set AGX_RUN_HOME=~/.mycli            from launch environment
+
+#endregion
+#region dry-run-work
+$ agx run --profile my-work --dry-run --quiet --json --field data.command
+{"line":"echo --color=always","path":"echo","args":["--color=always"],"dir":"~/projects/app","env":["set AGX_RUN_ID=20261118-061258-sbgk","set AGX_RUN_AGENT=mycli","set AGX_RUN_PROFILE=my-work","set AGX_RUN_LOGIN=home","set AGX_RUN_HOME=~/.mycli-work","set MYCLI_HOME=~/.mycli-work"]}
+
+#endregion
+#: The launch execs the binary; echo prints the arguments it got.
+#region run
+$ agx run --profile my --model big --prompt "fix the tests" --add-dir ~/projects/client
+--model big --add-dir ~/projects/client --color=always --prompt fix the tests
+
+#endregion
+#region autonomy
+$ agx run --profile my --autonomy ask
+--color=always
+
+$ agx run --profile my --autonomy full --consent full-autonomy
+--yolo --color=always
+
+$ agx run --profile my --autonomy read-only
+agx: mycli: autonomy read-only: not described by the agent spec
+[exit 125]
+
+#endregion
+#region headless
+$ agx run --profile my --headless
+agx: mycli: headless: not described by the agent spec
+[exit 125]
+
+#endregion
+#region login-add
+$ agx login add --name my-key-2 --agent mycli --kind api-key --token-ref '${MYCLI_KEY}'
+added login my-key-2 (api-key, env MYCLI_KEY)
+
+$ agx login add --name plan --agent mycli --kind oauth-token --token-ref '${MYCLI_KEY}'
+agx: mycli has no oauth-token login; it takes api-key
+[exit 4]
+
+$ agx login check --id my-key
+NAME    KIND     SOURCE            RESOLVE  PROBE    DETAIL
+my-key  api-key  reference gopass  ok       skipped  mycli: config-only agent: a spec describes L1 only; this needs code
+#endregion
+#region login
+$ agx run --profile my --login my-key --dry-run
+...
+login    my-key (not resolved: --dry-run)     from --login
+...
+command  echo --color=always                  from built by agentio
+env      set AGX_RUN_ID=20261114-101500-k3x9  from launch environment
+         set AGX_RUN_AGENT=mycli              from launch environment
+         set AGX_RUN_PROFILE=my               from launch environment
+         set AGX_RUN_LOGIN=my-key             from launch environment
+         set AGX_RUN_HOME=~/.mycli            from launch environment
+         set MYCLI_API_KEY=[redacted]         from launch environment
+
+#endregion
+#: A spec has no conversation reader, so resume refuses the agent up front with the reason.
+#region resume
+$ agx resume --agent mycli --id abc123 --dry-run
+agx: mycli cannot resume conversations: config-only agent: a spec describes L1 only; this needs code
+[exit 125]
+#endregion
+#region missing
+$ agx run --agent nocli --dry-run
+agx: nocli not found on PATH
+[exit 127]
+
+#endregion

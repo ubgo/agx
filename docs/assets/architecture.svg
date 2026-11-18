@@ -1,0 +1,181 @@
+<svg viewBox="8 0 814 741" width="814" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    text { font-family: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', system-ui, sans-serif; }
+  </style>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="2" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,4 L0,8 L2,4 z" fill="#64748b"/>
+    </marker>
+    <marker id="arrow-blue" markerWidth="8" markerHeight="8" refX="2" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,4 L0,8 L2,4 z" fill="#3b82f6"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="8" markerHeight="8" refX="2" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,4 L0,8 L2,4 z" fill="#22c55e"/>
+    </marker>
+  </defs>
+
+  <!-- White canvas so the figure reads as a light card on GitHub's dark theme. -->
+  <rect x="8" y="0" width="814" height="741" fill="#ffffff"/>
+
+  <!-- Title centred on the content centre x=415; top margin 22 = 34 - 16 x 0.75. -->
+  <text x="415" y="34" font-size="16" fill="#1e293b" text-anchor="middle">agx v2 architecture: one launch, top to bottom</text>
+
+  <!-- Layer groups: one dashed style, 30px title band, 15px side and bottom padding. -->
+  <!-- group you and your tools: x=30, y=56, w=585, h=99, bottom=155 -->
+  <rect x="30" y="56" width="585" height="99" rx="10" fill="#f8fafc" stroke="#94a3b8" stroke-dasharray="6,4"/>
+  <text x="40" y="70" font-size="11" fill="#64748b">you and your tools</text>
+  <!-- group agx: x=30, y=180, w=585, h=183, bottom=363 -->
+  <rect x="30" y="180" width="585" height="183" rx="10" fill="#f8fafc" stroke="#94a3b8" stroke-dasharray="6,4"/>
+  <text x="40" y="194" font-size="11" fill="#64748b">agx</text>
+  <!-- group libraries: x=30, y=399, w=585, h=117, bottom=516 -->
+  <rect x="30" y="399" width="585" height="117" rx="10" fill="#f8fafc" stroke="#94a3b8" stroke-dasharray="6,4"/>
+  <text x="40" y="413" font-size="11" fill="#64748b">libraries</text>
+  <!-- group the machine: x=30, y=541, w=585, h=178, bottom=719 -->
+  <rect x="30" y="541" width="585" height="178" rx="10" fill="#f8fafc" stroke="#94a3b8" stroke-dasharray="6,4"/>
+  <text x="40" y="555" font-size="11" fill="#64748b">the machine</text>
+  <!-- group around every command: x=640, y=180, w=160, h=336, bottom=516 -->
+  <rect x="640" y="180" width="160" height="336" rx="10" fill="#f8fafc" stroke="#94a3b8" stroke-dasharray="6,4"/>
+  <text x="650" y="194" font-size="11" fill="#64748b">around every command</text>
+
+  <!-- Connectors: start at source edge + 5, end at target edge - 11 (8px marker, tip 6px past the end). -->
+  <!-- 1 agx run: terminal down to commands -->
+  <path d="M90,145 L 90,283" fill="none" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow-blue)"/>
+  <!-- results back up to the terminal -->
+  <path d="M120,289 L 120,151" fill="none" stroke="#22c55e" stroke-width="1.5" marker-end="url(#arrow-green)"/>
+  <!-- pipeline step 1 to 2 -->
+  <path d="M170,312 L 179,312" fill="none" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow-blue)"/>
+  <!-- pipeline step 2 to 3 -->
+  <path d="M315,312 L 324,312" fill="none" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow-blue)"/>
+  <!-- pipeline step 3 to 4 -->
+  <path d="M460,312 L 469,312" fill="none" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow-blue)"/>
+  <!-- decisions back to commands -->
+  <path d="M185,330 L 176,330" fill="none" stroke="#22c55e" stroke-width="1.5" marker-end="url(#arrow-green)"/>
+  <!-- config.jsonc read by resolution -->
+  <path d="M250,269 L 250,283" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <!-- tokens.jsonc read while building the command -->
+  <path d="M395,269 L 395,283" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <!-- launch writes the run folder -->
+  <path d="M540,289 L 540,275" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <!-- the build step asks agentio for the command -->
+  <path d="M395,353 C 395,465 350,465 321,465" fill="none" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow-blue)"/>
+  <!-- usage and conversations back to commands; cp2 below the end so the head points up -->
+  <path d="M210,424 C 210,389 120,388 120,359" fill="none" stroke="#22c55e" stroke-width="1.5" marker-end="url(#arrow-green)"/>
+  <!-- 4 exec: the vendor binary replaces agx -->
+  <path d="M540,353 L 540,560" fill="none" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow-blue)"/>
+  <!-- textdata expands secret references with gopass or vault -->
+  <path d="M135,506 L 135,560" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <!-- agentio reads agent homes -->
+  <path d="M230,506 L 230,560" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <!-- usage comes back from the vendor endpoints; cp2 below the end so the head points up -->
+  <path d="M395,566 C 395,531 290,541 290,512" fill="none" stroke="#22c55e" stroke-width="1.5" marker-end="url(#arrow-green)"/>
+
+  <!-- Boxes. Two-line boxes are 54 high (12px name, 10px detail 18px below); three-line 72. -->
+  <!-- terminal: x=45, y=86, w=120, h=54, right=165, bottom=140 -->
+  <rect x="45" y="86" width="120" height="54" rx="6" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="105" y="108.2" font-size="12" fill="#1e40af" text-anchor="middle">terminal</text>
+  <text x="105" y="126.2" font-size="10" fill="#1e40af" text-anchor="middle">you, by hand</text>
+  <!-- scripts: x=190, y=86, w=120, h=54, right=310, bottom=140 -->
+  <rect x="190" y="86" width="120" height="54" rx="6" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="250" y="108.2" font-size="12" fill="#1e40af" text-anchor="middle">scripts</text>
+  <text x="250" y="126.2" font-size="10" fill="#1e40af" text-anchor="middle">--json, --field</text>
+  <!-- shell layer: x=335, y=86, w=120, h=54, right=455, bottom=140 -->
+  <rect x="335" y="86" width="120" height="54" rx="6" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="395" y="108.2" font-size="12" fill="#1e40af" text-anchor="middle">shell layer</text>
+  <text x="395" y="126.2" font-size="10" fill="#1e40af" text-anchor="middle">agx shell-init</text>
+  <!-- config: x=190, y=210, w=120, h=54, right=310, bottom=264 -->
+  <rect x="190" y="210" width="120" height="54" rx="6" fill="#d1fae5" stroke="#22c55e"/>
+  <text x="250" y="232.2" font-size="12" fill="#166534" text-anchor="middle">config.jsonc</text>
+  <text x="250" y="250.2" font-size="10" fill="#166534" text-anchor="middle">profiles, logins</text>
+  <!-- tokens: x=335, y=210, w=120, h=54, right=455, bottom=264 -->
+  <rect x="335" y="210" width="120" height="54" rx="6" fill="#d1fae5" stroke="#22c55e"/>
+  <text x="395" y="232.2" font-size="12" fill="#166534" text-anchor="middle">tokens.jsonc</text>
+  <text x="395" y="250.2" font-size="10" fill="#166534" text-anchor="middle">pasted tokens, 0600</text>
+  <!-- run folders: x=480, y=210, w=120, h=54, right=600, bottom=264 -->
+  <rect x="480" y="210" width="120" height="54" rx="6" fill="#d1fae5" stroke="#22c55e"/>
+  <text x="540" y="232.2" font-size="12" fill="#166534" text-anchor="middle">run folders</text>
+  <text x="540" y="250.2" font-size="10" fill="#166534" text-anchor="middle">~/.agx/runs/&lt;id&gt;/</text>
+  <!-- commands: x=45, y=294, w=120, h=54, right=165, bottom=348 -->
+  <rect x="45" y="294" width="120" height="54" rx="6" fill="#fef3c7" stroke="#f59e0b"/>
+  <text x="105" y="316.2" font-size="12" fill="#b45309" text-anchor="middle">1 · commands</text>
+  <text x="105" y="334.2" font-size="10" fill="#b45309" text-anchor="middle">internal/cli, cobra</text>
+  <!-- resolution: x=190, y=294, w=120, h=54, right=310, bottom=348 -->
+  <rect x="190" y="294" width="120" height="54" rx="6" fill="#fef3c7" stroke="#f59e0b"/>
+  <text x="250" y="316.2" font-size="12" fill="#b45309" text-anchor="middle">2 · resolution</text>
+  <text x="250" y="334.2" font-size="10" fill="#b45309" text-anchor="middle">profile, home, login</text>
+  <!-- build command: x=335, y=294, w=120, h=54, right=455, bottom=348 -->
+  <rect x="335" y="294" width="120" height="54" rx="6" fill="#fef3c7" stroke="#f59e0b"/>
+  <text x="395" y="316.2" font-size="12" fill="#b45309" text-anchor="middle">3 · build</text>
+  <text x="395" y="334.2" font-size="10" fill="#b45309" text-anchor="middle">command, token, env</text>
+  <!-- launch: x=480, y=294, w=120, h=54, right=600, bottom=348 -->
+  <rect x="480" y="294" width="120" height="54" rx="6" fill="#fef3c7" stroke="#f59e0b"/>
+  <text x="540" y="316.2" font-size="12" fill="#b45309" text-anchor="middle">4 · launch</text>
+  <text x="540" y="334.2" font-size="10" fill="#b45309" text-anchor="middle">exec, agx disappears</text>
+  <!-- textdata: x=45, y=429, w=120, h=72, right=165, bottom=501 -->
+  <rect x="45" y="429" width="120" height="72" rx="6" fill="#f3e8ff" stroke="#a855f7"/>
+  <text x="105" y="452.7" font-size="12" fill="#6b21a8" text-anchor="middle">textdata</text>
+  <text x="105" y="470.7" font-size="10" fill="#6b21a8" text-anchor="middle">JSONC, secrets,</text>
+  <text x="105" y="485.7" font-size="10" fill="#6b21a8" text-anchor="middle">command runner</text>
+  <!-- agentio: x=190, y=429, w=120, h=72, right=310, bottom=501 -->
+  <rect x="190" y="429" width="120" height="72" rx="6" fill="#f3e8ff" stroke="#a855f7"/>
+  <text x="250" y="452.7" font-size="12" fill="#6b21a8" text-anchor="middle">agentio</text>
+  <text x="250" y="470.7" font-size="10" fill="#6b21a8" text-anchor="middle">modules: claude,</text>
+  <text x="250" y="485.7" font-size="10" fill="#6b21a8" text-anchor="middle">codex, gemini, pi</text>
+  <!-- gopass: x=45, y=571, w=120, h=54, right=165, bottom=625 -->
+  <rect x="45" y="571" width="120" height="54" rx="6" fill="#fce7f3" stroke="#ec4899"/>
+  <text x="105" y="593.2" font-size="12" fill="#9d174d" text-anchor="middle">gopass / vault</text>
+  <text x="105" y="611.2" font-size="10" fill="#9d174d" text-anchor="middle">secret references</text>
+  <!-- homes: x=190, y=571, w=120, h=54, right=310, bottom=625 -->
+  <rect x="190" y="571" width="120" height="54" rx="6" fill="#fce7f3" stroke="#ec4899"/>
+  <text x="250" y="593.2" font-size="12" fill="#9d174d" text-anchor="middle">agent homes</text>
+  <text x="250" y="611.2" font-size="10" fill="#9d174d" text-anchor="middle">~/.claude, ~/.codex</text>
+  <!-- usage endpoints: x=335, y=571, w=120, h=54, right=455, bottom=625 -->
+  <rect x="335" y="571" width="120" height="54" rx="6" fill="#fce7f3" stroke="#ec4899"/>
+  <text x="395" y="593.2" font-size="12" fill="#9d174d" text-anchor="middle">usage endpoints</text>
+  <text x="395" y="611.2" font-size="10" fill="#9d174d" text-anchor="middle">vendor APIs</text>
+  <!-- binaries: x=480, y=571, w=120, h=54, right=600, bottom=625 -->
+  <rect x="480" y="571" width="120" height="54" rx="6" fill="#fce7f3" stroke="#ec4899"/>
+  <text x="540" y="593.2" font-size="12" fill="#9d174d" text-anchor="middle">vendor binaries</text>
+  <text x="540" y="611.2" font-size="10" fill="#9d174d" text-anchor="middle">claude, codex, …</text>
+  <!-- keychain: x=190, y=650, w=120, h=54, right=310, bottom=704 -->
+  <rect x="190" y="650" width="120" height="54" rx="6" fill="#fce7f3" stroke="#ec4899"/>
+  <text x="250" y="672.2" font-size="12" fill="#9d174d" text-anchor="middle">keychain</text>
+  <text x="250" y="690.2" font-size="10" fill="#9d174d" text-anchor="middle">credential files</text>
+  <!-- processes: x=335, y=650, w=120, h=54, right=455, bottom=704 -->
+  <rect x="335" y="650" width="120" height="54" rx="6" fill="#fce7f3" stroke="#ec4899"/>
+  <text x="395" y="672.2" font-size="12" fill="#9d174d" text-anchor="middle">processes</text>
+  <text x="395" y="690.2" font-size="10" fill="#9d174d" text-anchor="middle">running agents</text>
+  <!-- doctor: x=655, y=210, w=130, h=54, right=785, bottom=264 -->
+  <rect x="655" y="210" width="130" height="54" rx="6" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="720" y="232.2" font-size="12" fill="#1e40af" text-anchor="middle">agx doctor</text>
+  <text x="720" y="250.2" font-size="10" fill="#1e40af" text-anchor="middle">local checks, no fixes</text>
+  <!-- clean: x=655, y=289, w=130, h=54, right=785, bottom=343 -->
+  <rect x="655" y="289" width="130" height="54" rx="6" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="720" y="311.2" font-size="12" fill="#1e40af" text-anchor="middle">agx clean</text>
+  <text x="720" y="329.2" font-size="10" fill="#1e40af" text-anchor="middle">ended run folders</text>
+  <!-- dry-run json: x=655, y=368, w=130, h=54, right=785, bottom=422 -->
+  <rect x="655" y="368" width="130" height="54" rx="6" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="720" y="390.2" font-size="12" fill="#1e40af" text-anchor="middle">--dry-run, --json</text>
+  <text x="720" y="408.2" font-size="10" fill="#1e40af" text-anchor="middle">every decision shown</text>
+  <!-- tests: x=655, y=447, w=130, h=54, right=785, bottom=501 -->
+  <rect x="655" y="447" width="130" height="54" rx="6" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="720" y="469.2" font-size="12" fill="#1e40af" text-anchor="middle">tests with fakes</text>
+  <text x="720" y="487.2" font-size="10" fill="#1e40af" text-anchor="middle">no real accounts</text>
+
+  <!-- Connector labels: 10px, at least 10px clear of their line, inside the bands between rows. -->
+  <text x="80" y="240" font-size="10" fill="#64748b" text-anchor="end">agx run</text>
+  <text x="132" y="240" font-size="10" fill="#64748b">results</text>
+  <text x="262" y="283" font-size="10" fill="#64748b">reads</text>
+  <text x="407" y="283" font-size="10" fill="#64748b">reads</text>
+  <text x="552" y="283" font-size="10" fill="#64748b">writes</text>
+  <text x="552" y="469" font-size="10" fill="#64748b">exec</text>
+  <text x="147" y="533" font-size="10" fill="#64748b">secret refs</text>
+  <text x="242" y="533" font-size="10" fill="#64748b">reads</text>
+
+  <!-- Colour key, beside the machine group. -->
+  <path d="M655,601 L 673,601" fill="none" stroke="#3b82f6" stroke-width="3"/>
+  <text x="683" y="605" font-size="10" fill="#64748b">launch, steps 1 to 4</text>
+  <path d="M655,625 L 673,625" fill="none" stroke="#22c55e" stroke-width="3"/>
+  <text x="683" y="629" font-size="10" fill="#64748b">usage, decisions back</text>
+  <path d="M655,649 L 673,649" fill="none" stroke="#64748b" stroke-width="3"/>
+  <text x="683" y="653" font-size="10" fill="#64748b">reads and writes</text>
+</svg>

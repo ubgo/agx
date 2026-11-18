@@ -1,0 +1,19 @@
+#  PROFILE   PROVIDER  ACCOUNT           5H USED  5H RESETS                   WEEKLY USED  WEEKLY RESETS            RESET DAY  RESETS ON        SONNET WEEKLY USED  SONNET WEEKLY RESETS       LEFT  STATUS
+1  personal  claude    me@example.com    13%      3 hr 10 min (9:00 PM)       49%          5 d 11 hr (Tue 5:30 AM)  Tue        Nov 24 5:30 AM   3%                  7 d 0 hr (Nov 25 6:00 PM)  51%   ok
+2  work      claude    work@example.com  60%      6 hr 30 min (Thu 12:20 AM)  20%          1 d 5 hr (Thu 11:30 PM)  Thu        Nov 19 11:30 PM  —                   —                          40%   ok
+3  old       claude    old@example.com   30%      now                         —            —                        —          —                —                   —                          70%   ok
+Weekly resets: Thu 1 (+20%) · Tue 1 (+49%)
+
+me@example.com  personal · claude  ~/.claude
+  Current session    ████░░░░░░░░░░░░░░░░░░░░░░░░░░   13% used  resets in 3 hr 10 min (9:00 PM)
+  Weekly limits
+  All models         ███████████████░░░░░░░░░░░░░░░   49% used  resets in 5 d 11 hr (Tue 5:30 AM)
+  Sonnet             █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░    3% used  resets in 7 d 0 hr (Nov 25 6:00 PM)
+
+work@example.com  work · claude  ~/.claude-work
+  Current session    ██████████████████░░░░░░░░░░░░   60% used  resets in 6 hr 30 min (Thu 12:20 AM)
+  Weekly limits
+  All models         ██████░░░░░░░░░░░░░░░░░░░░░░░░   20% used  resets in 1 d 5 hr (Thu 11:30 PM)
+
+old@example.com  old · claude  ~/.claude-old
+  Current session    █████████░░░░░░░░░░░░░░░░░░░░░   30% used  resets now

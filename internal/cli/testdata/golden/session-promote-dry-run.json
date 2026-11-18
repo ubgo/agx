@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "command": "session promote",
+  "ok": true,
+  "data": {
+    "from": "~/sessions/pglite_golang_20200101_101500",
+    "to": "~/projects/pglite_golang",
+    "dry_run": true,
+    "histories": [
+      {
+        "agent": "claude",
+        "home": "~/.claude",
+        "moved": false,
+        "backup": []
+      }
+    ],
+    "left": [],
+    "git_repo": false
+  },
+  "decisions": [],
+  "warnings": [],
+  "error": null
+}

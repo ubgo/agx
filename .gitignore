@@ -1,0 +1,8 @@
+# Private, symlinked from private-repo (repolink); never committed.
+/docsi
+/CLAUDE.md
+# Local development only.
+go.work
+go.work.sum
+# Build output.
+/dist/

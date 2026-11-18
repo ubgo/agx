@@ -1,0 +1,41 @@
+#: A Claude profile with one settings key, the same profile set to inline delivery, and a Codex profile.
+#region file
+$ agx run --dry-run --quiet --json --field data.command.line
+claude --settings ~/.agx/runs/20261114-101500-k3x9/settings-20261114-101500-k3x9.json
+
+#endregion
+#region inline
+$ agx run --settings-delivery inline --dry-run --quiet --json --field data.command.line --field data.warnings
+{
+  "data.command.line": "claude --settings \"{\\\"cleanupPeriodDays\\\":20}\"",
+  "data.warnings": [
+    {
+      "code": "inline-settings",
+      "message": "settings are visible in ps (inline delivery, from --settings-delivery)"
+    },
+    {
+      "code": "version",
+      "message": "installed Claude Code version unknown; flags not checked"
+    }
+  ]
+}
+
+$ agx run --profile visible --dry-run --quiet --json --field data.command.line
+claude --settings "{\"cleanupPeriodDays\":20}"
+
+#endregion
+#region codex
+$ agx run --profile codex --setting model_reasoning_effort=high --settings-delivery inline --dry-run --quiet --json --field data.command.line
+codex -c "model_reasoning_effort=\"high\""
+
+#endregion
+#region refused
+$ agx run --settings-delivery stdin --dry-run --quiet
+agx: --settings-delivery "stdin": use one of file, inline
+[exit 125]
+
+#endregion
+#region raw
+$ agx run --profile visible --dry-run --quiet --json --field data.command.line -- --settings '{"cleanupPeriodDays":5,"theme":"dark"}'
+claude --settings "{\"cleanupPeriodDays\":5,\"theme\":\"dark\"}"
+#endregion

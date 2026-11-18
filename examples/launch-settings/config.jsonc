@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "default_agent": "claude",
+  "profiles": {
+    // #region profiles
+    // #region strict
+    "strict": {
+      "agent": "claude",
+      "home": "~/.claude-work",
+      "claude": { "settings": "~/.config/claude/strict.json" }
+    },
+    // #endregion strict
+    // #region work
+    "work": {
+      "agent": "claude",
+      "home": "~/.claude-work",
+      "default": true,
+      "claude": { "settings": { "cleanupPeriodDays": 20, "statusLine": { "type": "command", "command": "~/bin/status.sh" } } }
+    },
+    // #endregion work
+    // #region visible
+    "visible": {
+      "agent": "claude",
+      "home": "~/.claude-work",
+      "settings_delivery": "inline",
+      "claude": { "settings": { "cleanupPeriodDays": 20 } }
+    },
+    // #endregion visible
+    // #endregion profiles
+    // #region broken
+    "missing": { "agent": "claude", "home": "~/.claude-work", "claude": { "settings": "~/.config/claude/nope.json" } },
+    "typo": { "agent": "claude", "home": "~/.claude-work", "claude": { "settings": { "cleanupPeriodDays": "ten" } } }
+    // #endregion
+  }
+}

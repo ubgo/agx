@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "default_agent": "gemini",
+  "profiles": {
+    // #region profiles
+    "gemini": { "agent": "gemini", "home": "~/.gemini", "default": true },
+    "pi": { "agent": "pi", "home": "~/.pi/agent", "default": true }
+    // #endregion
+  },
+  "logins": {
+    "gem": { "agents": ["gemini"], "kind": "api-key", "token": "${gopass:personal/gemini/key}" }
+  }
+}

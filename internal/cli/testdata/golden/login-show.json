@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "command": "login show",
+  "ok": true,
+  "data": {
+    "name": "personal",
+    "agents": [
+      "claude"
+    ],
+    "kind": "oauth-token",
+    "source": "reference gopass",
+    "source_type": "reference",
+    "account": "me@example.com",
+    "users": [
+      {
+        "type": "profile",
+        "name": "work",
+        "agent": "claude"
+      },
+      {
+        "type": "agent-default",
+        "name": "claude",
+        "agent": "claude"
+      },
+      {
+        "type": "binding",
+        "name": "/p/client",
+        "agent": "claude"
+      }
+    ]
+  },
+  "decisions": [],
+  "warnings": [],
+  "error": null
+}

@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "default_agent": "claude",
+  "profiles": {
+    "work": { "agent": "claude", "home": "~/.claude-work", "default": true },
+    "codex": { "agent": "codex", "home": "~/.codex", "default": true },
+    "gem": { "agent": "gemini", "home": "~/.gemini", "default": true },
+    "pi": { "agent": "pi", "home": "~/.pi/agent", "default": true }
+  },
+  // #region logins
+  "logins": {
+    "carol": { "agents": ["claude"], "kind": "oauth-token", "token": "${gopass:personal/claude/carol}" },
+    "pasted": { "agents": ["claude"], "kind": "oauth-token", "stored": true },
+    "console": { "agents": ["claude"], "kind": "api-key-helper", "command": "gopass show -o work/anthropic-api-key" },
+    "anthropic-key": { "agents": ["claude", "pi"], "kind": "api-key", "token": "${gopass:work/anthropic-api-key}", "provider": "anthropic" },
+    "gem-key": { "agents": ["gemini"], "kind": "api-key", "token": "${gopass:google/gemini-key}" }
+  }
+  // #endregion
+}

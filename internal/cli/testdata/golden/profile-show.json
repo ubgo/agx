@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "command": "profile show",
+  "ok": true,
+  "data": {
+    "name": "kimi",
+    "agent": "claude",
+    "values": [
+      {
+        "key": "agent",
+        "value": "claude",
+        "source": "profile kimi (config.jsonc:10:7)"
+      },
+      {
+        "key": "home",
+        "value": "~/.claude",
+        "source": "profile kimi (config.jsonc:11:7)"
+      },
+      {
+        "key": "home_exists",
+        "value": "yes",
+        "source": "disk"
+      },
+      {
+        "key": "default",
+        "value": "false",
+        "source": "default"
+      },
+      {
+        "key": "billing",
+        "value": "api",
+        "source": "profile kimi (config.jsonc:12:7)"
+      },
+      {
+        "key": "login",
+        "value": "home login",
+        "source": "default (no login named)"
+      },
+      {
+        "key": "inherit_defaults",
+        "value": "false",
+        "source": "profile kimi (config.jsonc:13:7)"
+      },
+      {
+        "key": "args",
+        "value": "--verbose",
+        "source": "profile kimi (config.jsonc:14:7)"
+      },
+      {
+        "key": "env",
+        "value": "ANTHROPIC_AUTH_TOKEN=(set)",
+        "source": "profile kimi (config.jsonc:15:16)"
+      },
+      {
+        "key": "env_refs",
+        "value": "OTHER=${TOKVAR}",
+        "source": "profile kimi (config.jsonc:16:21)"
+      },
+      {
+        "key": "shares_home_with",
+        "value": "personal",
+        "source": "profiles with the same home"
+      }
+    ]
+  },
+  "decisions": [],
+  "warnings": [],
+  "error": null
+}

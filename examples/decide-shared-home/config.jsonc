@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "default_agent": "claude",
+  // #region profiles
+  "profiles": {
+    // the Claude plan account
+    "personal": { "agent": "claude", "home": "~/.claude" },
+    // Moonshot's Kimi through the Anthropic API shape, on the same home, so it sees the same history and settings
+    "kimi": {
+      "agent": "claude",
+      "home": "~/.claude",
+      "env": { "ANTHROPIC_BASE_URL": "https://api.moonshot.ai/anthropic" },
+      "env_refs": { "ANTHROPIC_AUTH_TOKEN": "${gopass:moonshot/kimi-token}" }
+    },
+    // the only profile on ~/.claude-work
+    "work": { "agent": "claude", "home": "~/.claude-work" }
+  }
+  // #endregion
+}

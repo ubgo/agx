@@ -1,0 +1,212 @@
+#: Local checks: no network, no secret resolved, no agent binary run.
+#options mode=~/tokens.jsonc=644
+#region doctor
+$ agx doctor
+✓ config                      ~/.agx/config.jsonc is valid
+✓ reference                   logins.carol.token: parses
+✓ reference                   profiles.work.env_refs.API_KEY: parses
+· plain-token                 logins.gem-work.token holds a plain token value (allowed; redacted in all output)
+✓ runs                        no run folders
+· shell                       shell layer not loaded: new and resume leave this shell where it is
+                              fix: eval "$(agx shell-init --shell zsh)"
+✓ binary claude               /usr/local/bin/claude (unknown)
+! binary claude               claude version unknown (no install metadata); tested 2.1.323..2.1.327
+✓ home claude ~/.claude       ~/.claude
+! home claude ~/.claude       no login found in the credentials file or keychain
+· home claude ~/.claude       transcripts kept 30 days
+✓ home claude ~/.claude-work  ~/.claude-work
+! home claude ~/.claude-work  no login found in the credentials file or keychain
+· home claude ~/.claude-work  transcripts kept 30 days
+✓ binary codex                /usr/local/bin/codex (unknown)
+! binary codex                codex version unknown (no install metadata); tested 0.162.1..0.162.1
+✓ binary gemini               /usr/local/bin/gemini (unknown)
+! binary gemini               gemini version unknown (no install metadata); tested 0.68.0..0.68.0
+! home gemini ~/.gemini       ~/.gemini is not a home (missing or no marker)
+! home gemini ~/.gemini       no auth method chosen (security.auth.selectedType unset); the first interactive run asks
+· home gemini ~/.gemini       general.enableAutoUpdate is on: Gemini CLI updates its own npm-family install
+✓ binary pi                   /usr/local/bin/pi (unknown)
+! binary pi                   pi version unknown (no install metadata); tested 1.5.2..1.5.2
+
+#endregion
+#region agent
+$ agx doctor --agent gemini
+✓ config                 ~/.agx/config.jsonc is valid
+✓ reference              logins.carol.token: parses
+✓ reference              profiles.work.env_refs.API_KEY: parses
+· plain-token            logins.gem-work.token holds a plain token value (allowed; redacted in all output)
+✓ runs                   no run folders
+· shell                  shell layer not loaded: new and resume leave this shell where it is
+                         fix: eval "$(agx shell-init --shell zsh)"
+✓ binary gemini          /usr/local/bin/gemini (unknown)
+! binary gemini          gemini version unknown (no install metadata); tested 0.68.0..0.68.0
+! home gemini ~/.gemini  ~/.gemini is not a home (missing or no marker)
+! home gemini ~/.gemini  no auth method chosen (security.auth.selectedType unset); the first interactive run asks
+· home gemini ~/.gemini  general.enableAutoUpdate is on: Gemini CLI updates its own npm-family install
+
+#endregion
+#region shell
+$ AGX_SHELL=zsh agx doctor --field data.*.status --field data.*.id --field data.*.message
+STATUS  ID               MESSAGE
+ok      config-valid     ~/.agx/config.jsonc is valid
+ok      reference-parse  logins.carol.token: parses
+ok      reference-parse  profiles.work.env_refs.API_KEY: parses
+info    plain-token      logins.gem-work.token holds a plain token value (allowed; redacted in all output)
+ok      run-folder       no run folders
+ok      shell-layer      shell layer loaded (zsh)
+ok      binary-found     /usr/local/bin/claude (unknown)
+warn    version-tested   claude version unknown (no install metadata); tested 2.1.323..2.1.327
+ok      home             ~/.claude
+warn    login            no login found in the credentials file or keychain
+info    retention        transcripts kept 30 days
+ok      home             ~/.claude-work
+warn    login            no login found in the credentials file or keychain
+info    retention        transcripts kept 30 days
+ok      binary-found     /usr/local/bin/codex (unknown)
+warn    version-tested   codex version unknown (no install metadata); tested 0.162.1..0.162.1
+ok      binary-found     /usr/local/bin/gemini (unknown)
+warn    version-tested   gemini version unknown (no install metadata); tested 0.68.0..0.68.0
+warn    home             ~/.gemini is not a home (missing or no marker)
+warn    login            no auth method chosen (security.auth.selectedType unset); the first interactive run asks
+info    auto-update      general.enableAutoUpdate is on: Gemini CLI updates its own npm-family install
+ok      binary-found     /usr/local/bin/pi (unknown)
+warn    version-tested   pi version unknown (no install metadata); tested 1.5.2..1.5.2
+
+#endregion
+#: --resolved-secrets resolves every reference (cost X); values are never printed.
+#region secrets
+$ agx doctor --agent claude --resolved-secrets --field data.*.status --field data.*.area --field data.*.message
+STATUS  AREA         MESSAGE
+ok      config       ~/.agx/config.jsonc is valid
+ok      reference    logins.carol.token: parses
+ok      reference    profiles.work.env_refs.API_KEY: parses
+info    plain-token  logins.gem-work.token holds a plain token value (allowed; redacted in all output)
+ok      runs         no run folders
+info    shell        shell layer not loaded: new and resume leave this shell where it is
+ok      binary       /usr/local/bin/claude (unknown)
+warn    binary       claude version unknown (no install metadata); tested 2.1.323..2.1.327
+ok      home         ~/.claude
+warn    home         no login found in the credentials file or keychain
+info    home         transcripts kept 30 days
+ok      home         ~/.claude-work
+warn    home         no login found in the credentials file or keychain
+info    home         transcripts kept 30 days
+ok      secret       login carol: resolves
+ok      secret       profiles.work.env_refs.API_KEY: resolves
+
+#endregion
+#: --vendor-checks runs each binary's --version (cost X). The fake gemini prints its argv and environment, not a version,
+#: so the number read here is not a real version; a real gemini prints its own.
+#region vendor
+$ agx doctor --agent gemini --vendor-checks --field data.*.status --field data.*.area --field data.*.message
+STATUS  AREA         MESSAGE
+ok      config       ~/.agx/config.jsonc is valid
+ok      reference    logins.carol.token: parses
+ok      reference    profiles.work.env_refs.API_KEY: parses
+info    plain-token  logins.gem-work.token holds a plain token value (allowed; redacted in all output)
+ok      runs         no run folders
+info    shell        shell layer not loaded: new and resume leave this shell where it is
+ok      binary       /usr/local/bin/gemini (unknown)
+warn    binary       gemini version unknown (no install metadata); tested 0.68.0..0.68.0
+warn    home         ~/.gemini is not a home (missing or no marker)
+warn    home         no auth method chosen (security.auth.selectedType unset); the first interactive run asks
+info    home         general.enableAutoUpdate is on: Gemini CLI updates its own npm-family install
+warn    vendor       gemini --version: gemini 1.0.0 is newer than tested (0.68.0)
+
+#endregion
+#region json
+$ agx doctor --json --field data.0
+{"area":"config","id":"config-valid","status":"ok","message":"~/.agx/config.jsonc is valid"}
+
+#endregion
+#: A config with problems: doctor reports them and exits 1.
+#region broken
+$ agx doctor --config ~/broken.jsonc --agent claude
+agx: 3 checks failed
+✓ config                      ~/broken.jsonc is valid
+✗ reference                   logins.carol.token: program op not on PATH
+✓ reference                   logins.carol.token: parses
+✗ reference                   profiles.work.env_refs.API_KEY: no plugin for scheme gopas (known: gopass)
+✗ files                       ~/tokens.jsonc has mode 0644; it holds tokens and must be 0600
+                              fix: chmod 600 ~/tokens.jsonc
+✓ runs                        no run folders
+· shell                       shell layer not loaded: new and resume leave this shell where it is
+                              fix: eval "$(agx shell-init --shell zsh)"
+✓ binary claude               /usr/local/bin/claude (unknown)
+! binary claude               claude version unknown (no install metadata); tested 2.1.323..2.1.327
+✓ home claude ~/.claude       ~/.claude
+! home claude ~/.claude       no login found in the credentials file or keychain
+· home claude ~/.claude       transcripts kept 30 days
+✓ home claude ~/.claude-work  ~/.claude-work
+! home claude ~/.claude-work  no login found in the credentials file or keychain
+· home claude ~/.claude-work  transcripts kept 30 days
+[exit 1]
+
+#endregion
+#region config-path
+$ agx config path
+~/.agx/config.jsonc
+
+$ agx config path --json --field data.source
+AGX_CONFIG_DIR
+
+#endregion
+#region check
+$ agx config check
+~/.agx/config.jsonc: ok (0 agents, 3 profiles, 2 logins, 0 projects, 0 aliases)
+
+#endregion
+#: config check lists every problem at once, with its line and column.
+#region check-typo
+$ agx config check --config ~/typo.jsonc
+agx: typo.jsonc has 2 problems
+  typo.jsonc:4:76: profiles.personal.modle: unknown key "modle"
+  typo.jsonc:5:71: profiles.work.default: must be boolean, got string
+[exit 1]
+
+#endregion
+#region check-cross
+$ agx config check --config ~/cross.jsonc
+agx: cross.jsonc has 3 problems
+  cross.jsonc:5:77: profiles.work.login: unknown login dave
+  cross.jsonc:5:60: profiles.work.default: claude has two default profiles (personal, work); keep one
+  cross.jsonc:7:16: aliases.x: agx launch is internal; an alias cannot run it
+[exit 2]
+
+#endregion
+#region check-syntax
+$ agx config check --config ~/syntax.jsonc
+agx: syntax.jsonc:4:58: missing comma before '"'
+[exit 1]
+
+#endregion
+#region show
+$ agx config show
+KEY                                 VALUE                      SOURCE
+version                             1                          config.jsonc:2:3
+default_agent                       claude                     config.jsonc:3:3
+profiles.gem.agent                  gemini                     config.jsonc:7:14
+profiles.gem.home                   ~/.gemini                  config.jsonc:7:33
+profiles.gem.default                true                       config.jsonc:7:54
+profiles.gem.login                  gem-work                   config.jsonc:7:71
+profiles.personal.agent             claude                     config.jsonc:5:19
+profiles.personal.home              ~/.claude                  config.jsonc:5:38
+profiles.personal.default           true                       config.jsonc:5:59
+profiles.work.agent                 claude                     config.jsonc:6:15
+profiles.work.home                  ~/.claude-work             config.jsonc:6:34
+profiles.work.login                 carol                      config.jsonc:6:60
+profiles.work.env_refs.API_KEY      ${gopass:work/api-key}     config.jsonc:6:92
+logins.carol.agents                 claude                     config.jsonc:10:16
+logins.carol.kind                   oauth-token                config.jsonc:10:38
+logins.carol.token                  (reference)                config.jsonc:10:61
+logins.gem-work.agents              gemini                     config.jsonc:12:19
+logins.gem-work.kind                api-key                    config.jsonc:12:41
+logins.gem-work.token               (plain value, [redacted])  config.jsonc:12:60
+sessions.root                       ~/.agx/sessions            default
+profiles.gem.billing                plan                       default
+profiles.gem.inherit_defaults       true                       default
+profiles.personal.billing           plan                       default
+profiles.personal.inherit_defaults  true                       default
+profiles.work.billing               plan                       default
+profiles.work.inherit_defaults      true                       default
+
+#endregion

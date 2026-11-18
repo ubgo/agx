@@ -1,0 +1,5 @@
+[1mPROFILE[0m   [1mPROVIDER[0m  [1mACCOUNT[0m         [1mPLAN[0m               [1mSTATUS[0m  [1mSINCE[0m
+personal  claude    me@example.com  Max (20x)          active  2 Jan 2025
+codex     codex     [2m—[0m               [31merror (see below)[0m  [2m—[0m       [2m—[0m
+
+codex: not logged in

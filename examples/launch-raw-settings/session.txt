@@ -1,0 +1,92 @@
+#: A raw --settings is read and merged into agx's own settings; Claude gets exactly one --settings.
+#region inline
+$ agx run --dry-run --quiet -- --settings '{"cleanupPeriodDays":7,"permissions":{"deny":["Bash"]}}'
+agent     claude                                                                                        from default_agent
+profile   work                                                                                          from default profile of claude
+home      ~/.claude-work                                                                                from profile work
+login     home login                                                                                    from default (no login named)
+binary    /usr/local/bin/claude version unknown                                                         from no install metadata
+folder    ~/projects/app                                                                                from current folder
+settings  permissions.allow                                                                             from profile work
+          cleanupPeriodDays, permissions.deny                                                           from raw --settings (overrides profile work: cleanupPeriodDays)
+          delivered as file ~/.agx/runs/20261118-091339-izjf/settings-20261118-091339-izjf.json (0600)  from settings_delivery file
+run       ~/.agx/runs/20261118-091339-izjf                                                              from AGX_RUN_ID=20261118-091339-izjf
+command   claude --settings ~/.agx/runs/20261118-091339-izjf/settings-20261118-091339-izjf.json         from built by agentio
+env       set AGX_RUN_ID=20261118-091339-izjf                                                           from launch environment
+          set AGX_RUN_AGENT=claude                                                                      from launch environment
+          set AGX_RUN_PROFILE=work                                                                      from launch environment
+          set AGX_RUN_LOGIN=home                                                                        from launch environment
+          set AGX_RUN_HOME=~/.claude-work                                                               from launch environment
+          set CLAUDE_CONFIG_DIR=~/.claude-work                                                          from launch environment
+note      installed Claude Code version unknown; flags not checked
+#endregion
+#region merged
+$ agx run --dry-run --quiet --settings-delivery inline --json --field data.command.line -- --settings '{"cleanupPeriodDays":7,"permissions":{"deny":["Bash"]}}'
+claude --settings "{\"cleanupPeriodDays\":7,\"permissions\":{\"allow\":[\"Read\"],\"deny\":[\"Bash\"]}}"
+#endregion
+#region file
+$ agx run --dry-run --quiet -- --settings=local.json
+agent     claude                                                                                        from default_agent
+profile   work                                                                                          from default profile of claude
+home      ~/.claude-work                                                                                from profile work
+login     home login                                                                                    from default (no login named)
+binary    /usr/local/bin/claude version unknown                                                         from no install metadata
+folder    ~/projects/app                                                                                from current folder
+settings  cleanupPeriodDays, permissions.allow                                                          from profile work
+          permissions.deny, theme                                                                       from raw --settings (file ~/projects/app/local.json)
+          delivered as file ~/.agx/runs/20261118-091339-oqag/settings-20261118-091339-oqag.json (0600)  from settings_delivery file
+run       ~/.agx/runs/20261118-091339-oqag                                                              from AGX_RUN_ID=20261118-091339-oqag
+command   claude --settings ~/.agx/runs/20261118-091339-oqag/settings-20261118-091339-oqag.json         from built by agentio
+env       set AGX_RUN_ID=20261118-091339-oqag                                                           from launch environment
+          set AGX_RUN_AGENT=claude                                                                      from launch environment
+          set AGX_RUN_PROFILE=work                                                                      from launch environment
+          set AGX_RUN_LOGIN=home                                                                        from launch environment
+          set AGX_RUN_HOME=~/.claude-work                                                               from launch environment
+          set CLAUDE_CONFIG_DIR=~/.claude-work                                                          from launch environment
+note      installed Claude Code version unknown; flags not checked
+#endregion
+#region profile-args
+$ agx run --profile team --dry-run --quiet
+agent     claude                                                                                        from profile team
+profile   team                                                                                          from --profile
+home      ~/.claude-work                                                                                from profile team
+login     home login                                                                                    from default (no login named)
+binary    /usr/local/bin/claude version unknown                                                         from no install metadata
+folder    ~/projects/app                                                                                from current folder
+settings  hooks.Stop, theme                                                                             from raw --settings (file ~/.config/claude/team.jsonc)
+          delivered as file ~/.agx/runs/20261118-091339-ghnv/settings-20261118-091339-ghnv.json (0600)  from settings_delivery file
+run       ~/.agx/runs/20261118-091339-ghnv                                                              from AGX_RUN_ID=20261118-091339-ghnv
+command   claude --settings ~/.agx/runs/20261118-091339-ghnv/settings-20261118-091339-ghnv.json         from built by agentio
+env       set AGX_RUN_ID=20261118-091339-ghnv                                                           from launch environment
+          set AGX_RUN_AGENT=claude                                                                      from launch environment
+          set AGX_RUN_PROFILE=team                                                                      from launch environment
+          set AGX_RUN_LOGIN=home                                                                        from launch environment
+          set AGX_RUN_HOME=~/.claude-work                                                               from launch environment
+          set CLAUDE_CONFIG_DIR=~/.claude-work                                                          from launch environment
+note      installed Claude Code version unknown; flags not checked
+#endregion
+#region two
+$ agx run --dry-run --quiet --settings-delivery inline --json --field data.command.line -- --settings '{"theme":"dark","cleanupPeriodDays":1}' --settings '{"cleanupPeriodDays":2}'
+claude --settings "{\"cleanupPeriodDays\":2,\"permissions\":{\"allow\":[\"Read\"]},\"theme\":\"dark\"}"
+#endregion
+#region live
+$ agx run --profile live --dry-run --quiet -- --settings '{"theme":"dark"}'
+...
+settings  theme                                                                                         from raw --settings
+          apiKeyHelper                                                                                  from --live-login
+...
+$ agx run --profile live --dry-run --quiet -- --settings '{"apiKeyHelper":"~/bin/key.sh"}'
+agx: raw --settings apiKeyHelper and --live-login both set the credential; pick one
+[exit 125]
+#endregion
+#region errors
+$ agx run --dry-run --quiet -- --settings missing.json
+agx: raw --settings file ~/projects/app/missing.json not found
+[exit 125]
+$ agx run --dry-run --quiet -- --settings broken.jsonc
+agx: raw --settings: ~/projects/app/broken.jsonc:2:12: unexpected ',': expected a value
+[exit 125]
+$ agx run --dry-run --quiet -- --settings
+agx: raw --settings needs a value (inline JSON or a settings file)
+[exit 125]
+#endregion

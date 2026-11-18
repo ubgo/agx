@@ -1,0 +1,48 @@
+#: A script that runs before the agent: from the profile, from the launch folder, for one run.
+#region dry-run
+$ agx run --profile work --dry-run --quiet
+...
+before_run  ~/.agx/scripts/work-env.sh             from profile work (before_run_from config)
+...
+command     claude                                 from built by agentio
+...
+#endregion
+#region launch
+$ agx run --profile work --prompt hello
+agx: warning: installed Claude Code version unknown; flags not checked
+agent claude
+argv [--] [hello]
+pwd ~/projects/app
+...
+#endregion
+#region from-folder
+$ agx run --profile repo
+agx: warning: installed Claude Code version unknown; flags not checked
+agent claude
+argv
+pwd ~/projects/app
+...
+$ agx run --profile repo --dir ~/projects/client --dry-run --quiet
+agx: before_run scripts/setup.sh not found in ~/projects/client
+[exit 125]
+#endregion
+#region one-run
+$ agx run --profile work --before-run ~/.agx/scripts/vpn-check.sh --dry-run --quiet
+...
+before_run  ~/.agx/scripts/vpn-check.sh            from --before-run (overrides profile work: scripts/work-env.sh)
+...
+$ agx run --profile work --before-run ~/.agx/scripts/vpn-check.sh
+agx: warning: installed Claude Code version unknown; flags not checked
+agx: before_run failed (exit 2): VPN is down; connect first
+[exit 125]
+#endregion
+#region env
+$ agx run --profile hidden
+agx: warning: installed Claude Code version unknown; flags not checked
+agx: before_run failed (exit 1): token hidden
+[exit 125]
+$ agx run --profile full
+agx: warning: installed Claude Code version unknown; flags not checked
+agx: before_run failed (exit 1): token visible
+[exit 125]
+#endregion

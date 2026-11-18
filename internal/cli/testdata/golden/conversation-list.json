@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "command": "conversation list",
+  "ok": true,
+  "data": [
+    {
+      "agent": "claude",
+      "profiles": [
+        "personal"
+      ],
+      "home": "~/.claude",
+      "id": "aaaabbbb-0000-4000-8000-000000000002",
+      "title": "Write the docs",
+      "folder": "<root>/work/proj",
+      "created": "<time>",
+      "updated": "<time>"
+    },
+    {
+      "agent": "claude",
+      "profiles": [
+        "work"
+      ],
+      "home": "~/.claude-work",
+      "id": "dddddddd-0000-4000-8000-000000000004",
+      "title": "Work review",
+      "folder": "<root>/work/proj",
+      "created": "<time>",
+      "updated": "<time>"
+    },
+    {
+      "agent": "claude",
+      "profiles": [
+        "personal"
+      ],
+      "home": "~/.claude",
+      "id": "aaaaaaaa-0000-4000-8000-000000000001",
+      "title": "Fix the parser",
+      "folder": "<root>/work/proj",
+      "created": "<time>",
+      "updated": "<time>"
+    }
+  ],
+  "decisions": [],
+  "warnings": [],
+  "error": null
+}

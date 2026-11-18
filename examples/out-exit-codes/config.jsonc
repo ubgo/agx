@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "default_agent": "claude",
+  "agents": {
+    "nocli": { "spec": { "name": "Not installed", "binary": "nocli", "default_home": ".nocli", "new_args": ["{args}"] } }
+  },
+  "profiles": {
+    "personal": { "agent": "claude", "home": "~/.claude", "default": true },
+    "codex": { "agent": "codex", "home": "~/.codex", "default": true },
+    "gem": { "agent": "gemini", "home": "~/.gemini", "default": true },
+    "no": { "agent": "nocli", "home": "~/.nocli", "default": true }
+  }
+}

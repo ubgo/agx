@@ -1,0 +1,54 @@
+#: One Claude account in the default home. Three ways to add a second account, each tried without writing anything, then a launch of each.
+#region profile
+$ agx profile add --name client --agent claude --dry-run
+would add profile client: claude home ~/.claude-client (derived from the agent's default home and --name), login home login, billing plan
+  create ~/.claude-client
+  link ~/.claude-client/CLAUDE.md -> ~/.claude/CLAUDE.md
+  link ~/.claude-client/skills -> ~/.claude/skills
+  link ~/.claude-client/settings.json -> ~/.claude/settings.json
+
+#endregion
+#region bare
+$ agx profile add --name client --agent claude --bare --dry-run
+would add profile client: claude home ~/.claude-client (derived from the agent's default home and --name), login home login, billing plan
+  create ~/.claude-client
+
+#endregion
+#region shared
+$ agx profile add --name kimi --agent claude --home ~/.claude --billing api --dry-run
+would add profile kimi: claude home ~/.claude (--home), login home login, billing api
+
+#endregion
+#region login
+$ agx login add --name carol --agent claude --kind oauth-token --token-ref '${gopass:personal/claude/carol}'
+added login carol (oauth-token, reference gopass)
+
+$ agx run --login carol --dry-run --quiet --json --field data.home --field data.login --field data.command.env
+{
+  "data.home": "~/.claude",
+  "data.login": "carol",
+  "data.command.env": [
+    "set AGX_RUN_ID=20261114-101500-k3x9",
+    "set AGX_RUN_AGENT=claude",
+    "set AGX_RUN_PROFILE=personal",
+    "set AGX_RUN_LOGIN=carol",
+    "set AGX_RUN_HOME=~/.claude",
+    "set CLAUDE_CODE_OAUTH_TOKEN=[redacted]"
+  ]
+}
+
+#endregion
+#region default-home
+$ agx run --dry-run --quiet --json --field data.home --field data.command.env
+{
+  "data.home": "~/.claude",
+  "data.command.env": [
+    "set AGX_RUN_ID=20261114-101500-k3x9",
+    "set AGX_RUN_AGENT=claude",
+    "set AGX_RUN_PROFILE=personal",
+    "set AGX_RUN_LOGIN=home",
+    "set AGX_RUN_HOME=~/.claude"
+  ]
+}
+
+#endregion

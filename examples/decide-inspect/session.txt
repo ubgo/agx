@@ -1,0 +1,52 @@
+#: Three ways to read the decisions without launching anything.
+#region profile-show
+$ agx profile show --id personal
+KEY          VALUE       SOURCE
+agent        claude      profile personal (config.jsonc:13:7)
+home         ~/.claude   profile personal (config.jsonc:14:7)
+home_exists  yes         disk
+default      true        profile personal (config.jsonc:15:7)
+billing      plan        default
+login        home login  default (no login named)
+args         --chrome    agents.claude.defaults (config.jsonc:7:31)
+args         --verbose   profile personal (config.jsonc:17:7)
+model        sonnet      profile personal (config.jsonc:16:7)
+env          TEAM=(set)  profile personal (config.jsonc:18:16)
+#endregion
+#region config-show
+$ agx config show
+KEY                                 VALUE                 SOURCE
+version                             1                     config.jsonc:2:3
+default_agent                       claude                config.jsonc:3:3
+agents.claude.defaults.args         --chrome              config.jsonc:7:31
+profiles.personal.agent             claude                config.jsonc:13:7
+profiles.personal.home              ~/.claude             config.jsonc:14:7
+profiles.personal.default           true                  config.jsonc:15:7
+profiles.personal.args              --verbose             config.jsonc:17:7
+profiles.personal.model             sonnet                config.jsonc:16:7
+profiles.personal.env.TEAM          (set)                 config.jsonc:18:16
+profiles.work.agent                 claude                config.jsonc:22:7
+profiles.work.home                  ~/.claude-work        config.jsonc:23:7
+profiles.work.args                  --debug               config.jsonc:26:7
+profiles.work.inherit_defaults      false                 config.jsonc:25:7
+sessions.root                       ~/.agx/sessions       default
+profiles.personal.billing           plan                  default
+profiles.personal.inherit_defaults  true                  default
+profiles.personal.claude            (typed launch block)  config.jsonc:19:7
+profiles.work.billing               plan                  default
+#endregion
+#region json
+$ agx run --dry-run --quiet --json --field decisions.0 --field decisions.1
+{
+  "decisions.0": {
+    "name": "agent",
+    "value": "claude",
+    "source": "default_agent"
+  },
+  "decisions.1": {
+    "name": "profile",
+    "value": "personal",
+    "source": "default profile of claude"
+  }
+}
+#endregion

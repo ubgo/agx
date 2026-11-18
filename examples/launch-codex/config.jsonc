@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "default_agent": "codex",
+  "profiles": {
+    // #region profiles
+    "codex": { "agent": "codex", "home": "~/.codex", "default": true },
+    // #region deep
+    "deep": {
+      "agent": "codex",
+      "home": "~/.codex",
+      "codex": {
+        "codex_profile": "deep",                     // Codex's own -p profile, not an agx profile
+        "search": true,
+        "settings": { "model_reasoning_effort": "high" }
+      }
+    }
+    // #endregion deep
+    // #endregion
+  },
+  "logins": {
+    "carol": { "agents": ["claude"], "kind": "oauth-token", "token": "${gopass:personal/claude/carol}" }
+  }
+}

@@ -1,0 +1,82 @@
+[
+  {
+    "kind": "home",
+    "index": 1,
+    "name": "personal",
+    "agent": "claude",
+    "home": "~/.claude-personal",
+    "profile": "personal",
+    "profiles": [
+      "kimi",
+      "personal"
+    ],
+    "plan_label": "Max (20x)",
+    "source": "live",
+    "observed_at": "<time>",
+    "status": "ok",
+    "left": 66,
+    "windows": [
+      {
+        "class": "short",
+        "label": "Current session",
+        "percent": 34,
+        "resets_at": "<time>",
+        "reset": "Fri 13 Nov 14:00"
+      },
+      {
+        "class": "week",
+        "label": "All models",
+        "percent": 12,
+        "resets_at": "<time>",
+        "reset": "Mon 16 Nov 06:00"
+      }
+    ]
+  },
+  {
+    "kind": "home",
+    "index": 3,
+    "name": "work",
+    "agent": "claude",
+    "home": "~/.claude-work",
+    "profile": "work",
+    "profiles": [
+      "work"
+    ],
+    "plan_label": "Max (20x)",
+    "source": "live",
+    "observed_at": "<time>",
+    "status": "ok",
+    "left": 60,
+    "windows": [
+      {
+        "class": "short",
+        "label": "Current session",
+        "percent": 5,
+        "resets_at": "<time>",
+        "reset": "Fri 13 Nov 14:00"
+      },
+      {
+        "class": "week",
+        "label": "All models",
+        "percent": 40,
+        "resets_at": "<time>",
+        "reset": "Mon 16 Nov 06:00"
+      }
+    ]
+  },
+  {
+    "kind": "home",
+    "index": 4,
+    "name": "pi",
+    "agent": "pi",
+    "home": "~/.pi-home",
+    "profile": "pi",
+    "profiles": [
+      "pi"
+    ],
+    "source": "none",
+    "status": "unsupported",
+    "reason": "pi has no plan or quota; it records per-message token cost in session files (pi.Agent.SessionUsage)",
+    "windows": []
+  }
+]

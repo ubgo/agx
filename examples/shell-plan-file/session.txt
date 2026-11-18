@@ -1,0 +1,41 @@
+#region plan
+$ agx new --name "pglite golang" --plan-file ~/plan.json
+agx: agent claude (default_agent)
+agx: warning: installed Claude Code version unknown; flags not checked
+
+$ agx plan show --plan-file ~/plan.json
+mode     new
+dir      ~/.agx/sessions/pglite_golang_20261118_061153
+agent    claude
+profile  personal
+home     ~/.claude
+login    home
+binary   /usr/local/bin/claude
+command  claude
+
+$ agx plan show --plan-file ~/plan.json --field data.dir
+~/.agx/sessions/pglite_golang_20261118_061153
+
+#endregion
+#region launch
+$ agx launch --plan-file ~/plan.json
+agent claude
+argv
+pwd ~/.agx/sessions/pglite_golang_20261118_061153
+...
+
+$ agx launch --plan-file ~/plan.json
+agx: plan file ~/plan.json does not exist
+[exit 125]
+
+#endregion
+#region stale
+$ agx plan show --plan-file ~/old-plan.json
+agx: plan file is older than 60s or not yours
+[exit 1]
+
+$ agx launch --plan-file ~/old-plan.json
+agx: plan file is older than 60s or not yours
+[exit 125]
+
+#endregion

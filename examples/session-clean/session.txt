@@ -1,0 +1,49 @@
+#: ~/scratch already holds notes_20261102_090000 with one file. The plan-file step below makes an empty session folder without starting an agent (the shell layer's first step); an agent that was opened and closed without writing anything leaves the same.
+#region make-empty
+$ agx new --name "quick test" --plan-file ~/plan.json
+agx: agent claude (default_agent)
+agx: warning: installed Claude Code version unknown; flags not checked
+
+$ agx session list --field data.*.name --field data.*.files --field data.*.history --field data.*.path
+NAME                        FILES  HISTORY  PATH
+quick_test_20261118_061241  0      —        ~/scratch/quick_test_20261118_061241
+notes_20261102_090000       1      —        ~/scratch/notes_20261102_090000
+
+#endregion
+#region plan
+$ agx session clean
+keep  quick_test_20261118_061119  newer than --min-age
+keep  notes_20261102_090000       has files
+plan only: 0 folder(s) to remove in ~/scratch; add --yes to remove them
+
+#endregion
+#region min-age
+$ agx session clean --min-age 0s
+remove  quick_test_20261118_061119  empty, no history
+keep    notes_20261102_090000       has files
+plan only: 1 folder(s) to remove in ~/scratch; add --yes to remove them
+
+$ agx session clean --min-age 0s --yes
+removed  quick_test_20261118_061119  empty, no history
+keep     notes_20261102_090000       has files
+
+$ agx session list --field data.*.name --field data.*.files --field data.*.history --field data.*.path
+NAME                   FILES  HISTORY  PATH
+notes_20261102_090000  1      —        ~/scratch/notes_20261102_090000
+
+#endregion
+#region refusals
+$ agx session clean --min-age -1h
+agx: --min-age must not be negative
+[exit 2]
+
+$ agx session clean --min-age soon
+agx: invalid argument "soon" for "--min-age" flag: must be a duration like "30s" or "5m"
+[exit 2]
+
+$ agx session promote --id notes_20261102_090000
+agx: --to is required: the folder to move the session into (or set sessions.promote_root)
+  agx config set --key sessions.promote_root --value ~/projects
+[exit 2]
+
+#endregion

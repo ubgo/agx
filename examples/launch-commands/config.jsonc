@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "default_agent": "claude",
+  "agents": {
+    "claude": { "defaults": { "args": ["--chrome"] } }
+  },
+  "profiles": {
+    "personal": { "agent": "claude", "home": "~/.claude", "default": true },
+    "work": { "agent": "claude", "home": "~/.claude-work" },
+    "codex": { "agent": "codex", "home": "~/.codex", "default": true }
+  },
+  "logins": {
+    "carol": { "agents": ["claude"], "kind": "oauth-token", "token": "${gopass:personal/claude/carol}" }
+  }
+}

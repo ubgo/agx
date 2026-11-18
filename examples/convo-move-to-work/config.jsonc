@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "default_agent": "claude",
+  // #region profiles
+  "profiles": {
+    "personal": { "agent": "claude", "home": "~/.claude", "default": true },
+    "work": { "agent": "claude", "home": "~/.claude-work" },
+    "codex": { "agent": "codex", "home": "~/.codex", "default": true }
+  }
+  // #endregion
+}
