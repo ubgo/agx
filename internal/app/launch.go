@@ -406,6 +406,7 @@ func (a *App) build(ag agentio.Agent, t agentio.Target, req agentio.LaunchReques
 		}
 	}
 	p.Command = cmd
+	a.helperDecision(req, p, runDir)
 	for _, w := range cmd.Warnings {
 		p.Warnings = append(p.Warnings, report.Warning{Code: WarnVersion, Message: w.Detail})
 	}

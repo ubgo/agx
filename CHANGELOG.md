@@ -2,6 +2,12 @@
 
 All notable changes to agx are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and agx uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.5] - 2026-11-19
+
+### Fixed
+
+- A dry run on an `api-key-helper` login (or a `--token-ref` of that kind) lists the settings key the helper adds, `settings apiKeyHelper … from login NAME`, and the 0600 settings file it goes in, as a `--live-login` run does. It showed only the `--settings` file on the command line before. Keys only: the helper command is never shown.
+
 ## [0.4.4] - 2026-11-19
 
 ### Added

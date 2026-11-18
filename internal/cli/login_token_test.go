@@ -3,6 +3,7 @@ package cli_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -31,6 +32,7 @@ const (
 // reference to a variable that is never set.
 const tokenConfig = `{
   "version": 1,
+  "profiles": { "work": { "agent": "claude", "home": "~/.claude-work" } },
   "logins": {
     "plain": { "agents": ["claude"], "kind": "oauth-token", "token": "` + tokPlain + `" },
     "env": { "agents": ["claude"], "kind": "api-key", "token": "${FAKE_TOK}" },
@@ -47,6 +49,8 @@ const tokenConfig = `{
 func tokenFixture(t *testing.T) *testkit.Fixture {
 	t.Helper()
 	f := testkit.New(t)
+	f.HomeDir(".claude-work")
+	f.FakeAgent("claude")
 	f.WriteConfig(tokenConfig)
 	f.WriteFile(f.Bin+"/gopass", "#!/bin/sh\necho "+tokGopass+"\n", 0o755)
 	f.WriteFile(f.ConfigDir+"/tokens.jsonc", `{"tokens":{"stored":"`+tokStored+`"}}`, 0o600)
@@ -145,5 +149,37 @@ func TestLoginTokenTerminal(t *testing.T) {
 	code, out, errs = runTokenInProcess(t, "login", "token", "--id", "env", "--reveal")
 	if code != 0 || out != tokEnv+"\n" || errs != "" {
 		t.Errorf("--reveal: exit %d, stdout %q, stderr %q", code, out, errs)
+	}
+}
+
+// TestHelperLoginDryRunNamesTheSetting: a dry run on an api-key-helper
+// login lists the settings key the helper adds and the file it goes to,
+// as a --live-login run does, with the login as its source and never the
+// helper command; a run with settings of its own lists both and one file.
+func TestHelperLoginDryRunNamesTheSetting(t *testing.T) {
+	f := tokenFixture(t)
+	r := f.Run("run", "--profile", "work", "--login", "helper", "--dry-run", "--quiet", "--json", "--field", "data.decisions")
+	var decs []struct{ Name, Value, Source string }
+	if err := json.Unmarshal([]byte(r.Stdout), &decs); err != nil || r.Code != 0 {
+		t.Fatalf("exit %d, %v\n%s\n%s", r.Code, err, r.Stdout, r.Stderr)
+	}
+	var keys, files int
+	for _, d := range decs {
+		if d.Name == "settings" && d.Value == "apiKeyHelper" && d.Source == "login helper" {
+			keys++
+		}
+		if d.Name == "settings" && strings.HasPrefix(d.Value, "delivered as file ") {
+			files++
+		}
+	}
+	if keys != 1 || files != 1 {
+		t.Errorf("want one apiKeyHelper row from login helper and one file row, got %d and %d: %+v", keys, files, decs)
+	}
+	if strings.Contains(r.Stdout+r.Stderr, "printf %s") {
+		t.Errorf("the helper command was printed:\n%s", r.Stdout)
+	}
+	r = f.Run("run", "--profile", "work", "--login", "helper", "--setting", "model=opus", "--dry-run", "--quiet")
+	if r.Code != 0 || !strings.Contains(r.Stdout, "apiKeyHelper") || !strings.Contains(r.Stdout, "from login helper") || strings.Count(r.Stdout, "delivered as file") != 1 {
+		t.Errorf("with --setting: exit %d\n%s\n%s", r.Code, r.Stdout, r.Stderr)
 	}
 }

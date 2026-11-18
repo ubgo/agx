@@ -27,24 +27,26 @@ account  —
 users    —
 
 #endregion
-#: The helper goes to Claude as apiKeyHelper in the run's settings file (mode 0600), which the command line names; the token itself is not in the launch.
+#: The dry run lists the apiKeyHelper key the login adds (from login console) and the 0600 settings file it goes in; neither the helper command nor a token is shown.
 #region helper-run
 $ agx run --profile work --login console --dry-run --quiet
-agent    claude                                                                                 from profile work
-profile  work                                                                                   from --profile
-home     ~/.claude-work                                                                         from profile work
-login    console (not resolved: --dry-run)                                                      from --login
-binary   /usr/local/bin/claude version unknown                                                  from no install metadata
-folder   ~/projects/app                                                                         from current folder
-run      ~/.agx/runs/20261118-120000-jqx6                                                       from AGX_RUN_ID=20261118-120000-jqx6
-command  claude --settings ~/.agx/runs/20261118-120000-jqx6/settings-20261118-120000-jqx6.json  from built by agentio
-env      set AGX_RUN_ID=20261118-120000-jqx6                                                    from launch environment
-         set AGX_RUN_AGENT=claude                                                               from launch environment
-         set AGX_RUN_PROFILE=work                                                               from launch environment
-         set AGX_RUN_LOGIN=console                                                              from launch environment
-         set AGX_RUN_HOME=~/.claude-work                                                        from launch environment
-         set CLAUDE_CONFIG_DIR=~/.claude-work                                                   from launch environment
-note     installed Claude Code version unknown; flags not checked
+agent     claude                                                                                        from profile work
+profile   work                                                                                          from --profile
+home      ~/.claude-work                                                                                from profile work
+login     console (not resolved: --dry-run)                                                             from --login
+binary    /usr/local/bin/claude version unknown                                                         from no install metadata
+folder    ~/projects/app                                                                                from current folder
+settings  apiKeyHelper                                                                                  from login console
+          delivered as file ~/.agx/runs/20261118-120000-xhsd/settings-20261118-120000-xhsd.json (0600)  from settings_delivery file
+run       ~/.agx/runs/20261118-120000-xhsd                                                              from AGX_RUN_ID=20261118-120000-xhsd
+command   claude --settings ~/.agx/runs/20261118-120000-xhsd/settings-20261118-120000-xhsd.json         from built by agentio
+env       set AGX_RUN_ID=20261118-120000-xhsd                                                           from launch environment
+          set AGX_RUN_AGENT=claude                                                                      from launch environment
+          set AGX_RUN_PROFILE=work                                                                      from launch environment
+          set AGX_RUN_LOGIN=console                                                                     from launch environment
+          set AGX_RUN_HOME=~/.claude-work                                                               from launch environment
+          set CLAUDE_CONFIG_DIR=~/.claude-work                                                          from launch environment
+note      installed Claude Code version unknown; flags not checked
 
 #endregion
 #region refusals

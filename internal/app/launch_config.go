@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -25,6 +26,7 @@ const (
 	srcOption    = "--option"
 	srcSetting   = "--setting"
 	srcLiveLogin = "--live-login"
+	srcTokenRef  = "--token-ref"
 	srcModel     = "--model"
 	srcAutonomy  = "--autonomy"
 	srcPrompt    = "--prompt"
@@ -822,6 +824,53 @@ func (a *App) fileDecision(p *LaunchPlan) {
 			p.Decisions = append(p.Decisions, report.Decision{Name: resolve.DecSetting, Value: "delivered as file " + a.tilde(path) + " (0600)", Source: "settings_delivery file"})
 			return
 		}
+	}
+}
+
+// helperDecision names the settings keys an api-key-helper credential
+// added (Claude: apiKeyHelper) and where they went, the same rows a
+// --live-login run shows. agentio merges the helper into the settings
+// file itself, so the keys are read back from the file it wrote in
+// runDir (the temporary one of a dry run) and compared with the run's
+// own settings: no agent's key name is written here. Keys only, never
+// the helper command. A helper delivered any other way gets no row.
+func (a *App) helperDecision(req agentio.LaunchRequest, p *LaunchPlan, runDir string) {
+	if req.Credential == nil || req.Credential.Kind != agentio.TokenAPIKeyHelper {
+		return
+	}
+	name := settingsFilePrefix + p.RunID + settingsFileExt
+	delivered := false
+	for _, arg := range p.Command.Args {
+		if strings.HasSuffix(arg, string(filepath.Separator)+name) {
+			delivered = true
+			break
+		}
+	}
+	if !delivered {
+		return
+	}
+	body, err := os.ReadFile(filepath.Join(runDir, name))
+	if err != nil {
+		return // the command still names the file; the row is only a note
+	}
+	var added []string
+	for _, l := range leafPaths(body) {
+		if !hasLeaf(p.Settings, l) {
+			added = append(added, l)
+		}
+	}
+	if len(added) == 0 {
+		return
+	}
+	src := "login " + p.Login
+	if p.LoginKind == LoginKindTokenRef {
+		src = srcTokenRef
+	}
+	p.Decisions = append(p.Decisions, report.Decision{Name: resolve.DecSetting, Value: strings.Join(added, ", "), Source: src})
+	if isEmptyRaw(p.Settings) {
+		// With settings of its own the run already gets the file row
+		// (delivery's finish); without, this is the only settings file.
+		a.fileDecision(p)
 	}
 }
 

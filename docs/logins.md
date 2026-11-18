@@ -92,21 +92,23 @@ A key helper sets no variable: the command goes into a settings file in the run 
 <!-- snippet: examples/acct-login-kinds/session.txt#helper -->
 ```sh
 $ agx run --profile work --login console --dry-run --quiet
-agent    claude                                                                                 from profile work
-profile  work                                                                                   from --profile
-home     ~/.claude-work                                                                         from profile work
-login    console (not resolved: --dry-run)                                                      from --login
-binary   /usr/local/bin/claude version unknown                                                  from no install metadata
-folder   ~/projects/app                                                                         from current folder
-run      ~/.agx/runs/20261118-061009-jpdh                                                       from AGX_RUN_ID=20261118-061009-jpdh
-command  claude --settings ~/.agx/runs/20261118-061009-jpdh/settings-20261118-061009-jpdh.json  from built by agentio
-env      set AGX_RUN_ID=20261118-061009-jpdh                                                    from launch environment
-         set AGX_RUN_AGENT=claude                                                               from launch environment
-         set AGX_RUN_PROFILE=work                                                               from launch environment
-         set AGX_RUN_LOGIN=console                                                              from launch environment
-         set AGX_RUN_HOME=~/.claude-work                                                        from launch environment
-         set CLAUDE_CONFIG_DIR=~/.claude-work                                                   from launch environment
-note     installed Claude Code version unknown; flags not checked
+agent     claude                                                                                        from profile work
+profile   work                                                                                          from --profile
+home      ~/.claude-work                                                                                from profile work
+login     console (not resolved: --dry-run)                                                             from --login
+binary    /usr/local/bin/claude version unknown                                                         from no install metadata
+folder    ~/projects/app                                                                                from current folder
+settings  apiKeyHelper                                                                                  from login console
+          delivered as file ~/.agx/runs/20261118-120000-zm29/settings-20261118-120000-zm29.json (0600)  from settings_delivery file
+run       ~/.agx/runs/20261118-120000-zm29                                                              from AGX_RUN_ID=20261118-120000-zm29
+command   claude --settings ~/.agx/runs/20261118-120000-zm29/settings-20261118-120000-zm29.json         from built by agentio
+env       set AGX_RUN_ID=20261118-120000-zm29                                                           from launch environment
+          set AGX_RUN_AGENT=claude                                                                      from launch environment
+          set AGX_RUN_PROFILE=work                                                                      from launch environment
+          set AGX_RUN_LOGIN=console                                                                     from launch environment
+          set AGX_RUN_HOME=~/.claude-work                                                               from launch environment
+          set CLAUDE_CONFIG_DIR=~/.claude-work                                                          from launch environment
+note      installed Claude Code version unknown; flags not checked
 ```
 
 Any agx login can be the helper, wherever its token lives: make the helper command [`agx login token`](#print-a-logins-token), which prints only that login's token. Claude then gets the key of `ci` (here from `${FAKE_TOK}`; it could be gopass, a command or a pasted token) each time it runs the helper:
