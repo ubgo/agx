@@ -27,7 +27,7 @@ agx run --profile work                                # live_login is on for thi
 agx run --profile personal --login carol --live-login # or per run
 ```
 
-The dry run shows what it adds. Instead of `CLAUDE_CODE_OAUTH_TOKEN`, Claude gets an `apiKeyHelper` setting (in a settings file in the run folder, mode 0600) that runs agx's hidden `agx credential` command, and `CLAUDE_CODE_API_KEY_HELPER_TTL_MS` so it runs it again every ten seconds. The `note` line names the command to switch:
+The dry run shows what it adds. Instead of `CLAUDE_CODE_OAUTH_TOKEN`, Claude gets an `apiKeyHelper` setting (in a settings file in the run folder, mode 0600) that runs agx's hidden `agx credential` command, and `CLAUDE_CODE_API_KEY_HELPER_TTL_MS` so it runs it again every ten seconds. (`agx credential` is run by the agent and prints the token of the login chosen for this run, which `agx live use` can change; [`agx login token --id NAME`](../logins.md#print-a-logins-token) is the command you run yourself and always prints that one login's token.) The `note` line names the command to switch:
 
 <!-- snippet: examples/acct-live-login/session.txt#dry-run -->
 ```sh

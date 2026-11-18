@@ -293,8 +293,8 @@ Try it (from [`examples/acct-login-token`](../../examples/acct-login-token/READM
 
 <!-- snippet: examples/acct-login-token/session.txt#sources -->
 ```sh
-$ agx login token --id work-key
-fake-work-key
+$ agx login token --id ci
+fake-ci-token
 
 $ agx login token --id carol
 fake-token-carol
@@ -313,7 +313,7 @@ agx: login vault is an api-key-helper: it has no token to print; the agent runs 
   agx login show --id vault
 [exit 4]
 
-$ agx login token --id work-key --json
+$ agx login token --id ci --json
 {
   "schema_version": 1,
   "command": "login token",

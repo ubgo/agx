@@ -166,7 +166,7 @@ $ agx run --dry-run --quiet --json --field decisions.1
 {"name":"profile","value":"work","source":"folder binding ~/projects/client"}
 ```
 
-A token never reaches any output, plain or resolved: it is `[redacted]` in text, JSON, errors and logs. The one exception is a script that asks for it: `agx login token --id NAME` prints that login's token alone on stdout (a pipe or a file; a terminal needs `--reveal`, and `--json` is refused), for example `export ANTHROPIC_API_KEY="$(agx login token --id work-key)"`; see [print a login's token](../logins.md#print-a-logins-token). Redaction goes by a value's source (a login, a reference, an env file, an agent's credential variable) and by the value, never by a name, so a literal `--env MY_SERVICE_TOKEN=abc` is shown as written; [what is redacted](../output.md#what-is-redacted) has the full rule.
+A token never reaches any output, plain or resolved: it is `[redacted]` in text, JSON, errors and logs. The one exception is a script that asks for it with `agx login token`; see [use a login's token in a script](#use-a-logins-token-in-a-script). Redaction goes by a value's source (a login, a reference, an env file, an agent's credential variable) and by the value, never by a name, so a literal `--env MY_SERVICE_TOKEN=abc` is shown as written; [what is redacted](../output.md#what-is-redacted) has the full rule.
 
 <!-- snippet: examples/out-scripting/session.txt#redacted -->
 ```sh
@@ -430,13 +430,74 @@ agx: invalid argument "soon" for "--timeout" flag: must be a duration like "30s"
 [exit 2]
 ```
 
+## Use a login's token in a script
+
+`agx login token --id NAME` prints one login's token, and only the value and a newline, on stdout, so a script can read it from whatever source the login uses (gopass, a `$(…)` command, a variable, a pasted token) without knowing which:
+
+```sh
+export ANTHROPIC_API_KEY="$(agx login token --id ci)"
+agx login token --id ci | pbcopy
+```
+
+From [`examples/acct-login-token`](../../examples/acct-login-token/README.md), where the test runner gives stdout a pipe as `$(…)` and `|` do:
+
+<!-- snippet: examples/acct-login-token/session.txt#sources -->
+```sh
+$ agx login token --id ci
+fake-ci-token
+
+$ agx login token --id carol
+fake-token-carol
+
+$ agx login token --id derek
+fake-token-derek
+
+$ agx login token --id pasted
+fake-pasted-token
+```
+
+It is the one command that prints a token, so it guards the value: stdout on a terminal is refused (exit 2) unless you add `--reveal`, and `--json` and `--field` are refused (exit 2) because an envelope around a secret ends up in logs. A key helper login has no token of its own and is refused (exit 4); a reference that does not resolve exits 1 with the reason and no value:
+
+<!-- snippet: examples/acct-login-token/session.txt#refusals -->
+```sh
+$ agx login token --id vault
+agx: login vault is an api-key-helper: it has no token to print; the agent runs its helper command itself
+  agx login show --id vault
+[exit 4]
+
+$ agx login token --id ci --json
+{
+  "schema_version": 1,
+  "command": "login token",
+  "ok": false,
+  "data": null,
+  "decisions": [],
+  "warnings": [],
+  "error": {
+    "code": "usage",
+    "message": "agx login token prints the bare value for scripts and apiKeyHelper; it takes no --json or --field"
+  }
+}
+[exit 2]
+
+$ agx login token --id spare
+agx: login spare: SPARE_CLAUDE_TOKEN is not set
+  agx login check --id spare --no-probe
+[exit 1]
+
+$ agx login token --id nosuch
+agx: unknown login nosuch
+  agx login list
+[exit 1]
+```
+
 ## Try it
 
 ```sh
-go test -count=1 ./internal/docscheck/ -run 'TestExamples/out-'
+go test -count=1 ./internal/docscheck/ -run 'TestExamples/(out-|acct-login-token$)'
 ```
 
-[`examples/out-scripting/session.txt`](../../examples/out-scripting/session.txt) and [`examples/out-exit-codes/session.txt`](../../examples/out-exit-codes/session.txt) hold every command on this page with its real output.
+[`examples/out-scripting/session.txt`](../../examples/out-scripting/session.txt), [`examples/out-exit-codes/session.txt`](../../examples/out-exit-codes/session.txt) and [`examples/acct-login-token/session.txt`](../../examples/acct-login-token/session.txt) hold every command on this page with its real output.
 
 ## Pitfalls
 

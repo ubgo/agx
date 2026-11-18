@@ -1,8 +1,8 @@
 #: The commands run with stdout on a pipe, as `agx login token --id NAME | pbcopy` would.
-#options env=WORK_KEY=fake-work-key
+#options env=FAKE_TOK=fake-ci-token
 #region sources
-$ agx login token --id work-key
-fake-work-key
+$ agx login token --id ci
+fake-ci-token
 
 $ agx login token --id carol
 fake-token-carol
@@ -15,11 +15,20 @@ fake-pasted-token
 
 #endregion
 #region helper
-$ agx login add --name console --agent claude --kind api-key-helper --helper-command 'agx login token --id work-key'
+$ agx login add --name console --agent claude --kind api-key-helper --helper-command 'agx login token --id ci'
 added login console (api-key-helper, helper agx)
 
+$ agx login show --id console
+name     console
+agents   claude
+kind     api-key-helper
+source   helper agx
+account  —
+users    —
+
 #endregion
-#: The dry run passes the helper to Claude in the run's settings file.
+#: The helper goes to Claude as apiKeyHelper in the run's settings file (mode 0600), which the command line names; the token itself is not in the launch.
+#region helper-run
 $ agx run --profile work --login console --dry-run --quiet
 agent    claude                                                                                 from profile work
 profile  work                                                                                   from --profile
@@ -37,13 +46,14 @@ env      set AGX_RUN_ID=20261118-120000-jqx6                                    
          set CLAUDE_CONFIG_DIR=~/.claude-work                                                   from launch environment
 note     installed Claude Code version unknown; flags not checked
 
+#endregion
 #region refusals
 $ agx login token --id vault
 agx: login vault is an api-key-helper: it has no token to print; the agent runs its helper command itself
   agx login show --id vault
 [exit 4]
 
-$ agx login token --id work-key --json
+$ agx login token --id ci --json
 {
   "schema_version": 1,
   "command": "login token",

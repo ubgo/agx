@@ -7,7 +7,7 @@
   },
   // #region logins
   "logins": {
-    "work-key": { "agents": ["claude"], "kind": "api-key", "token": "${WORK_KEY}" },
+    "ci": { "agents": ["claude"], "kind": "api-key", "token": "${FAKE_TOK}" },
     "carol": { "agents": ["claude"], "kind": "oauth-token", "token": "${gopass:personal/claude/carol}" },
     "derek": { "agents": ["claude"], "kind": "oauth-token", "token": "$(gopass show -o personal/claude/derek)" },
     "pasted": { "agents": ["claude"], "kind": "oauth-token", "stored": true },

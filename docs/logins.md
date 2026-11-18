@@ -109,12 +109,20 @@ env      set AGX_RUN_ID=20261118-061009-jpdh                                    
 note     installed Claude Code version unknown; flags not checked
 ```
 
-Any agx login can be the helper, wherever its token lives: make the helper command [`agx login token`](#print-a-logins-token), which prints only that login's token. Claude then gets the key of `work-key` (here from `${WORK_KEY}`; it could be gopass, a command or a pasted token) each time it runs the helper:
+Any agx login can be the helper, wherever its token lives: make the helper command [`agx login token`](#print-a-logins-token), which prints only that login's token. Claude then gets the key of `ci` (here from `${FAKE_TOK}`; it could be gopass, a command or a pasted token) each time it runs the helper:
 
 <!-- snippet: examples/acct-login-token/session.txt#helper -->
 ```sh
-$ agx login add --name console --agent claude --kind api-key-helper --helper-command 'agx login token --id work-key'
+$ agx login add --name console --agent claude --kind api-key-helper --helper-command 'agx login token --id ci'
 added login console (api-key-helper, helper agx)
+
+$ agx login show --id console
+name     console
+agents   claude
+kind     api-key-helper
+source   helper agx
+account  —
+users    —
 ```
 
 ## Adding a login
@@ -452,8 +460,8 @@ work       claude    ~/.claude-work           none   derek       plan
 
 <!-- snippet: examples/acct-login-token/session.txt#sources -->
 ```sh
-$ agx login token --id work-key
-fake-work-key
+$ agx login token --id ci
+fake-ci-token
 
 $ agx login token --id carol
 fake-token-carol
@@ -474,7 +482,7 @@ agx: login vault is an api-key-helper: it has no token to print; the agent runs 
   agx login show --id vault
 [exit 4]
 
-$ agx login token --id work-key --json
+$ agx login token --id ci --json
 {
   "schema_version": 1,
   "command": "login token",
