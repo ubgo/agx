@@ -276,6 +276,30 @@ From one documented chain: a flag wins, then `AGX_LOGIN_<AGENT>` and `AGX_LOGIN`
 
 No. Codex authenticates only through its home (`codex login`), and naming a stored login for Codex is refused. Use one Codex profile per account: `agx profile add --name codex-work --agent codex --home ~/.codex-work`, then log that home in with `agx run --profile codex-work -- login` (Codex's own `codex login`, run with that profile's `CODEX_HOME`).
 
+### Can agx use a Claude Code apiKeyHelper?
+
+Yes. A login of kind `api-key-helper` holds the command Claude Code runs to get its API key, and agx passes it as `apiKeyHelper` in a settings file for that launch only; your `settings.json` is not edited and the key itself never passes through agx:
+
+```sh
+agx login add --name console --agent claude --kind api-key-helper --helper-command 'gopass show -o work/anthropic-api-key'
+agx run --profile work --login console
+```
+
+`--live-login` uses the same mechanism to switch the account of a running Claude Code session. Flags and examples are in the [login reference](docs/commands/login.md).
+
+### Can I run an agent through a proxy or an API gateway?
+
+Yes, with environment variables; agx has no proxy setting of its own. Set them for one launch with `--env` or `--env-file`, or for every launch of a profile with `agx profile edit --env`; `--no-env` drops one your shell has set:
+
+```sh
+agx run --profile work --env HTTPS_PROXY=http://proxy.local:3128 --env NO_PROXY=localhost
+agx run --profile work --env-file ./proxy.env
+agx run --profile work --no-env HTTPS_PROXY
+agx profile edit --id work --env HTTPS_PROXY=http://proxy.local:3128
+```
+
+To send Claude Code to another endpoint (an LLM gateway, or a compatible provider such as Kimi) set `ANTHROPIC_BASE_URL` the same way, for example `agx profile edit --id kimi --env ANTHROPIC_BASE_URL=https://api.moonshot.ai/anthropic` (see [Shared homes](docs/guides/shared-homes.md)); for Codex set `openai_base_url` with `--setting`. agx's own requests (`agx usage`, login probes) follow `HTTPS_PROXY`, `HTTP_PROXY` and `NO_PROXY` from your shell. A value can be a reference such as `'$(gopass show -o …)'`, resolved at launch and redacted in output, and `--dry-run` lists every variable the agent gets and where it came from. The details are in [Launch options](docs/launch-options.md).
+
 ### Does `agx usage` show Gemini CLI or pi usage?
 
 Not yet. Plan usage is read for Claude Code and Codex. Gemini CLI's quota comes from an API call whose responses are not recorded yet, and pi has no plan or quota; both are listed with that reason instead of a number.
