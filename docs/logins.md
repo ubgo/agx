@@ -232,6 +232,7 @@ users    —
 | use a token that is not stored, for one run | `agx run --token-ref '${gopass:personal/claude/eve}' --token-kind oauth-token` |
 | use the stored login with the most headroom | `agx run --profile work --auto-login` (probes each login: spends a few tokens; see [Let agx pick by headroom](guides/auto-pick.md)) |
 | keep moving between accounts as quotas fill | `agx run --login auto` on a `pool` login (see [Share a pool of Claude accounts](guides/login-pool.md)) |
+| stay on one pool member for one run, within its caps | `agx run --login auto --pool-only carol` (see [Pin one account but keep its limits](guides/login-pool.md#pin-one-account-but-keep-its-limits)) |
 | make it a profile's default | `agx login use --id carol --profile work` |
 | make it an agent's default | `agx login use --id carol --agent claude` |
 | go back to the home login for a profile | `agx login use --home-login --profile work` |
@@ -524,7 +525,7 @@ agx live use --id 20261114-101500-k3x9 --login alice      # applies at the agent
 agx live use --id 20261114-101500-k3x9 --start-login      # back to the login it started with
 ```
 
-A [login pool](guides/login-pool.md) does the switching for you: a run on a `pool` login is live, and each key request picks the member to use by usage (`agx pool pick --id auto` shows the pick and why).
+A [login pool](guides/login-pool.md) does the switching for you: a run on a `pool` login is live, and each key request picks the member to use by usage (`agx pool pick --id auto` shows the pick and why). To keep one session on one member within its caps, start it with `--pool-only NAME` or pin it later with `agx live use --id RUN --pool-only NAME`.
 
 ## Try it
 

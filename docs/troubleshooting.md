@@ -229,11 +229,11 @@ A live-login session asks `agx credential` for its key at every refresh. When th
 
 ### Which account is my session on?
 
-Run `! agx whoami` inside Claude (the `!` runs it in the session's shell, which has `AGX_RUN_ID`). In a pool or `--live-login` session it shows `login:  auto (pool)`, `in use:` (the login or member whose key Claude got last) and `next:` when a switch is pending; `--json` has `login_kind`, `in_use` and `next`. /status only says apiKeyHelper, and Claude's own guess reads the keychain login, not the key it uses.
+Run `! agx whoami` inside Claude (the `!` runs it in the session's shell, which has `AGX_RUN_ID`). In a pool or `--live-login` session it shows `login:  auto (pool)`, `in use:` (the login or member whose key Claude got last) and `next:` when a switch is pending, plus `only:  carol (caps enforced)` on a run pinned with `--pool-only` (and `in use:  none (carol over cap: …)` while carol is blocked); `--json` has `login_kind`, `in_use`, `only` and `next`. /status only says apiKeyHelper, and Claude's own guess reads the keychain login, not the key it uses.
 
 ### "pool auto: no member is usable: …"
 
-Every member of the login pool is skipped, and the line lists each with its reasons (`status is limit-reached`, `week is 70% (cap 70%)`, `disabled in config`). `agx pool pick --id auto` shows the same as a report; `agx login token` and the key helper of a running session exit 1 with it, so Claude's request fails. Wait for a reset, raise a cap (`agx login edit --id auto --pool-cap-week NAME=N`), take a disabled member back (`--pool-enable NAME`), add a member, or force one: `agx login edit --id auto --pool-force NAME` (clear it later with `--pool-force ''`). See [the rules](guides/login-pool.md#the-rules).
+A run pinned with `--pool-only` fails with its member's line instead (`carol: week is 70% (cap 70%)`); see [My pinned session stopped](#my-pinned-session-stopped-the-member-hit-its-cap). Every member of the login pool is skipped, and the line lists each with its reasons (`status is limit-reached`, `week is 70% (cap 70%)`, `disabled in config`). `agx pool pick --id auto` shows the same as a report; `agx login token` and the key helper of a running session exit 1 with it, so Claude's request fails. Wait for a reset, raise a cap (`agx login edit --id auto --pool-cap-week NAME=N`), take a disabled member back (`--pool-enable NAME`), add a member, or force one: `agx login edit --id auto --pool-force NAME` (clear it later with `--pool-force ''`). See [the rules](guides/login-pool.md#the-rules).
 
 ### My pinned session stopped: the member hit its cap
 

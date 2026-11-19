@@ -323,7 +323,7 @@ note      installed Claude Code version unknown; flags not checked
 
 `agx live list` shows the run; its `NEXT` is the pool and `IN USE` the member Claude got last.
 
-Which account is my session on? Run `! agx whoami` inside Claude: it shows `login:  auto (pool)`, `in use:` (the member whose key Claude got last) and `next:` when a switch is pending. /status only says apiKeyHelper, and Claude's own guess reads the keychain login, not the key it uses.
+Which account is my session on? Run `! agx whoami` inside Claude: it shows `login:  auto (pool)`, `in use:` (the member whose key Claude got last), `only:` on a run pinned with `--pool-only`, and `next:` when a switch is pending. /status only says apiKeyHelper, and Claude's own guess reads the keychain login, not the key it uses.
 
 ## Step 4: steer it while sessions run
 
@@ -331,10 +331,11 @@ agx reads `config.jsonc` on every key request, so a change applies from the next
 
 - Force one member for every session: `agx login edit --id auto --pool-force alice` (back with `--pool-force ''`). Every rule is ignored, even a member at its limit; the rules it breaks are warnings.
 - Force one member for one run only: `agx live use --id RUN --login alice` (back to the pool with `agx live use --id RUN --start-login`).
+- Keep one run on one member within its caps: `agx live use --id RUN --pool-only alice` (add `--pool-only-week N` for a stricter cap; back with `--login auto`). See [Pin one account but keep its limits](#pin-one-account-but-keep-its-limits).
 - Leave a member out: `agx login edit --id auto --pool-disable derek` (back with `--pool-enable derek`). It is not probed any more.
 - Any cap, list or window change: `agx login edit --id auto --pool-cap-short NAME=N`, `--pool-cap-week NAME=N`, `--pool-default-short N`, `--pool-default-week N`, `--pool-short-cutoff N`, `--pool-borrow-window 24h`, `--pool-usage-max-age 30s`, `--pool-key-ttl 30s`, `--pool-own`/`--pool-shared` (an empty value puts a key back to its default). Add `--dry-run` to see the change first.
 
-`agx pool pick --id auto --pool-force alice` shows what a force would do without changing anything.
+`agx pool pick --id auto --pool-force alice` shows what a force would do without changing anything, and `agx pool pick --id auto --pool-only alice` what a pin would.
 
 ## Pin one account but keep its limits
 
@@ -384,6 +385,72 @@ Candidates (ready accounts in pick order):
 
 $ agx run --login auto --pool-only derek --dry-run --quiet --json --field data.live.pool_only
 derek
+```
+
+A running session pinned live, from the example: derek first, then erin, who is over her 5-hour cap, so the next key request gets no key and whoami says why; `--login auto` hands the run back to the pool:
+
+<!-- snippet: examples/acct-login-pool/session.txt#live-only -->
+```sh
+$ agx live use --id 20261119-095000-p7q2 --pool-only derek
+run         20261119-095000-p7q2
+agent       claude
+profile     personal
+folder      ~/projects/app
+started on  auto
+chosen      —
+next        auto
+only        derek (caps enforced)
+in use      carol
+liveness    unknown (process info unreadable: run.jsonc records no process id)
+
+$ AGX_RUN_ID=20261119-095000-p7q2 AGX_RUN_AGENT=claude AGX_RUN_PROFILE=personal AGX_RUN_LOGIN=auto AGX_RUN_HOME=~/.claude agx whoami
+run:      20261119-095000-p7q2
+agent:    claude
+profile:  personal
+login:    auto (pool)
+home:     ~/.claude
+only:     derek (caps enforced)
+in use:   carol
+next:     derek
+
+$ agx live use --id 20261119-095000-p7q2 --pool-only erin
+run         20261119-095000-p7q2
+agent       claude
+profile     personal
+folder      ~/projects/app
+started on  auto
+chosen      —
+next        auto
+only        erin (caps enforced)
+in use      carol
+liveness    unknown (process info unreadable: run.jsonc records no process id)
+
+$ AGX_RUN_ID=20261119-095000-p7q2 agx credential --json --field data.login
+agx: erin: 5h is 55% (cap 50%)
+[exit 1]
+
+$ AGX_RUN_ID=20261119-095000-p7q2 AGX_RUN_AGENT=claude AGX_RUN_PROFILE=personal AGX_RUN_LOGIN=auto AGX_RUN_HOME=~/.claude agx whoami
+run:      20261119-095000-p7q2
+agent:    claude
+profile:  personal
+login:    auto (pool)
+home:     ~/.claude
+only:     erin (caps enforced)
+in use:   none (erin over cap: 5h is 55% (cap 50%))
+
+$ agx live show --id 20261119-095000-p7q2 --json --field data.no_key
+erin over cap: 5h is 55% (cap 50%)
+
+$ agx live use --id 20261119-095000-p7q2 --login auto
+run         20261119-095000-p7q2
+agent       claude
+profile     personal
+folder      ~/projects/app
+started on  auto
+chosen      auto
+next        auto
+in use      —
+liveness    unknown (process info unreadable: run.jsonc records no process id)
 ```
 
 Which to use:

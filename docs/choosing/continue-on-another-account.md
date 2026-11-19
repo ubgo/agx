@@ -8,6 +8,7 @@ A Claude session hits its plan limit, or you want the rest of a task billed to a
 |---|---|---|---|---|
 | the running session to carry on, on another account, without a restart | live login: start with `--live-login`, switch with `agx live use --id RUN --login NAME` | yes | the same home | Claude |
 | the running session to move between accounts by itself as quotas fill | a [login pool](../guides/login-pool.md): `agx run --login auto` on a `pool` login | yes | the same home | Claude |
+| the running pool session to stay on one account, but never past its caps | `agx live use --id RUN --pool-only NAME` (back with `--login auto`): [Pin one account but keep its limits](../guides/login-pool.md#pin-one-account-but-keep-its-limits) | yes | the same home | Claude |
 | to quit and continue the same conversation on another account's quota | `agx resume --id ID --login NAME` (or `--last`) | no: a new process resumes it | the home that stores it | any agent with a token login (Claude, Gemini CLI, pi) |
 | the conversation to live in the other account's home from now on (its settings, its history list) | `agx conversation move --dir DIR --to-profile NAME`, then `agx resume` | no | the other home | Claude |
 | a clean start on the other account | `agx run --profile NAME` (or `--login NAME`) | no | the other home | all |

@@ -378,3 +378,66 @@ $ agx run --login carol-only --dry-run --quiet --json --field data.live.start_lo
 carol-only
 
 #endregion
+#region live-only
+$ agx live use --id 20261119-095000-p7q2 --pool-only derek
+run         20261119-095000-p7q2
+agent       claude
+profile     personal
+folder      ~/projects/app
+started on  auto
+chosen      —
+next        auto
+only        derek (caps enforced)
+in use      carol
+liveness    unknown (process info unreadable: run.jsonc records no process id)
+
+$ AGX_RUN_ID=20261119-095000-p7q2 AGX_RUN_AGENT=claude AGX_RUN_PROFILE=personal AGX_RUN_LOGIN=auto AGX_RUN_HOME=~/.claude agx whoami
+run:      20261119-095000-p7q2
+agent:    claude
+profile:  personal
+login:    auto (pool)
+home:     ~/.claude
+only:     derek (caps enforced)
+in use:   carol
+next:     derek
+
+$ agx live use --id 20261119-095000-p7q2 --pool-only erin
+run         20261119-095000-p7q2
+agent       claude
+profile     personal
+folder      ~/projects/app
+started on  auto
+chosen      —
+next        auto
+only        erin (caps enforced)
+in use      carol
+liveness    unknown (process info unreadable: run.jsonc records no process id)
+
+$ AGX_RUN_ID=20261119-095000-p7q2 agx credential --json --field data.login
+agx: erin: 5h is 55% (cap 50%)
+[exit 1]
+
+$ AGX_RUN_ID=20261119-095000-p7q2 AGX_RUN_AGENT=claude AGX_RUN_PROFILE=personal AGX_RUN_LOGIN=auto AGX_RUN_HOME=~/.claude agx whoami
+run:      20261119-095000-p7q2
+agent:    claude
+profile:  personal
+login:    auto (pool)
+home:     ~/.claude
+only:     erin (caps enforced)
+in use:   none (erin over cap: 5h is 55% (cap 50%))
+
+$ agx live show --id 20261119-095000-p7q2 --json --field data.no_key
+erin over cap: 5h is 55% (cap 50%)
+
+$ agx live use --id 20261119-095000-p7q2 --login auto
+run         20261119-095000-p7q2
+agent       claude
+profile     personal
+folder      ~/projects/app
+started on  auto
+chosen      auto
+next        auto
+in use      —
+liveness    unknown (process info unreadable: run.jsonc records no process id)
+
+#endregion

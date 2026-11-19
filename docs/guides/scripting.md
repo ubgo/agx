@@ -289,7 +289,7 @@ unsupported
 | `binary-not-executable` | the binary was found but cannot run (exit 126 on a launch) |
 | `feature-unavailable` | an option the installed agent version lacks |
 | `wrong-agent` | a login that does not serve the run's agent |
-| `auto-pick` | `--auto-profile` or `--auto-login` found nothing eligible, or no member of a login pool is usable (`agx pool pick`, `agx login token`) |
+| `auto-pick` | `--auto-profile` or `--auto-login` found nothing eligible, or no member of a login pool is usable, or a `--pool-only` member is blocked (`agx pool pick`, `agx login token`, `agx credential`) |
 | `before-run-failed` | the profile's `before_run` script failed or is missing |
 | `folder-gone` | a conversation whose folder no longer exists |
 | `plan-file` | a stale, foreign or unreadable shell plan file |
@@ -487,7 +487,10 @@ agx: unknown login nosuch
 
 ```sh
 member=$(agx pool pick --id auto --cached --json --field data.selected.name) || echo "no member usable (exit $?)"
+agx pool pick --id auto --cached --pool-only carol --json --field data.selected.name || echo "carol is over a cap (exit $?)"
 ```
+
+With `--pool-only NAME` the pick is that member alone with its caps enforced (`data.selected.picked_by` is `only`); exit 1 means it is blocked, and `data.candidates[0].reasons` says why. Inside a pinned session, `agx whoami --json --field data.only` is the pinned member.
 
 
 ```sh

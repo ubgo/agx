@@ -207,17 +207,17 @@ Every command takes named flags only; a bare `agx`, or a bare group such as `agx
 
 | Command | What it does |
 |---|---|
-| [`agx run`](docs/commands/launch.md#agx-run) | Start an agent in the current folder (or `--dir`) |
+| [`agx run`](docs/commands/launch.md#agx-run) | Start an agent in the current folder (or `--dir`); on a pool, `--pool-only NAME` keeps it on one member within its caps |
 | [`agx new`](docs/commands/launch.md#agx-new) | Create a timestamped session folder and start an agent in it |
 | [`agx resume`](docs/commands/launch.md#agx-resume) | Continue a conversation on the home that stores it |
-| [`agx whoami`](docs/commands/launch.md#agx-whoami) | Profile, login, home and run id of the current session |
+| [`agx whoami`](docs/commands/launch.md#agx-whoami) | Profile, login, home and run id of the current session; in a pool session the member in use, a `--pool-only` pin and the next member |
 | [`agx usage`](docs/commands/usage.md#agx-usage) | Plan usage, one row per configured home |
 | [`agx conversation`](docs/commands/conversation.md) | Conversations stored in agent homes: list, show, move |
 | [`agx session`](docs/commands/conversation.md#agx-session-list) | Session folders made by `agx new`: list, clean, promote |
-| [`agx live`](docs/commands/live.md) | Running sessions started with `--live-login`: list, show, switch the login |
+| [`agx live`](docs/commands/live.md) | Running live and pool sessions: list, show, switch the login, pin a pool member with `--pool-only` |
 | [`agx profile`](docs/commands/profile.md) | Profiles, a name for one home plus launch defaults: list, show, add, import, edit, remove, use |
 | [`agx login`](docs/commands/login.md) | Logins, what a launch authenticates with: list, show, add, edit, remove, use, check, token |
-| [`agx pool`](docs/commands/pool.md) | Login pools: list, show their settings, pick (which member a pool uses now, and why) |
+| [`agx pool`](docs/commands/pool.md) | Login pools: list, show their settings, pick (which member a pool uses now, and why; `--pool-only NAME` for one pinned member) |
 | [`agx project`](docs/commands/project.md) | Folder bindings per agent: list, show, use, remove |
 | [`agx agent`](docs/commands/setup.md#agx-agent-list) | Known agents and their capabilities: list, show |
 | [`agx doctor`](docs/commands/setup.md#agx-doctor) | Local checks: config, references, binaries, homes, run folders |

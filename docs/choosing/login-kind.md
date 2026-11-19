@@ -15,6 +15,7 @@ A login is what one launch authenticates with. agx offers seven choices: a login
 | an agx login's key, fetched by Claude itself each time it needs one | `api-key-helper` with `--helper-command 'agx login token --id NAME'` | Claude |
 | a long session may hit its plan limit and you want to switch it without a restart | live login: `--live-login` on a stored `oauth-token` or `api-key` login | Claude |
 | several accounts (yours and teammates') and you want the session to move between them by itself as quotas fill | a `pool` login over your token logins: [Share a pool of Claude accounts](../guides/login-pool.md) | Claude |
+| one account that a session must stay on, but never past its caps | a one-member `pool` login for every run, or `--pool-only NAME` on a pool for one run: [Pin one account but keep its limits](../guides/login-pool.md#pin-one-account-but-keep-its-limits) | Claude |
 | one run on a token you do not want to save | `--token-ref REF --token-kind KIND` | Claude, Gemini CLI, pi |
 | Codex | the home login only: Codex has no token login | Codex |
 

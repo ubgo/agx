@@ -74,6 +74,72 @@ Choose the login of a live run. The agent picks it up at its next key refresh (a
 
 On a [pool](../guides/login-pool.md) run, `--login` or `--start-login` without `--pool-only` also ends a `--pool-force` and a `--pool-only` the run was started with: `--login auto` hands the run back to the pool's rules, and `--login MEMBER` is the pin that ignores caps. `agx live use --id RUN --pool-only alice` keeps the run on alice while she is under her caps ([Pin one account but keep its limits](../guides/login-pool.md#pin-one-account-but-keep-its-limits)); `agx live show` then adds `only  alice (caps enforced)` and, while she is over a cap, `in use  none (alice over cap: …)` (`--json`: `only`, `no_key`). `agx whoami` inside the session shows the login in use and the next one.
 
+Pinning a pool run with `--pool-only` (from [`examples/acct-login-pool`](../../examples/acct-login-pool/README.md); erin is over her 5-hour cap):
+
+<!-- snippet: examples/acct-login-pool/session.txt#live-only -->
+```sh
+$ agx live use --id 20261119-095000-p7q2 --pool-only derek
+run         20261119-095000-p7q2
+agent       claude
+profile     personal
+folder      ~/projects/app
+started on  auto
+chosen      —
+next        auto
+only        derek (caps enforced)
+in use      carol
+liveness    unknown (process info unreadable: run.jsonc records no process id)
+
+$ AGX_RUN_ID=20261119-095000-p7q2 AGX_RUN_AGENT=claude AGX_RUN_PROFILE=personal AGX_RUN_LOGIN=auto AGX_RUN_HOME=~/.claude agx whoami
+run:      20261119-095000-p7q2
+agent:    claude
+profile:  personal
+login:    auto (pool)
+home:     ~/.claude
+only:     derek (caps enforced)
+in use:   carol
+next:     derek
+
+$ agx live use --id 20261119-095000-p7q2 --pool-only erin
+run         20261119-095000-p7q2
+agent       claude
+profile     personal
+folder      ~/projects/app
+started on  auto
+chosen      —
+next        auto
+only        erin (caps enforced)
+in use      carol
+liveness    unknown (process info unreadable: run.jsonc records no process id)
+
+$ AGX_RUN_ID=20261119-095000-p7q2 agx credential --json --field data.login
+agx: erin: 5h is 55% (cap 50%)
+[exit 1]
+
+$ AGX_RUN_ID=20261119-095000-p7q2 AGX_RUN_AGENT=claude AGX_RUN_PROFILE=personal AGX_RUN_LOGIN=auto AGX_RUN_HOME=~/.claude agx whoami
+run:      20261119-095000-p7q2
+agent:    claude
+profile:  personal
+login:    auto (pool)
+home:     ~/.claude
+only:     erin (caps enforced)
+in use:   none (erin over cap: 5h is 55% (cap 50%))
+
+$ agx live show --id 20261119-095000-p7q2 --json --field data.no_key
+erin over cap: 5h is 55% (cap 50%)
+
+$ agx live use --id 20261119-095000-p7q2 --login auto
+run         20261119-095000-p7q2
+agent       claude
+profile     personal
+folder      ~/projects/app
+started on  auto
+chosen      auto
+next        auto
+in use      —
+liveness    unknown (process info unreadable: run.jsonc records no process id)
+```
+
 Try it:
 
 <!-- snippet: examples/acct-live-login/session.txt#use -->

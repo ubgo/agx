@@ -1,0 +1,12 @@
+{
+  "id": "20261119-095000-p7q2",
+  "pid": 0,
+  "started_at": "2026-11-19T09:50:00Z",
+  "agent": "claude",
+  "binary": "/usr/local/bin/claude",
+  "profile": "personal",
+  "home": "~/.claude",
+  "login": "auto",
+  "folder": "~/projects/app",
+  "live_login": true
+}
