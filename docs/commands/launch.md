@@ -33,6 +33,7 @@ Start an agent in the current folder (or `--dir`). Cost R, plus N for `--auto-pr
 | `--env-file` | a dotenv file, relative to the current folder (repeat) |
 | `--before-run` | a script to run first, for this run |
 | `--live-login` | make the session's login switchable while it runs |
+| `--pool-force` | on a [pool login](../guides/login-pool.md): every key of this run comes from this member, over the pool's rules, force and picker (`agx live use` ends it) |
 | `--dry-run` | print every decision with its source; start nothing |
 | `--resolved-secrets` | with `--dry-run` (refused without it, exit 125): resolve each reference and say "resolved" or why not, never the value (cost X) |
 | `--` | everything after it goes to the agent untouched; see [Raw args](../guides/raw-args.md) |
@@ -111,7 +112,7 @@ Create a timestamped session folder under `sessions.root` and start an agent in 
 | `--agent`, `--login`, `--home-login`, `--auto-login`, `--token-ref`, `--token-kind` | as `run` |
 | `--model`, `--prompt`, `--add-dir`, `--autonomy`, `--consent`, `--headless` | as `run` |
 | `--option`, `--setting`, `--settings-delivery` | as `run` |
-| `--env`, `--no-env`, `--env-file`, `--before-run`, `--live-login` | as `run` |
+| `--env`, `--no-env`, `--env-file`, `--before-run`, `--live-login`, `--pool-force` | as `run` |
 | `--dry-run`, `--resolved-secrets` | as `run`; with `--dry-run` no folder is created |
 
 ```sh
@@ -175,7 +176,7 @@ agx asks every configured home whose agent lists conversations whether it stores
 | `--login`, `--home-login`, `--auto-login`, `--token-ref`, `--token-kind` | as `run`: the quota comes from this login, the history from the conversation's home |
 | `--model`, `--prompt`, `--add-dir`, `--autonomy`, `--consent`, `--headless` | as `run` |
 | `--option`, `--setting`, `--settings-delivery` | as `run` |
-| `--env`, `--no-env`, `--env-file`, `--before-run`, `--live-login` | as `run` |
+| `--env`, `--no-env`, `--env-file`, `--before-run`, `--live-login`, `--pool-force` | as `run` |
 | `--dry-run`, `--resolved-secrets` | as `run` |
 | `--` | raw args to the agent |
 

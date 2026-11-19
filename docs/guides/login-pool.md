@@ -4,9 +4,33 @@ A login pool lets one Claude Code session move between accounts on its own as qu
 
 The goal is to waste as little plan quota as possible. Weekly quota that is not used before the weekly reset is lost, so the account whose week ends soonest goes first. Your own accounts are used up almost fully; a teammate's account is borrowed only up to its caps, so the teammate always keeps the rest, and only when its quota is about to expire while one of yours is still usable.
 
+## It is optional: override each part
+
+Nothing changes for anyone without a `pool` login: plain logins, an `api-key-helper` login with your own command, `--live-login` and `--auto-login` work exactly as before. A pool is a helper agx provides, and every part of it can be overridden:
+
+| You want | Do | Applies to |
+|---|---|---|
+| one member, bypassing the pool | `agx run --login carol` (or a binding, a profile login, `AGX_LOGIN=carol`) | that run |
+| one member for every key of one run | `agx run --login auto --pool-force carol` | that run |
+| one member for every key of every run, until you clear it | `agx login edit --id auto --pool-force carol` (clear: `--pool-force ''`) | every pool run, from its next key |
+| a running session pinned to one member | `agx live use --id RUN --login carol` | that run |
+| a pinned session back on the pool's rules | `agx live use --id RUN --login auto` (or `--start-login`) | that run |
+| the pool for this terminal | `AGX_LOGIN=auto` or `AGX_LOGIN_CLAUDE=auto`, like any login | this terminal |
+| what `login pick` and `login token` would do with a force | `--pool-force carol` on either | one call |
+| your own rules | a [picker command](#your-own-picker) of yours in the pool | every key request |
+| your own key helper instead of a pool | an `api-key-helper` login: `agx login add --name mine --agent claude --kind api-key-helper --helper-command '/path/to/your-helper'`, then `agx run --login mine` | runs on that login |
+
+Who decides a key, first match wins: a run's `--pool-force`, the pool's `force`, its `picker`, the built-in [rules](#the-rules). The dry run shows each pool decision with its source (a config key, `default`, `--pool-force`, the cache), like every other decision.
+
+Every pool setting has a default: `shared_borrow_window` `48h`, `short_unavailable_at_percent` 99, `defaults` 5h 50% and week 70%, `usage_max_age` `60s`, `key_ttl` `60s`, no `force`, no `picker` (built-in rules), `picker.timeout` `10s`, no `log`. Each is in the [config reference](../config.md#login-pools).
+
+## Which agents
+
+Claude Code only, today, and agx decides that from the agent's capabilities, not its name. A pool needs an agent that takes token logins and asks for its key again while it runs (Claude's `apiKeyHelper`, the capability [live login](live-login.md) uses), and whose logins agx can probe for usage. Codex reads its home's own login and has no token login or key helper; Gemini CLI and pi read their key once at start. A pool for any of them is refused with the agent's reason (`codex cannot use a login pool (…)`: exit 4 from `agx login add`, a config error at the line from `agx config check`). The selection rules themselves are agent-neutral (the public package `github.com/ubgo/agx/pool` is a pure function over usage readings), so another agent can be added when it gains both capabilities.
+
 ## Before you start
 
-- Claude Code. A pool needs an agent that asks for its key again while it runs (`apiKeyHelper`) and whose logins agx can probe; other agents are refused with the reason (`codex cannot use a login pool (…)`, exit 4).
+- Claude Code ([which agents](#which-agents)).
 - Two or more stored token logins for Claude ([Logins](../logins.md#adding-a-login)): plan tokens (`oauth-token`) or API keys, each from wherever its token lives (gopass, a `$(…)` command, `tokens.jsonc`). A key-helper login cannot be a member: agx cannot fetch its key.
 - Nothing in the launch may set a variable that outranks the key helper (`ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `CLAUDE_CODE_OAUTH_TOKEN`), as for [live login](live-login.md#before-you-start).
 
@@ -41,7 +65,7 @@ Or write the whole login by hand. Every key but `own` or `shared` may be left ou
         "usage_max_age": "60s",
         "key_ttl": "60s"
       }
-    }
+    },
 ```
 
 Your own accounts get caps a little under 100 (5-hour 95%, weekly 98%) so agx moves on before Claude gets a 429 for the account (see [When an account runs out mid-task](#when-an-account-runs-out-mid-task)). `agx config check` checks every member: it exists, serves Claude, is a token login, and is named once. Every key is in the [config reference](../config.md#login-pools).
@@ -55,14 +79,14 @@ Your own accounts get caps a little under 100 (5-hour 95%, weekly 98%) so agx mo
 $ agx login pick --id auto
 Use: carol (shared)
 shared account resets within 48h, before any usable own account; using its room before it is lost
-pool auto · claude · usage from cache (20s old) · borrow window 48h
+Source: cache (20s old)
 
-Members (ready in pick order):
-  carol [shared] #1 READY (5h 0%, week 26%, resets in 1 d 14 hr, room 44%)
-  alice [own] #2 READY (5h 3%, week 29%, resets in 6 d 0 hr, room 69%)
-  derek [shared] WAIT (5h 0%, week 15%, resets in 4 d 0 hr, room 55%) (shared reset not within 48h while an own account is usable)
-  bob [own] skip: status is limit-reached; 5h is 100% (unavailable at 99%); 5h is 100% (cap 95%) (5h 100%, week 61%, resets in 3 d 0 hr, room 37%)
-  erin [shared] skip: 5h is 55% (cap 50%) (5h 55%, week 43%, resets in 3 hr 0 min, room 27%)
+Candidates (ready accounts in pick order):
+- carol [shared] #1 READY (5h 0%, week 26%, resets in 1 d 14 hr, room 44%)
+- alice [own] #2 READY (5h 3%, week 29%, resets in 6 d 0 hr, room 69%)
+- derek [shared] WAIT (5h 0%, week 15%, resets in 4 d 0 hr, room 55%) (shared reset not within 48h while an own account is usable)
+- bob [own] skip: status is limit-reached; 5h is 100% (unavailable at 99%); 5h is 100% (cap 95%) (5h 100%, week 61%, resets in 3 d 0 hr, room 37%)
+- erin [shared] skip: 5h is 55% (cap 50%) (5h 55%, week 43%, resets in 3 hr 0 min, room 27%)
 ```
 
 `#N READY` is the pick order, `WAIT` is usable but held back by the borrow window, `skip:` lists every reason. `room` is the weekly cap minus the weekly use. `--json` carries the same, for scripts: `agx login pick --id auto --json --field data.selected.name` prints `carol`.
@@ -82,25 +106,32 @@ A dry run probes nothing: it shows the members and the member the pool would pic
 $ agx run --login auto --dry-run
 agx: agent claude (default_agent)
 agx: warning: installed Claude Code version unknown; flags not checked
-agent     claude                                                                                                      from default_agent
-profile   personal                                                                                                    from default profile of claude
-home      ~/.claude                                                                                                   from profile personal
-login     auto                                                                                                        from --login
-binary    /usr/local/bin/claude version unknown                                                                       from no install metadata
-folder    ~/projects/app                                                                                              from current folder
-note      login pool auto: own alice, bob; shared carol, derek, erin; picks a member each time claude asks for a key  from login auto (pool)
-          pick now: carol, from the cache (20s old); agx login pick --id auto probes                                  from login auto (pool)
-          live login: switch with agx live use --id 20261119-100000-oc0f --login NAME (refresh 1m0s)                  from login auto (pool)
-settings  apiKeyHelper                                                                                                from login auto (pool)
-          delivered as file ~/.agx/runs/20261119-100000-oc0f/settings-20261119-100000-oc0f.json (0600)                from settings_delivery file
-run       ~/.agx/runs/20261119-100000-oc0f                                                                            from AGX_RUN_ID=20261119-100000-oc0f
-command   claude --settings ~/.agx/runs/20261119-100000-oc0f/settings-20261119-100000-oc0f.json                       from built by agentio
-env       set AGX_RUN_ID=20261119-100000-oc0f                                                                         from launch environment
-          set AGX_RUN_AGENT=claude                                                                                    from launch environment
-          set AGX_RUN_PROFILE=personal                                                                                from launch environment
-          set AGX_RUN_LOGIN=auto                                                                                      from launch environment
-          set AGX_RUN_HOME=~/.claude                                                                                  from launch environment
-          set CLAUDE_CODE_API_KEY_HELPER_TTL_MS=60000                                                                 from launch environment
+agent     claude                                                                                        from default_agent
+profile   personal                                                                                      from default profile of claude
+home      ~/.claude                                                                                     from profile personal
+login     auto                                                                                          from --login
+binary    /usr/local/bin/claude version unknown                                                         from no install metadata
+folder    ~/projects/app                                                                                from current folder
+pool      auto: own alice, bob; shared carol, derek, erin                                               from config logins.auto.pool
+          pick: the built-in rules at each key request                                                  from default
+          key ttl 1m0s                                                                                  from config logins.auto.pool.key_ttl
+          usage max age 1m0s                                                                            from config logins.auto.pool.usage_max_age
+          shared borrow window 48h                                                                      from config logins.auto.pool.shared_borrow_window
+          5h cutoff 99%                                                                                 from config logins.auto.pool.short_unavailable_at_percent
+          default caps 5h 50%, week 70%                                                                 from config logins.auto.pool.defaults
+          member entries: 2                                                                             from config logins.auto.pool.accounts
+          pick now: carol (rules), from the cache (20s old); agx login pick --id auto probes            from login-usage cache
+note      live login: switch with agx live use --id 20261119-100000-zygj --login NAME (refresh 1m0s)    from login auto (pool)
+settings  apiKeyHelper                                                                                  from login auto (pool)
+          delivered as file ~/.agx/runs/20261119-100000-zygj/settings-20261119-100000-zygj.json (0600)  from settings_delivery file
+run       ~/.agx/runs/20261119-100000-zygj                                                              from AGX_RUN_ID=20261119-100000-zygj
+command   claude --settings ~/.agx/runs/20261119-100000-zygj/settings-20261119-100000-zygj.json         from built by agentio
+env       set AGX_RUN_ID=20261119-100000-zygj                                                           from launch environment
+          set AGX_RUN_AGENT=claude                                                                      from launch environment
+          set AGX_RUN_PROFILE=personal                                                                  from launch environment
+          set AGX_RUN_LOGIN=auto                                                                        from launch environment
+          set AGX_RUN_HOME=~/.claude                                                                    from launch environment
+          set CLAUDE_CODE_API_KEY_HELPER_TTL_MS=60000                                                   from launch environment
 note      installed Claude Code version unknown; flags not checked
 ```
 
@@ -115,11 +146,85 @@ agx reads `config.jsonc` on every key request, so a change applies from the next
 - Leave a member out: `"accounts": { "derek": { "enabled": false } }`. It is not probed any more.
 - Any cap, list or window change.
 
-`agx login pick --id auto --force alice` shows what a force would do without changing anything.
+`agx login pick --id auto --pool-force alice` shows what a force would do without changing anything.
+
+## Your own picker
+
+Set `picker.command` and agx runs it at every key request instead of the built-in rules (a force still wins over it). The command runs through `sh -c` with your environment plus `AGX_POOL` (the pool's name). It reads one JSON object on stdin and prints the chosen member's login name on stdout:
+
+```json
+{
+  "version": 1,
+  "pool": "auto",
+  "agent": "claude",
+  "now": "2026-11-19T10:00:00Z",
+  "builtin": "carol",
+  "rules": {
+    "shared_borrow_window_hours": 48,
+    "short_unavailable_at_percent": 99,
+    "defaults": { "short": 50, "week": 70 },
+    "own": ["alice", "bob"],
+    "shared": ["carol", "derek", "erin"],
+    "accounts": { "alice": { "short": 95, "week": 98, "enabled": true } }
+  },
+  "members": [
+    { "name": "carol", "group": "shared", "state": "ready", "rank": 1, "eligible": true, "enabled": true,
+      "status": "ok", "account": "carol@example.com", "short": 0, "week": 26,
+      "weekly_resets_at": "2026-11-21T00:00:00Z", "hours_to_reset": 38, "room_percent": 44,
+      "caps": { "short": 50, "week": 70 }, "reasons": [], "notes": [], "source": "cache", "age_seconds": 20 }
+  ]
+}
+```
+
+`builtin` is the member the built-in rules would pick (`null` when none is usable); `members` are the [`agx login pick --json`](../commands/login.md#agx-login-pick) candidates, in the rules' order. The input never holds a token. The rules are:
+
+- The output must be exactly one non-empty line (spaces around it are trimmed) naming a member of the pool. A member the rules would skip is used anyway, with a warning per broken rule.
+- Anything else falls back to the built-in rules with one warning naming why: the command does not start, exits non-zero (`exited 3: <first stderr line>`), runs past `picker.timeout` (`timed out after 10s`), prints nothing, prints more than one line, or prints a name that is not a member. A broken picker never takes the session down: a failed key request would stop Claude.
+
+A tiny picker that prefers your own `alice` whenever she is ready, and otherwise takes the built-in pick (from the example, needing only `sh` and `sed`):
+
+<!-- snippet: examples/acct-login-pool/home/picker.sh -->
+```sh
+#!/bin/sh
+# A pool's picker: the members and their usage arrive as JSON on stdin
+# (never a token); print one member's login name. This one prefers alice
+# whenever she is ready, and otherwise takes the built-in rules' pick.
+input=$(cat)
+case "$input" in
+  *'"name":"alice","group":"own","state":"ready"'*) echo alice ;;
+  *) printf '%s\n' "$input" | sed -n 's/.*"builtin":"\([^"]*\)".*/\1/p' ;;
+esac
+```
+
+<!-- snippet: examples/acct-login-pool/config.jsonc#picker -->
+```jsonc
+    "picky": {
+      "agents": ["claude"],
+      "kind": "pool",
+      "pool": {
+        "own": ["alice", "bob"],
+        "shared": ["carol"],
+        "picker": { "command": "sh $HOME/picker.sh" }
+      }
+    }
+```
+
+<!-- snippet: examples/acct-login-pool/session.txt#picker -->
+```sh
+$ agx login pick --id picky
+Use: alice (own)
+picked by the picker command (sh)
+Source: cache (20s old)
+
+Candidates (ready accounts in pick order):
+- carol [shared] #1 READY (5h 0%, week 26%, resets in 1 d 14 hr, room 44%)
+- alice [own] #2 READY (5h 3%, week 29%, resets in 6 d 0 hr, room 41%)
+- bob [own] skip: status is limit-reached; 5h is 100% (unavailable at 99%); 5h is 100% (cap 50%) (5h 100%, week 61%, resets in 3 d 0 hr, room 9%)
+```
 
 ## The rules
 
-1. **Force.** `--force` (one `login pick` or `login token` run), else the pool's `force`, wins outright and every rule below is ignored. Each rule the forced member breaks is printed as a warning. Forcing a login without a usage reading is an error (exit 1). Forcing a login listed in neither group works, checked against the default caps, with the warning `not listed in own or shared`.
+1. **Force.** `--pool-force` (one run, `login pick` or `login token` call), else the pool's `force`, wins outright and every rule below is ignored. Each rule the forced member breaks is printed as a warning. Forcing a login without a usage reading is an error (exit 1). Forcing a login listed in neither group works, checked against the default caps, with the warning `not listed in own or shared`.
 2. **Usable.** A member is skipped when any of these holds, and every reason is listed: disabled in config; no usage reading; status is not `ok` (`limit-reached`, `rejected`, `secret`, `network`, …); 5-hour use at or over `short_unavailable_at_percent` (99), even when the status is `ok`; 5-hour use at or over its 5-hour cap; weekly use at or over its weekly cap. Caps are exclusive: under the cap is usable. Caps count the account's total use: at 60% of a 70% weekly cap you can use 10%, and the teammate keeps 30%. A window the probe does not report is not checked.
 3. **Pool.** While any own member is usable, the pool is the usable own members plus the usable shared members whose weekly reset is within `shared_borrow_window`; the other usable shared members wait. With no own member usable, the pool is every usable shared member.
 4. **Order.** The pool is sorted by weekly reset, soonest first. An unknown reset, or one that has already passed (stale data, noted on the member), sorts last. Ties keep config order, own before shared.
@@ -147,8 +252,9 @@ agx reads a member's usage with the same small probe `agx login check` and `--au
 With a `log` path, every key request appends one line, so you can watch the switching (`tail -f`):
 
 ```text
-2026-11-19T10:00:47Z mode=credential pool=auto picked=carol group=shared forced=false source="live probe"
-2026-11-19T10:01:12Z mode=credential pool=auto picked=carol group=shared forced=false source="cache (25s old)"
+2026-11-19T10:00:47Z mode=credential pool="auto" picked="carol" group="shared" forced=false by="rules" source="live agx result"
+2026-11-19T10:01:12Z mode=credential pool="auto" picked="carol" group="shared" forced=false by="rules" source="cache (25s old)"
+2026-11-19T10:09:30Z mode=credential pool="auto" picked=null group=null forced=false by=null source="live agx result" error="pool auto: no member is usable: …"
 ```
 
 ## How long a switch takes
@@ -183,6 +289,20 @@ To make this rare, give your own members caps a little under 100 (95 and 98), so
 | Stale data | a member noted `weekly reset time has passed; usage data is stale` | a `--cached` reading older than the member's weekly reset | run without `--cached` |
 | `--cached` never refreshes | the same answer every time | it reads the cache only | use `--max-age` in scripts |
 | The cache holds emails | — | account labels are kept with each reading | it is 0600; do not share it |
+
+## Testing
+
+Automated (in `task check`, never a real account, network or token): the rules are a pure function with every case of the stand-alone selector's test suite ported one to one (the mapping, case by case, is in [`pool/testdata/SELECTOR_PORT.md`](../../pool/testdata/SELECTOR_PORT.md)), boundary tables for every cap, window and cutoff, and a property test that, for 20 000 random pools, the pick is always usable, under every cap and has the soonest weekly reset of the members the rules allow. The key-helper flow runs end to end through `agx credential` with a moving clock and a fake usage server: first call, cache reuse, a change while fresh, re-probe after max age, caps, limits, probe failure, disabled, force, nothing usable, six helpers at once, and a log that never holds a token.
+
+Live, opt-in (run them yourself; they print no token value, only its length):
+
+```sh
+scripts/live-check.sh                 # 1-4: pick, token length, cache reuse, live dry run (at most one probe per member)
+scripts/live-check.sh --with-claude   # 5: one tiny real Claude call through the pool (spends a few tokens)
+scripts/limit-recovery-check.sh LIMITED WORKING   # a real session on a limited login, switched mid-session (spends a few tokens)
+```
+
+Both read `AGX` (the binary, default `agx`), `AGX_POOL` (default `auto`) and `AGX_ARGS` (global flags, such as `--config ~/.agx/config.pool.jsonc`). `limit-recovery-check.sh` adds a temporary pool of your two logins, forced to the limited one, switches the force after the first message of a four-message session, and removes the temporary login at the end. Expected with Claude Code 2.1.328: message 1 fails (429), message 2 fails too (the new key applies one request late), messages 3 and 4 succeed in the same session.
 
 ## Try it
 

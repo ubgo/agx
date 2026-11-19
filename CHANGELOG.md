@@ -6,7 +6,16 @@ All notable changes to agx are listed here. The format follows [Keep a Changelog
 
 ### Added
 
+- Login pools can be overridden at every level: `--pool-force MEMBER` on `agx run`, `new` and `resume` forces one member for every key of that run (kept in the run's `live.jsonc`; `agx live use` ends it), and on `agx login pick` and `agx login token` for one call; `agx live use --id RUN --login MEMBER` pins a running pool session and `--login POOL` hands it back to the pool's rules; `--login MEMBER` and `AGX_LOGIN` bypass or choose the pool like any login. Who decides a key, first match wins: a run's `--pool-force`, the pool's `force`, its picker, the built-in rules.
+- A pool's own picker: `logins.<name>.pool.picker.command` (and `picker.timeout`, default `10s`) runs at every key request with the members and their usage as JSON on stdin (version 1, never a token) and prints one member's name. A failure (a non-zero exit, a timeout, no line, extra lines, a name that is not a member) falls back to the built-in rules with a warning.
+- A dry run on a pool shows each pool decision with its source: the members, who picks (`--pool-force`, the pool's `force`, its `picker` or the built-in rules), `key_ttl`, `usage_max_age`, the borrow window, the cutoff, the default caps (each `config logins.NAME.pool.KEY` or `default`) and the pick from the cache.
+- `agx login pick` takes `--time-format`, `--duration-format`, `--tz` and the global `--date-format`, as `agx usage` does, and a hidden `--now` to read an old cache; `--max-age 0` probes every member.
 - `agx usage --duration-format truncate|round|minutes` and the config key `usage.duration_format`: how a reset a day or more away reads. `truncate` is the default and unchanged ("1 d 2 hr"); `round` rounds to the nearest hour ("1 d 3 hr" for 1 d 2 hr 52 min); `minutes` keeps the minutes ("1 d 2 hr 52 min"). Another value is refused (exit 2) with the list.
+
+### Changed
+
+- `agx login pick` prints the stand-alone selector's report line for line: `Use: NAME (GROUP)` (or `(FORCED, ignoring rules)` with an indented `warning:` line per ignored rule), the reason, `warning:` lines, `Source: live agx result` or `cache (25s old)`, then `Candidates (ready accounts in pick order):` with one `- NAME [GROUP] …` line per member (`reset passed` for stale data, `reset unknown` without one). Its `--json` carries the selector's fields in snake_case (`room_percent`, `hours_to_reset`, `rank` null unless ready, `picked_by`). `--force` is renamed `--pool-force`.
+- A pool member that is disabled and has no cached reading lists both reasons (`disabled in config`, `no usage reading`), as the selector did; a reading exactly `usage_max_age` old is probed again; a failed probe is no longer cached, so the next key request asks again. The pool log has one line for every pick, a failed one included (`picked=null`, `error=…`), with `by=` (rules, force or picker).
 
 ## [0.4.7] - 2026-11-19
 

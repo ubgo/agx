@@ -29,7 +29,18 @@
         "usage_max_age": "60s",
         "key_ttl": "60s"
       }
-    }
+    },
     // #endregion
+    // #region picker
+    "picky": {
+      "agents": ["claude"],
+      "kind": "pool",
+      "pool": {
+        "own": ["alice", "bob"],
+        "shared": ["carol"],
+        "picker": { "command": "sh $HOME/picker.sh" }
+      }
+    }
+    // #endregion picker
   }
 }

@@ -394,7 +394,7 @@ A `pool` login serves exactly one agent that can re-ask for its key while it run
         "usage_max_age": "60s",
         "key_ttl": "60s"
       }
-    }
+    },
 ```
 
 | Key | Type | Meaning |
@@ -413,6 +413,9 @@ A `pool` login serves exactly one agent that can re-ask for its key while it run
 | `logins.<login>.pool.accounts.<key>.enabled` | bool | `false` leaves the member out (it is not probed) |
 | `logins.<login>.pool.usage_max_age` | duration | reuse the login-usage cache while it is younger than this; default `60s` |
 | `logins.<login>.pool.key_ttl` | duration | how long the agent keeps a key before asking again (Claude Code's `CLAUDE_CODE_API_KEY_HELPER_TTL_MS`); default `60s`, at least `1s` |
+| `logins.<login>.pool.picker` | object | your own picker instead of the built-in rules; unset (the default) uses the rules. See [your own picker](guides/login-pool.md#your-own-picker) |
+| `logins.<login>.pool.picker.command` | string | a shell command line; it reads the members and their usage as JSON on stdin (never a token) and prints one member's login name. A failure falls back to the built-in rules with a warning |
+| `logins.<login>.pool.picker.timeout` | duration | how long one run may take; default `10s` |
 | `logins.<login>.pool.log` | path | a file that gets one line per key request (time, pick, group, forced, source; never a token); `~` and `${VAR}` expand |
 
 Durations are Go duration strings (`48h`, `90m`, `60s`). Caps and the cutoff are 0 to 100. The old setting names of the stand-alone selector (`burnToFullest`, `priority`, `accountLimits`, `limits`, `sharedBorrowWindowHours`) are unknown keys and refused at their line.
