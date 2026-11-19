@@ -31,7 +31,7 @@ agx makes that one command:
 - **Folder bindings** pick the account per repository, per agent: a plain `agx run` in the client repository uses the client profile.
 - **Usage** across every home and login at once: `agx usage`.
 - **Teach your agent agx**: `agx skill --install` writes a Claude Code skill listing every agx command and flag, generated from the binary.
-- **Login pools** move one Claude session between your and your teammates' accounts by itself as quotas fill: `agx run --login auto` on a `pool` login, `agx pool pick --id auto` to see the pick and why, `! agx whoami` inside Claude to see the account in use.
+- **Login pools** move one Claude session between your and your teammates' accounts by itself as quotas fill: `agx run --login auto` on a `pool` login, `agx pool pick --id auto` to see the pick and why, `! agx whoami` inside Claude to see the account in use. Every way to use a pool, as copy-paste recipes: [Which pool command do I use?](#which-pool-command-do-i-use)
 - **Resume** finds the home that stores a conversation: `agx resume --id 3f2a9c1e`.
 - **Every option** reaches the agent the same way for every vendor: settings, typed options, environment, autonomy levels and raw flags.
 
@@ -321,6 +321,80 @@ For Claude Code, yes: start it with `--live-login`, then `agx live use --id <run
 ### Can agx move a running Claude session between accounts automatically?
 
 Yes, with a login pool: a login of kind `pool` lists your own Claude logins and your teammates' shared ones, and `agx run --login auto` starts Claude with agx as its key helper. Each time Claude asks for a key (every minute by default), agx reads the members' usage (one small probe each, cached and shared by every session) and hands out the token of the member whose weekly quota expires soonest, using your own accounts almost fully and teammates' only up to their caps. `agx pool pick --id auto` shows the pick and why. To keep one session on one account but within its caps, add `--pool-only NAME`: it gets no key while that account is over a cap, rather than switching. It is Claude Code only. See [Share a pool of Claude accounts](docs/guides/login-pool.md).
+
+### Which pool command do I use?
+
+Every way to use a pool, with the names of the [example](examples/acct-login-pool/README.md): your logins `alice` and `bob`, teammates' `carol`, `derek` and `erin`, and a pool `auto`.
+
+1. **Switch between accounts by usage.** When to use it: the normal way; one session moves between accounts as quotas fill, using your own almost fully and teammates' only up to their caps.
+
+   ```sh
+   agx run --login auto
+   ```
+
+2. **Pin one account but keep its limits, for every run: a one-member pool.** When to use it: a binding, profile or alias should always stay on carol and never go over her caps.
+
+   ```sh
+   agx login add --name carol-only --agent claude --kind pool --pool-shared carol
+   agx run --login carol-only
+   ```
+
+3. **The same for one session, with no extra pool.** When to use it: this run must stay on carol within her caps; the next one uses the pool as usual ([more](docs/guides/login-pool.md#pin-one-account-but-keep-its-limits)).
+
+   ```sh
+   agx run --login auto --pool-only carol
+   agx run --login auto --pool-only carol --pool-only-week 50   # and stricter for this run
+   ```
+
+4. **Pin one account and ignore its limits.** When to use it: you must go on with carol whatever her usage (each rule she breaks is a warning).
+
+   ```sh
+   agx run --login auto --pool-force carol
+   ```
+
+5. **Change a running session.** When to use it: a session is already open (`agx live list` shows its RUN id).
+
+   ```sh
+   agx live use --id RUN --pool-only carol   # stay on carol, caps enforced
+   agx live use --id RUN --login carol       # stay on carol, caps ignored
+   agx live use --id RUN --login auto        # back to the pool's rules
+   ```
+
+6. **Leave one account out.** When to use it: derek must not be used until you take him back (`--pool-enable derek`).
+
+   ```sh
+   agx login edit --id auto --pool-disable derek
+   ```
+
+7. **Lower one account's caps.** When to use it: a teammate wants more of her quota kept for herself, for every run (`NAME=` removes the entry again).
+
+   ```sh
+   agx login edit --id auto --pool-cap-short erin=40 --pool-cap-week erin=60 --dry-run
+   agx login edit --id auto --pool-cap-short erin=40 --pool-cap-week erin=60
+   ```
+
+8. **Which account is my session on?** When to use it: inside Claude, whose `/status` only says `apiKeyHelper`.
+
+   ```sh
+   ! agx whoami
+   ```
+
+9. **Why didn't it pick carol?** When to use it: the pick surprises you; every member is listed with `READY`, `WAIT` or `skip:` and every reason ([reading the report](docs/guides/login-pool.md#step-2-see-what-it-picks)).
+
+   ```sh
+   agx pool pick --id auto
+   agx pool pick --id auto --pool-only carol   # just carol, with her reasons
+   ```
+
+| | Switches account | Caps enforced | At the cap |
+|---|---|---|---|
+| `agx run --login auto` | yes, by usage | yes | moves to another member; no key when none is usable |
+| `--pool-only carol` | no | yes, the pool's; can be lowered for the run | no key until carol is under her caps |
+| one-member pool `carol-only` | no | yes, that pool's | no key until carol is under her caps |
+| `--pool-force carol` | no | no, each broken rule is a warning | Claude gets 429s from carol's account |
+| `--login carol` (or `agx live use --login carol`) | no | no, never checked | Claude gets 429s from carol's account |
+
+Every recipe is explained in [Share a pool of Claude accounts](docs/guides/login-pool.md#recipes).
 
 ### Which account is my Claude session on?
 

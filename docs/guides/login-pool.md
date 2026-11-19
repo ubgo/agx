@@ -27,6 +27,99 @@ Who decides a key, first match wins: a run's `--pool-force`, the pool's `force`,
 
 Every pool setting has a default: `shared_borrow_window` `48h`, `short_unavailable_at_percent` 99, `defaults` 5h 50% and week 70%, `usage_max_age` `60s`, `key_ttl` `60s`, no `force`, no `picker` (built-in rules), `picker.timeout` `10s`, no `log`. Each is in the [config reference](../config.md#login-pools).
 
+## Recipes
+
+Every way to use a pool, with the names of the [example](../../examples/acct-login-pool/README.md): your logins `alice` and `bob`, teammates' `carol`, `derek` and `erin`, and a pool `auto`.
+
+1. **Switch between accounts by usage.** When to use it: the normal way; one session moves between accounts as quotas fill, using your own almost fully and teammates' only up to their caps.
+
+   ```sh
+   agx run --login auto
+   ```
+
+2. **Pin one account but keep its limits, for every run: a one-member pool.** When to use it: a binding, profile or alias should always stay on carol and never go over her caps.
+
+   ```sh
+   agx login add --name carol-only --agent claude --kind pool --pool-shared carol
+   agx run --login carol-only
+   ```
+
+3. **The same for one session, with no extra pool.** When to use it: this run must stay on carol within her caps; the next one uses the pool as usual ([more](#pin-one-account-but-keep-its-limits)).
+
+   ```sh
+   agx run --login auto --pool-only carol
+   agx run --login auto --pool-only carol --pool-only-week 50   # and stricter for this run
+   ```
+
+4. **Pin one account and ignore its limits.** When to use it: you must go on with carol whatever her usage (each rule she breaks is a warning).
+
+   ```sh
+   agx run --login auto --pool-force carol
+   ```
+
+5. **Change a running session.** When to use it: a session is already open (`agx live list` shows its RUN id).
+
+   ```sh
+   agx live use --id RUN --pool-only carol   # stay on carol, caps enforced
+   agx live use --id RUN --login carol       # stay on carol, caps ignored
+   agx live use --id RUN --login auto        # back to the pool's rules
+   ```
+
+6. **Leave one account out.** When to use it: derek must not be used until you take him back (`--pool-enable derek`).
+
+   ```sh
+   agx login edit --id auto --pool-disable derek
+   ```
+
+7. **Lower one account's caps.** When to use it: a teammate wants more of her quota kept for herself, for every run (`NAME=` removes the entry again).
+
+   ```sh
+   agx login edit --id auto --pool-cap-short erin=40 --pool-cap-week erin=60 --dry-run
+   agx login edit --id auto --pool-cap-short erin=40 --pool-cap-week erin=60
+   ```
+
+8. **Which account is my session on?** When to use it: inside Claude, whose `/status` only says `apiKeyHelper`.
+
+   ```sh
+   ! agx whoami
+   ```
+
+9. **Why didn't it pick carol?** When to use it: the pick surprises you; every member is listed with `READY`, `WAIT` or `skip:` and every reason ([reading the report](#step-2-see-what-it-picks)).
+
+   ```sh
+   agx pool pick --id auto
+   agx pool pick --id auto --pool-only carol   # just carol, with her reasons
+   ```
+
+| | Switches account | Caps enforced | At the cap |
+|---|---|---|---|
+| `agx run --login auto` | yes, by usage | yes | moves to another member; no key when none is usable |
+| `--pool-only carol` | no | yes, the pool's; can be lowered for the run | no key until carol is under her caps |
+| one-member pool `carol-only` | no | yes, that pool's | no key until carol is under her caps |
+| `--pool-force carol` | no | no, each broken rule is a warning | Claude gets 429s from carol's account |
+| `--login carol` (or `agx live use --login carol`) | no | no, never checked | Claude gets 429s from carol's account |
+
+A one-member pool works like any pool, so `agx pool pick` shows it:
+
+<!-- snippet: examples/acct-login-pool/session.txt#one-member -->
+```sh
+$ agx login add --name carol-only --agent claude --kind pool --pool-shared carol
+added login carol-only (pool, pool 0 own, 1 shared)
+  pool.shared  —  ->  carol
+
+$ agx pool pick --id carol-only
+Pool: carol-only (claude)
+Use: carol (shared)
+no own account is usable; soonest weekly reset among shared accounts
+Source: cache (20s old)
+
+Candidates (ready accounts in pick order):
+- carol [shared] #1 READY (5h 0%, week 26%, resets in 1 d 14 hr, room 44%)
+
+$ agx run --login carol-only --dry-run --quiet --json --field data.live.start_login
+carol-only
+```
+
 ## Which agents
 
 Claude Code only, today, and agx decides that from the agent's capabilities, not its name. A pool needs an agent that takes token logins and asks for its key again while it runs (Claude's `apiKeyHelper`, the capability [live login](live-login.md) uses), and whose logins agx can probe for usage. Codex reads its home's own login and has no token login or key helper; Gemini CLI and pi read their key once at start. A pool for any of them is refused with the agent's reason (`codex cannot use a login pool (…)`: exit 4 from `agx login add`, a config error at the line from `agx config check`). The selection rules themselves are agent-neutral (the public package `github.com/ubgo/agx/pool` is a pure function over usage readings), so another agent can be added when it gains both capabilities.

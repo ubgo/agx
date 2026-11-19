@@ -360,3 +360,21 @@ agx: --pool-only zoe: zoe is not a member of pool auto (members: alice, bob, car
 [exit 2]
 
 #endregion
+#region one-member
+$ agx login add --name carol-only --agent claude --kind pool --pool-shared carol
+added login carol-only (pool, pool 0 own, 1 shared)
+  pool.shared  —  ->  carol
+
+$ agx pool pick --id carol-only
+Pool: carol-only (claude)
+Use: carol (shared)
+no own account is usable; soonest weekly reset among shared accounts
+Source: cache (20s old)
+
+Candidates (ready accounts in pick order):
+- carol [shared] #1 READY (5h 0%, week 26%, resets in 1 d 14 hr, room 44%)
+
+$ agx run --login carol-only --dry-run --quiet --json --field data.live.start_login
+carol-only
+
+#endregion
