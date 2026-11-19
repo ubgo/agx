@@ -354,3 +354,17 @@ func TestPoolProbeTimeoutFallsBack(t *testing.T) {
 		t.Errorf("took %s; the timeout did not cut the probe", time.Since(start))
 	}
 }
+
+// TestLoginPickNotAPool: login pick on a token login says pick is for
+// pool logins, which agents can have one (from capabilities), and why
+// the login's own agent cannot.
+func TestLoginPickNotAPool(t *testing.T) {
+	m, _ := poolMachine(t, nil)
+	cfg := strings.Replace(poolConfig, `"logins": {`, `"logins": { "cx": { "agents": ["codex"], "kind": "api-key", "token": "x" },`, 1)
+	m.f.WriteConfig(cfg)
+	_, err := m.app(t).LoginPick(context.Background(), PoolPickOptions{ID: "cx"}, TimeOptions{})
+	if err == nil || apperr.As(err).Code != apperr.CodeUsage ||
+		!strings.Contains(err.Error(), "login pick is for pool logins; login cx is api-key. Pools serve claude today (codex: ") {
+		t.Errorf("err %v", err)
+	}
+}

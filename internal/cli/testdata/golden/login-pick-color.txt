@@ -1,3 +1,4 @@
+[2mPool: auto (claude)[0m
 [1mUse: grace (shared)[0m
 shared account resets within 48h, before any usable own account; using its room before it is lost
 [2mSource: cache (20s old)[0m

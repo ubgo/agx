@@ -124,6 +124,7 @@ func TestLoginPickPlainShape(t *testing.T) {
 	r := f.Run("login", "pick", "--id", "auto")
 	lines := strings.Split(r.Stdout, "\n")
 	want := []string{
+		"Pool: auto (claude)",
 		"Use: grace (shared)",
 		"shared account resets within 48h, before any usable own account; using its room before it is lost",
 		"Source: cache (20s old)",
@@ -135,8 +136,8 @@ func TestLoginPickPlainShape(t *testing.T) {
 			t.Fatalf("line %d: %q, want %q\n%s", i+1, lines[i], w, r.Stdout)
 		}
 	}
-	if !strings.HasPrefix(lines[5], "- grace [shared] #1 READY (5h 0%, week 26%, resets in ") || !strings.HasSuffix(lines[5], ", room 44%)") {
-		t.Errorf("first candidate %q", lines[5])
+	if !strings.HasPrefix(lines[6], "- grace [shared] #1 READY (5h 0%, week 26%, resets in ") || !strings.HasSuffix(lines[6], ", room 44%)") {
+		t.Errorf("first candidate %q", lines[6])
 	}
 	if !strings.Contains(r.Stdout, "- bob [own] skip: status is limit-reached; week is 100% (cap 100%) (5h 0%, week 100%, resets in ") {
 		t.Errorf("bob line missing:\n%s", r.Stdout)
@@ -163,7 +164,7 @@ func TestLoginPickFlags(t *testing.T) {
 			t.Errorf("%v: exit %d %s", args, r.Code, r.Stderr)
 		}
 	}
-	if r := f.Run("login", "pick", "--id", "alice"); r.Code != 2 || !strings.Contains(r.Stderr, "not a pool") {
+	if r := f.Run("login", "pick", "--id", "alice"); r.Code != 2 || !strings.Contains(r.Stderr, "login pick is for pool logins; login alice is oauth-token. Pools serve claude today") {
 		t.Errorf("token login: %d %s", r.Code, r.Stderr)
 	}
 	if r := f.Run("login", "pick", "--id", "auto", "--cached", "--pool-force", "zoe"); r.Code != 1 || !strings.Contains(r.Stderr, "unknown login zoe") {
@@ -180,7 +181,7 @@ func TestLoginPickNoneUsable(t *testing.T) {
 	cfg = strings.Replace(cfg, `"accounts": { "alice": { "short": 99, "week": 100 }, "bob": { "short": 99, "week": 100 }, "carol": { "short": 99, "week": 100 } }`, `"accounts": { "bob": { "short": 99, "week": 100 } }`, 1)
 	f.WriteConfig(cfg)
 	r := f.Run("login", "pick", "--id", "auto")
-	if r.Code != 1 || !strings.HasPrefix(r.Stdout, "No configured account is currently usable.\n") || !strings.Contains(r.Stderr, "pool auto: no member is usable") {
+	if r.Code != 1 || !strings.HasPrefix(r.Stdout, "Pool: auto (claude)\nNo configured account is currently usable.\n") || !strings.Contains(r.Stderr, "pool auto: no member is usable") {
 		t.Errorf("exit %d\n%s\n%s", r.Code, r.Stdout, r.Stderr)
 	}
 }
@@ -226,7 +227,7 @@ func TestLoginPickCacheFollowsConfigDir(t *testing.T) {
 		t.Fatal(err)
 	}
 	r := f.Run("--config", other+"/config.jsonc", "login", "pick", "--id", "auto", "--cached")
-	if r.Code != 0 || !strings.HasPrefix(r.Stdout, "Use: grace (shared)") {
+	if r.Code != 0 || !strings.Contains(r.Stdout, "\nUse: grace (shared)") {
 		t.Fatalf("other config dir: %d %s %s", r.Code, r.Stdout, r.Stderr)
 	}
 	if r := f.Run("login", "pick", "--id", "auto", "--cached"); r.Code != 1 || !strings.Contains(r.Stdout, "no usage reading") {

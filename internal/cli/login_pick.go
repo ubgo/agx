@@ -93,6 +93,7 @@ const (
 // blank line, then one line per member.
 func writePoolReport(w io.Writer, rep app.PoolReport, st render.Style) error {
 	ew := textout.New(w)
+	ew.Line(st.Paint(render.ToneDim, fmt.Sprintf("Pool: %s (%s)", rep.Pool, rep.Agent)))
 	if s := rep.Selected; s != nil {
 		label := string(s.Group)
 		if s.Forced {

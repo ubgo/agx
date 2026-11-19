@@ -171,7 +171,7 @@ func TestPoolForce(t *testing.T) {
 	if _, err := a.LoginPick(context.Background(), PoolPickOptions{ID: "auto", Force: "zoe"}, TimeOptions{}); err == nil || apperr.As(err).Code != apperr.CodeNotFound {
 		t.Errorf("unknown force: %v", err)
 	}
-	if _, err := a.LoginPick(context.Background(), PoolPickOptions{ID: "alice"}, TimeOptions{}); err == nil || !strings.Contains(err.Error(), "not a pool") {
+	if _, err := a.LoginPick(context.Background(), PoolPickOptions{ID: "alice"}, TimeOptions{}); err == nil || !strings.Contains(err.Error(), "is for pool logins") {
 		t.Errorf("token login: %v", err)
 	}
 }
@@ -264,7 +264,7 @@ func TestPoolLaunchIsLive(t *testing.T) {
 		t.Fatal(err)
 	}
 	notes := decisionValues(p)
-	if p.Live == nil || p.Live.StartLogin != "auto" || !strings.Contains(notes, "pool auto: own alice, bob; shared carol, derek [config logins.auto.pool]") ||
+	if p.Live == nil || p.Live.StartLogin != "auto" || !strings.Contains(notes, "pool auto (claude): own alice, bob; shared carol, derek [config logins.auto.pool]") ||
 		!strings.Contains(notes, "pick now: none from the cache") || !strings.Contains(notes, "refresh 30s") {
 		t.Fatalf("live %+v notes:\n%s", p.Live, notes)
 	}

@@ -14,6 +14,7 @@ import (
 	"github.com/ubgo/agentio"
 
 	"github.com/ubgo/agx/config"
+	"github.com/ubgo/agx/internal/agents"
 	"github.com/ubgo/agx/internal/apperr"
 	"github.com/ubgo/agx/internal/report"
 	"github.com/ubgo/agx/internal/run"
@@ -188,7 +189,7 @@ func (a *App) LoginPick(ctx context.Context, o PoolPickOptions, to TimeOptions) 
 		return PoolReport{}, err
 	}
 	if lg.Kind != config.KindPool {
-		return PoolReport{}, apperr.Usage(fmt.Sprintf("login %s is %s, not a pool; agx login pick reads a pool login", o.ID, lg.Kind)).WithHint("agx login list")
+		return PoolReport{}, apperr.Usage(a.notAPool(o.ID, lg)).WithHint("agx login list")
 	}
 	view, err := a.timeView(cfg.Config, to)
 	if err != nil {
@@ -201,6 +202,31 @@ func (a *App) LoginPick(ctx context.Context, o PoolPickOptions, to TimeOptions) 
 	}
 	_ = a.poolLog(lg, poolModePick, rep, err)
 	return rep, err
+}
+
+// notAPool says agx login pick is for pool logins, which agents can have
+// one (from the registry's capabilities, never a fixed name), and why
+// this login's own agents cannot when they cannot.
+func (a *App) notAPool(name string, lg config.Login) string {
+	var can []string
+	if reg, err := a.Registry(); err == nil {
+		for _, id := range reg.IDs() {
+			if agents.PoolReason(id) == "" {
+				can = append(can, string(id))
+			}
+		}
+	}
+	msg := fmt.Sprintf("login pick is for pool logins; login %s is %s. Pools serve %s today", name, lg.Kind, strings.Join(can, ", "))
+	var why []string
+	for _, id := range lg.Agents {
+		if r := agents.PoolReason(id); r != "" {
+			why = append(why, string(id)+": "+r)
+		}
+	}
+	if len(why) > 0 {
+		msg += " (" + strings.Join(why, "; ") + ")"
+	}
+	return msg
 }
 
 // poolPick reads the members' usage and decides. The error is nil only

@@ -76,6 +76,7 @@ account  —
 users    —
 
 $ agx login pick --id team
+Pool: team (claude)
 Use: alice (own)
 soonest weekly reset among usable accounts
 Source: cache (20s old)
@@ -306,7 +307,7 @@ Pitfalls: a probe spends a few tokens of each plan; do not run it in a loop. An 
 
 ## agx login pick
 
-Show which member a pool login picks now, and why, in the stand-alone selector's report line for line: `Use: NAME (GROUP)` (or `(FORCED, ignoring rules)` with an indented `warning:` line per rule it ignores), the reason, any `warning:` lines (a probe that fell back to the cache, a picker that failed), `Source:` (`live agx result`, `cache (25s old)`, or both), a blank line, `Candidates (ready accounts in pick order):`, then one `- NAME [GROUP] …` line per member: `#N READY` in pick order, `WAIT` (usable, held back by the borrow window) or `skip:` with every reason, then the 5-hour and weekly use, the weekly reset (`reset passed` for stale data, `reset unknown` without one) and the room under the weekly cap. It decides as a key request would: `--pool-force`, else the pool's `force`, else its picker command, else the built-in rules. It prints no token. Cost Q and W: a member whose cached usage is older than the pool's `usage_max_age` is probed once (a few tokens of that plan) and the login-usage cache is rewritten; with `--cached` nothing is probed. Guide: [Share a pool of Claude accounts](../guides/login-pool.md).
+Show which member a pool login picks now, and why, in the stand-alone selector's report line for line, under a first line naming the pool and its agent (`Pool: auto (claude)`): `Use: NAME (GROUP)` (or `(FORCED, ignoring rules)` with an indented `warning:` line per rule it ignores), the reason, any `warning:` lines (a probe that fell back to the cache, a picker that failed), `Source:` (`live agx result`, `cache (25s old)`, or both), a blank line, `Candidates (ready accounts in pick order):`, then one `- NAME [GROUP] …` line per member: `#N READY` in pick order, `WAIT` (usable, held back by the borrow window) or `skip:` with every reason, then the 5-hour and weekly use, the weekly reset (`reset passed` for stale data, `reset unknown` without one) and the room under the weekly cap. It decides as a key request would: `--pool-force`, else the pool's `force`, else its picker command, else the built-in rules. It prints no token. Cost Q and W: a member whose cached usage is older than the pool's `usage_max_age` is probed once (a few tokens of that plan) and the login-usage cache is rewritten; with `--cached` nothing is probed. Guide: [Share a pool of Claude accounts](../guides/login-pool.md).
 
 | Flag | Meaning |
 |---|---|
@@ -320,13 +321,14 @@ Show which member a pool login picks now, and why, in the stand-alone selector's
 
 The global `--date-format` (and config `usage.date_format`, `date_format`) writes the clock and date parts, as for `agx usage`.
 
-Exit 0 when a member is picked (or forced); 1 with error code `auto-pick` when no member is usable, the report still printed (the selector exited 2 there; in agx 2 is a usage error); 1 (`not-found`) when `--pool-force` names a login without a reading or not at all; 2 for a login that is not a pool or a bad flag value.
+On a login that is not a pool it says pick is for pool logins, which agents can have one today (`Pools serve claude today`, from the agents' capabilities) and, for a login of another agent, why that agent cannot (`codex: …`). Exit 0 when a member is picked (or forced); 1 with error code `auto-pick` when no member is usable, the report still printed (the selector exited 2 there; in agx 2 is a usage error); 1 (`not-found`) when `--pool-force` names a login without a reading or not at all; 2 for a login that is not a pool or a bad flag value.
 
 Try it (from [`examples/acct-login-pool`](../../examples/acct-login-pool/README.md)):
 
 <!-- snippet: examples/acct-login-pool/session.txt#pick -->
 ```sh
 $ agx login pick --id auto
+Pool: auto (claude)
 Use: carol (shared)
 shared account resets within 48h, before any usable own account; using its room before it is lost
 Source: cache (20s old)
@@ -344,6 +346,7 @@ With `--time-format both`, a custom `--date-format` and `--tz`:
 <!-- snippet: examples/acct-login-pool/session.txt#times -->
 ```sh
 $ agx login pick --id auto --time-format both --date-format "ddd HH:mm" --tz UTC
+Pool: auto (claude)
 Use: carol (shared)
 shared account resets within 48h, before any usable own account; using its room before it is lost
 Source: cache (20s old)

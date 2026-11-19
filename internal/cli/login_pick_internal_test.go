@@ -40,7 +40,8 @@ func TestPoolReportText(t *testing.T) {
 	if err := writePoolReport(&b, pickReport(sel, "probe of bob failed (network); using its cached usage from 2m0s ago"), render.NewStyle(false)); err != nil {
 		t.Fatal(err)
 	}
-	want := `Use: carol (shared)
+	want := `Pool: auto (claude)
+Use: carol (shared)
 shared account resets within 48h
 warning: probe of bob failed (network); using its cached usage from 2m0s ago
 Source: live agx result
@@ -65,7 +66,7 @@ func TestPoolReportForcedAndNone(t *testing.T) {
 	if err := writePoolReport(&b, pickReport(sel), render.NewStyle(false)); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.HasPrefix(b.String(), "Use: bob (FORCED, ignoring rules)\n  warning: status is limit-reached\nforced by --force; all rules ignored\n") {
+	if !strings.HasPrefix(b.String(), "Pool: auto (claude)\nUse: bob (FORCED, ignoring rules)\n  warning: status is limit-reached\nforced by --force; all rules ignored\n") {
 		t.Errorf("forced:\n%s", b.String())
 	}
 	b.Reset()

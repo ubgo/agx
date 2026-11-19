@@ -72,11 +72,12 @@ Your own accounts get caps a little under 100 (5-hour 95%, weekly 98%) so agx mo
 
 ## Step 2: see what it picks
 
-`agx login pick` reads each member's usage (one small probe each, a few tokens of that plan, unless the [usage cache](#usage-and-the-cache) is younger than `usage_max_age`) and prints the pick, the rule that chose it, and every member:
+`agx login pick` names the pool and its agent (`Pool: auto (claude)`), reads each member's usage (one small probe each, a few tokens of that plan, unless the [usage cache](#usage-and-the-cache) is younger than `usage_max_age`) and prints the pick, the rule that chose it, and every member:
 
 <!-- snippet: examples/acct-login-pool/session.txt#pick -->
 ```sh
 $ agx login pick --id auto
+Pool: auto (claude)
 Use: carol (shared)
 shared account resets within 48h, before any usable own account; using its room before it is lost
 Source: cache (20s old)
@@ -125,7 +126,7 @@ home      ~/.claude                                                             
 login     auto                                                                                          from --login
 binary    /usr/local/bin/claude version unknown                                                         from no install metadata
 folder    ~/projects/app                                                                                from current folder
-pool      auto: own alice, bob; shared carol, derek, erin                                               from config logins.auto.pool
+pool      auto (claude): own alice, bob; shared carol, derek, erin                                      from config logins.auto.pool
           pick: the built-in rules at each key request                                                  from default
           key ttl 1m0s                                                                                  from config logins.auto.pool.key_ttl
           usage max age 1m0s                                                                            from config logins.auto.pool.usage_max_age
@@ -134,12 +135,12 @@ pool      auto: own alice, bob; shared carol, derek, erin                       
           default caps 5h 50%, week 70%                                                                 from config logins.auto.pool.defaults
           member entries: 2                                                                             from config logins.auto.pool.accounts
           pick now: carol (rules), from the cache (20s old); agx login pick --id auto probes            from login-usage cache
-note      live login: switch with agx live use --id 20261119-100000-zygj --login NAME (refresh 1m0s)    from login auto (pool)
+note      live login: switch with agx live use --id 20261119-100000-19p7 --login NAME (refresh 1m0s)    from login auto (pool)
 settings  apiKeyHelper                                                                                  from login auto (pool)
-          delivered as file ~/.agx/runs/20261119-100000-zygj/settings-20261119-100000-zygj.json (0600)  from settings_delivery file
-run       ~/.agx/runs/20261119-100000-zygj                                                              from AGX_RUN_ID=20261119-100000-zygj
-command   claude --settings ~/.agx/runs/20261119-100000-zygj/settings-20261119-100000-zygj.json         from built by agentio
-env       set AGX_RUN_ID=20261119-100000-zygj                                                           from launch environment
+          delivered as file ~/.agx/runs/20261119-100000-19p7/settings-20261119-100000-19p7.json (0600)  from settings_delivery file
+run       ~/.agx/runs/20261119-100000-19p7                                                              from AGX_RUN_ID=20261119-100000-19p7
+command   claude --settings ~/.agx/runs/20261119-100000-19p7/settings-20261119-100000-19p7.json         from built by agentio
+env       set AGX_RUN_ID=20261119-100000-19p7                                                           from launch environment
           set AGX_RUN_AGENT=claude                                                                      from launch environment
           set AGX_RUN_PROFILE=personal                                                                  from launch environment
           set AGX_RUN_LOGIN=auto                                                                        from launch environment
@@ -225,6 +226,7 @@ esac
 <!-- snippet: examples/acct-login-pool/session.txt#picker -->
 ```sh
 $ agx login pick --id picky
+Pool: picky (claude)
 Use: alice (own)
 picked by the picker command (sh)
 Source: cache (20s old)

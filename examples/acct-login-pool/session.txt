@@ -14,6 +14,7 @@ picky  claude  pool         pool 2 own, 1 shared  —
 #endregion
 #region pick
 $ agx login pick --id auto
+Pool: auto (claude)
 Use: carol (shared)
 shared account resets within 48h, before any usable own account; using its room before it is lost
 Source: cache (20s old)
@@ -33,6 +34,7 @@ carol
 #endregion
 #region force
 $ agx login pick --id auto --pool-force bob
+Pool: auto (claude)
 Use: bob (FORCED, ignoring rules)
   warning: status is limit-reached
   warning: 5h is 100% (unavailable at 99%)
@@ -51,6 +53,7 @@ $ agx login edit --id auto --pool-force derek
 changed login auto (pool, pool 2 own, 3 shared)
 
 $ agx login pick --id auto
+Pool: auto (claude)
 Use: derek (FORCED, ignoring rules)
 forced by config "force"; all rules ignored
 Source: cache (20s old)
@@ -76,6 +79,7 @@ fake-token-alice
 #endregion
 #region times
 $ agx login pick --id auto --time-format both --date-format "ddd HH:mm" --tz UTC
+Pool: auto (claude)
 Use: carol (shared)
 shared account resets within 48h, before any usable own account; using its room before it is lost
 Source: cache (20s old)
@@ -109,6 +113,7 @@ agx: --pool-force picks a member of a pool login; this run's login is bob (oauth
 #endregion
 #region picker
 $ agx login pick --id picky
+Pool: picky (claude)
 Use: alice (own)
 picked by the picker command (sh)
 Source: cache (20s old)
@@ -129,7 +134,7 @@ home      ~/.claude                                                             
 login     auto                                                                                          from --login
 binary    /usr/local/bin/claude version unknown                                                         from no install metadata
 folder    ~/projects/app                                                                                from current folder
-pool      auto: own alice, bob; shared carol, derek, erin                                               from config logins.auto.pool
+pool      auto (claude): own alice, bob; shared carol, derek, erin                                      from config logins.auto.pool
           pick: the built-in rules at each key request                                                  from default
           key ttl 1m0s                                                                                  from config logins.auto.pool.key_ttl
           usage max age 1m0s                                                                            from config logins.auto.pool.usage_max_age
@@ -138,12 +143,12 @@ pool      auto: own alice, bob; shared carol, derek, erin                       
           default caps 5h 50%, week 70%                                                                 from config logins.auto.pool.defaults
           member entries: 2                                                                             from config logins.auto.pool.accounts
           pick now: carol (rules), from the cache (20s old); agx login pick --id auto probes            from login-usage cache
-note      live login: switch with agx live use --id 20261119-100000-zygj --login NAME (refresh 1m0s)    from login auto (pool)
+note      live login: switch with agx live use --id 20261119-100000-19p7 --login NAME (refresh 1m0s)    from login auto (pool)
 settings  apiKeyHelper                                                                                  from login auto (pool)
-          delivered as file ~/.agx/runs/20261119-100000-zygj/settings-20261119-100000-zygj.json (0600)  from settings_delivery file
-run       ~/.agx/runs/20261119-100000-zygj                                                              from AGX_RUN_ID=20261119-100000-zygj
-command   claude --settings ~/.agx/runs/20261119-100000-zygj/settings-20261119-100000-zygj.json         from built by agentio
-env       set AGX_RUN_ID=20261119-100000-zygj                                                           from launch environment
+          delivered as file ~/.agx/runs/20261119-100000-19p7/settings-20261119-100000-19p7.json (0600)  from settings_delivery file
+run       ~/.agx/runs/20261119-100000-19p7                                                              from AGX_RUN_ID=20261119-100000-19p7
+command   claude --settings ~/.agx/runs/20261119-100000-19p7/settings-20261119-100000-19p7.json         from built by agentio
+env       set AGX_RUN_ID=20261119-100000-19p7                                                           from launch environment
           set AGX_RUN_AGENT=claude                                                                      from launch environment
           set AGX_RUN_PROFILE=personal                                                                  from launch environment
           set AGX_RUN_LOGIN=auto                                                                        from launch environment
@@ -165,6 +170,7 @@ account  —
 users    —
 
 $ agx login pick --id team
+Pool: team (claude)
 Use: alice (own)
 soonest weekly reset among usable accounts
 Source: cache (20s old)
@@ -196,7 +202,7 @@ agx: login auto is a pool: it has no token to probe; its members do
 [exit 2]
 
 $ agx login pick --id alice
-agx: login alice is oauth-token, not a pool; agx login pick reads a pool login
+agx: login pick is for pool logins; login alice is oauth-token. Pools serve claude today
   agx login list
 [exit 2]
 

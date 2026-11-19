@@ -147,7 +147,7 @@ func (a *App) poolPlanNotes(ctx context.Context, o LaunchOptions, res resolve.Re
 	rules, _ := pl.Rules() // the config loaded, so it parses
 	ttl, _ := pl.TTL()
 	maxAge, _ := pl.MaxAge()
-	out := []report.Decision{{Name: decPool, Value: fmt.Sprintf("%s: own %s; shared %s", name,
+	out := []report.Decision{{Name: decPool, Value: fmt.Sprintf("%s (%s): own %s; shared %s", name, res.Agent.ID(),
 		dashIfEmpty(strings.Join(pl.Own, ", ")), dashIfEmpty(strings.Join(pl.Shared, ", "))), Source: key}}
 	switch {
 	case p.Live != nil && p.Live.PoolForce != "":
