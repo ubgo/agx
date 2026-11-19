@@ -2,6 +2,12 @@
 
 All notable changes to agx are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and agx uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `agx skill` prints a Claude Code skill (`SKILL.md`) that teaches an agent session how to drive agx: when to use it, how agx works (profiles, logins, login pools, the resolution chain, `--dry-run`, `--json`/`--field`, exit codes), then every visible command with its descriptions, examples and flags, generated from the binary's own command tree and stamped with its version. `agx skill --install` writes it to `~/.claude/skills/agx/SKILL.md` (folder 0755, file 0644), backing up an existing file to `SKILL.md.bak-<timestamp>`; `--dir` chooses another skills folder. `agx help --json` now also carries each command's `long` and `example`.
+
 ## [0.4.8] - 2026-11-19
 
 ### Added

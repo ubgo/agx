@@ -450,10 +450,27 @@ Help for agx. For one command, use `agx <command> --help` (`agx usage --help`); 
 <!-- runnable -->
 ```sh
 $ agx help --json --field data.commands.*.name
-["agent","alias","clean","completion","config","conversation","credential","doctor","help","launch","live","login","new","plan","profile","project","resume","run","session","shell-init","usage","version","whoami"]
+["agent","alias","clean","completion","config","conversation","credential","doctor","help","launch","live","login","new","plan","profile","project","resume","run","session","shell-init","skill","usage","version","whoami"]
 ```
 
 Hidden commands (`credential`, `launch`, `plan`) appear with `"hidden": true`; the shell layer and live login use them, and you never type them. Guide: [know the cost before you call](../guides/scripting.md#step-6-know-the-cost-before-you-call).
+
+## agx skill
+
+Print a Claude Code skill (`SKILL.md`) that teaches an agent session how to drive agx: frontmatter (`name: agx` and when to use it), a short "how agx works" (profiles, logins, login pools, the resolution chain, `--dry-run`, `--json` and `--field`, exit codes), then every visible command with its short and long description, examples and every flag with its help text. The command list is generated from the command tree this binary is built from (the one `agx help --json` prints), so it never drifts from the commands you have; it names the version it came from. Cost R; W with `--install`.
+
+| Flag | Meaning |
+|---|---|
+| `--install` | write it to `<dir>/agx/SKILL.md` instead of printing it: the folder 0755, the file 0644; an existing file is renamed to `SKILL.md.bak-<timestamp>` first, and the path is printed |
+| `--dir` | the skills folder `--install` writes into; default `~/.claude/skills` (for example `.claude/skills` for one project) |
+
+```sh
+agx skill | less
+agx skill --install                          # ~/.claude/skills/agx/SKILL.md
+agx skill --install --dir .claude/skills     # this project only
+```
+
+`--json` and `--field` are refused (exit 2): the output is markdown. `--dir` without `--install` is refused too. Run `agx skill --install` again after upgrading agx, so the skill lists the new commands.
 
 ## agx version
 

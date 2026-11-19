@@ -213,6 +213,7 @@ Agents, checks, the config file, aliases and help.
 | The config file in use | `agx config path` | [Check your setup: Step 6: see the config agx uses](../guides/doctor.md#step-6-see-the-config-agx-uses) | [cfg-config-set](../../examples/cfg-config-set/README.md), [cfg-doctor](../../examples/cfg-doctor/README.md) |
 | Aliases | `agx alias add`, `--name`, `--args`; `agx alias list`; `agx alias remove --id` | [Shell layer: Aliases](../shell.md#aliases) | [shell-aliases](../../examples/shell-aliases/README.md), [choose-shell-layer](../../examples/choose-shell-layer/README.md), [shell-init](../../examples/shell-init/README.md) |
 | Completion scripts | `agx completion --shell` | [Shell layer: Completion](../shell.md#completion) | [shell-init](../../examples/shell-init/README.md) |
+| A Claude Code skill that teaches an agent every agx command | `agx skill`, `--install`, `--dir` | [Setup commands: agx skill](../commands/setup.md#agx-skill) | — |
 | Help and the command tree as data | `agx help`, `agx help --json` | [Output: `agx help --json`](../output.md#agx-help---json) | [out-scripting](../../examples/out-scripting/README.md) |
 | Version, build provenance, components | `agx version` | [Agents and what they support: Step 3: check the version against the tested range](../guides/agents.md#step-3-check-the-version-against-the-tested-range) | [out-scripting](../../examples/out-scripting/README.md) |
 
