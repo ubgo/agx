@@ -373,7 +373,7 @@ func (c *cliCtx) commands() []*cobra.Command {
 		c.conversationCmd(), c.liveCmd(),
 		c.profileCmd(), c.loginCmd(), c.projectCmd(), c.sessionCmd(),
 		c.agentCmd(), c.doctorCmd(), c.cleanCmd(), c.configCmd(), c.aliasCmd(),
-		c.shellInitCmd(), c.completionCmd(), c.versionCmd(),
+		c.shellInitCmd(), c.completionCmd(), c.skillCmd(), c.versionCmd(),
 	}
 }
 

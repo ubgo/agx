@@ -181,7 +181,7 @@ var fileWriters = []string{
 }
 
 // writerPackages may write files (spec 16.1).
-var writerPackages = []string{"config", "login", "live", "sessions", "internal/run", "internal/plan"}
+var writerPackages = []string{"config", "login", "live", "sessions", "internal/run", "internal/plan", "internal/skill"}
 
 // TestOnlyOwnersWriteFiles: file writes stay in the owning packages.
 func TestOnlyOwnersWriteFiles(t *testing.T) {

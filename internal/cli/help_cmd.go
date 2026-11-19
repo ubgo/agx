@@ -31,6 +31,8 @@ type HelpCommand struct {
 	Path      string        `json:"path"`
 	Name      string        `json:"name"`
 	Short     string        `json:"short"`
+	Long      string        `json:"long,omitempty"`
+	Example   string        `json:"example,omitempty"`
 	Cost      string        `json:"cost,omitempty"`
 	Launching bool          `json:"launching,omitempty"`
 	Hidden    bool          `json:"hidden,omitempty"`
@@ -62,7 +64,7 @@ func (c *cliCtx) helpCmd() *cobra.Command {
 // HelpTree describes cmd and every subcommand.
 func HelpTree(cmd *cobra.Command) HelpCommand {
 	h := HelpCommand{
-		Path: strings.TrimSpace(strings.TrimPrefix(cmd.CommandPath(), Name)), Name: cmd.Name(), Short: cmd.Short,
+		Path: strings.TrimSpace(strings.TrimPrefix(cmd.CommandPath(), Name)), Name: cmd.Name(), Short: cmd.Short, Long: cmd.Long, Example: cmd.Example,
 		Cost: cmd.Annotations[annCost], Launching: cmd.Annotations[annLaunching] == "true", Hidden: cmd.Hidden,
 		Flags: []HelpFlag{},
 	}
