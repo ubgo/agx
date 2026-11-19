@@ -138,19 +138,19 @@ func (a *App) LoginShow(o LoginShowOptions) (LoginInfo, error) {
 // refused rather than run: running it would make agx a second, silent
 // caller of a command the user wrote for the agent. Errors come from the
 // brief expander, the same wording agx credential uses, so a store's or a
-// command's stderr is never repeated.
+// command's stderr is never repeated. No hint is added: the caller is a
+// script or an agent, which reads one line (the CLI drops any hint).
 func (a *App) LoginToken(ctx context.Context, id string) (agentio.Token, error) {
 	_, l, err := a.namedLogin(id)
 	if err != nil {
 		return agentio.Token{}, err
 	}
 	if l.Kind == config.KindAPIKeyHelper {
-		return agentio.Token{}, apperr.Unsupported(fmt.Sprintf("login %s is an api-key-helper: it has no token to print; the agent runs its helper command itself", id)).
-			WithHint("agx login show --id " + id)
+		return agentio.Token{}, apperr.Unsupported(fmt.Sprintf("login %s is an api-key-helper: it has no token to print; the agent runs its helper command itself", id))
 	}
 	cred, err := login.Credential(ctx, a.exp.Brief(), a.paths, id, l)
 	if err != nil {
-		return agentio.Token{}, withCheckHint(err, id)
+		return agentio.Token{}, err
 	}
 	return cred.Token, nil
 }

@@ -284,8 +284,24 @@ func (c *cliCtx) loginCheckCmd() *cobra.Command {
 	return fields(cmd, loginCheckFields...)
 }
 
-// loginTokenUsage is the hint of a refused agx login token.
-const loginTokenUsage = "pipe it (agx login token --id NAME | pbcopy) or add --reveal to print it here"
+// loginTokenTerminal is agx login token's refusal of a terminal, with
+// what to do in the same line (the command prints no hint lines).
+const loginTokenTerminal = "stdout is a terminal; pipe it (| pbcopy) or add --reveal"
+
+// oneLineBreaks joins an error message's lines for agx login token.
+var oneLineBreaks = strings.NewReplacer("\r\n", " ", "\n", " ")
+
+// bareError is err as exactly one stderr line: its message with line
+// breaks joined and no hint. agx login token is read by scripts and by an
+// agent's apiKeyHelper (Claude Code shows the helper's stderr in /status),
+// where a second "next step" line is noise; the code and exit class stay.
+func bareError(err error) error {
+	if err == nil {
+		return nil
+	}
+	e := apperr.As(err)
+	return apperr.Wrap(e, e.Code, e.Class, oneLineBreaks.Replace(e.Message))
+}
 
 // loginTokenCmd is agx login token: the one command that prints a login's
 // token, on request, for a pipe or an apiKeyHelper. Stdout carries the
@@ -300,30 +316,38 @@ func (c *cliCtx) loginTokenCmd() *cobra.Command {
 		reveal bool
 	)
 	cmd := c.newCmd("token", "Print one login's token for a pipe or an apiKeyHelper (a terminal needs --reveal)", CostExec, func(cmd *cobra.Command, _ []string) (render.Output, error) {
-		if c.g.JSON || len(c.g.Fields) > 0 {
-			// The refusal itself must reach the user: a --field path would
-			// select from an envelope that has no data and drop the
-			// message, so the error prints whole (JSON under --json).
-			c.g.Fields = nil
-			return render.Output{}, apperr.Usage("agx login token prints the bare value for scripts and apiKeyHelper; it takes no --json or --field")
-		}
-		if c.env.StdoutTTY && !reveal {
-			return render.Output{}, apperr.Usage("agx login token will not print a token to a terminal").WithHint(loginTokenUsage)
-		}
-		tok, err := c.App().LoginToken(cmd.Context(), id)
-		if err != nil {
-			return render.Output{}, err
-		}
-		return render.Output{Text: func(w io.Writer) error {
-			_, err := io.WriteString(w, tok.Reveal()+"\n")
-			return err
-		}}, nil
+		out, err := c.loginToken(cmd, id, reveal)
+		return out, bareError(err)
 	})
-	cmd.Long = "Resolve a login's token from its source (a stored value, ${gopass:…}, $(…), ${VAR} or a plain value) and print only the value and a newline on stdout. It reads what is stored or referenced and never refreshes a token; a $(…) or gopass reference runs that local command. Stdout must be a pipe or a file unless --reveal is given. An api-key-helper login has no token and is refused."
+	cmd.Long = "Resolve a login's token from its source (a stored value, ${gopass:…}, $(…), ${VAR} or a plain value) and print only the value and a newline on stdout. It reads what is stored or referenced and never refreshes a token; a $(…) or gopass reference runs that local command. Stdout must be a pipe or a file unless --reveal is given. An api-key-helper login has no token and is refused. Every error is one line on stderr, without hint lines, and stdout stays empty."
 	cmd.Example = "  agx login token --id work-key | pbcopy\n" +
 		"  agx login add --name console --agent claude --kind api-key-helper --helper-command 'agx login token --id work-key'"
 	f := cmd.Flags()
 	f.StringVar(&id, "id", "", "the login name")
 	f.BoolVar(&reveal, "reveal", false, "print the token even when stdout is a terminal")
 	return cmd
+}
+
+// loginToken is agx login token's body; loginTokenCmd makes its error one
+// line.
+func (c *cliCtx) loginToken(cmd *cobra.Command, id string, reveal bool) (render.Output, error) {
+	if c.g.JSON || len(c.g.Fields) > 0 {
+		// The refusal prints as the command's other errors do, one line
+		// on stderr with stdout empty: a --field path would select from
+		// an envelope without data and drop the message, and a JSON
+		// envelope on stdout is what a script would take for the value.
+		c.g.JSON, c.g.Fields = false, nil
+		return render.Output{}, apperr.Usage("login token prints the bare value for scripts and apiKeyHelper; it takes no --json or --field")
+	}
+	if c.env.StdoutTTY && !reveal {
+		return render.Output{}, apperr.Usage(loginTokenTerminal)
+	}
+	tok, err := c.App().LoginToken(cmd.Context(), id)
+	if err != nil {
+		return render.Output{}, err
+	}
+	return render.Output{Text: func(w io.Writer) error {
+		_, err := io.WriteString(w, tok.Reveal()+"\n")
+		return err
+	}}, nil
 }

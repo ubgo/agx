@@ -310,33 +310,19 @@ fake-pasted-token
 ```sh
 $ agx login token --id vault
 agx: login vault is an api-key-helper: it has no token to print; the agent runs its helper command itself
-  agx login show --id vault
 [exit 4]
 
 $ agx login token --id ci --json
-{
-  "schema_version": 1,
-  "command": "login token",
-  "ok": false,
-  "data": null,
-  "decisions": [],
-  "warnings": [],
-  "error": {
-    "code": "usage",
-    "message": "agx login token prints the bare value for scripts and apiKeyHelper; it takes no --json or --field"
-  }
-}
+agx: login token prints the bare value for scripts and apiKeyHelper; it takes no --json or --field
 [exit 2]
 
 $ agx login token --id spare
 agx: login spare: SPARE_CLAUDE_TOKEN is not set
-  agx login check --id spare --no-probe
 [exit 1]
 
 $ agx login token --id nosuch
 agx: unknown login nosuch
-  agx login list
 [exit 1]
 ```
 
-Pitfalls: stdout on a terminal is refused (exit 2) unless you add `--reveal`, so a token does not land in scrollback by accident. `--json` and `--field` are refused (exit 2): the output is the bare value. An `api-key-helper` login has no token of its own and is refused (exit 4); agx does not run its command. An unknown login is `not-found` (exit 1), and a reference that does not resolve fails with the same message as `agx login check`, never a value.
+Pitfalls: stdout on a terminal is refused (exit 2) unless you add `--reveal`, so a token does not land in scrollback by accident. `--json` and `--field` are refused (exit 2): the output is the bare value. An `api-key-helper` login has no token of its own and is refused (exit 4); agx does not run its command. An unknown login is `not-found` (exit 1), and a reference that does not resolve fails with the same message as `agx login check`, never a value. Every error is exactly one line on stderr, without hint lines, and stdout stays empty, so a script or an `apiKeyHelper` (Claude shows its stderr in `/status`) gets just the reason.

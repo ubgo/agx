@@ -2,6 +2,12 @@
 
 All notable changes to agx are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and agx uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.6] - 2026-11-19
+
+### Changed
+
+- `agx login token` prints every error as exactly one line on stderr, without hint lines, and leaves stdout empty: an unknown login, an `api-key-helper` login, a missing `--id`, a reference that does not resolve, and the refusal of a terminal, which now reads `stdout is a terminal; pipe it (| pbcopy) or add --reveal`. `--json` and `--field` are refused the same way instead of with a JSON envelope on stdout. Exit codes are unchanged.
+
 ## [0.4.5] - 2026-11-19
 
 ### Fixed

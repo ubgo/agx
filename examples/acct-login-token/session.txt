@@ -52,32 +52,18 @@ note      installed Claude Code version unknown; flags not checked
 #region refusals
 $ agx login token --id vault
 agx: login vault is an api-key-helper: it has no token to print; the agent runs its helper command itself
-  agx login show --id vault
 [exit 4]
 
 $ agx login token --id ci --json
-{
-  "schema_version": 1,
-  "command": "login token",
-  "ok": false,
-  "data": null,
-  "decisions": [],
-  "warnings": [],
-  "error": {
-    "code": "usage",
-    "message": "agx login token prints the bare value for scripts and apiKeyHelper; it takes no --json or --field"
-  }
-}
+agx: login token prints the bare value for scripts and apiKeyHelper; it takes no --json or --field
 [exit 2]
 
 $ agx login token --id spare
 agx: login spare: SPARE_CLAUDE_TOKEN is not set
-  agx login check --id spare --no-probe
 [exit 1]
 
 $ agx login token --id nosuch
 agx: unknown login nosuch
-  agx login list
 [exit 1]
 
 #endregion

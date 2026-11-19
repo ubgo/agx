@@ -71,42 +71,51 @@ func TestLoginTokenPrintsOnlyTheValue(t *testing.T) {
 	}
 }
 
+// wantOneLineError asserts an agx login token failure: the exit code,
+// nothing on stdout, and exactly one stderr line (no hint lines) holding
+// msg.
+func wantOneLineError(t *testing.T, name string, code int, stdout, stderr string, exit int, msg string) {
+	t.Helper()
+	lines := strings.Split(strings.TrimSuffix(stderr, "\n"), "\n")
+	if code != exit || stdout != "" || len(lines) != 1 || !strings.HasSuffix(stderr, "\n") || !strings.Contains(stderr, msg) {
+		t.Errorf("%s: exit %d (want %d), stdout %q, stderr %q (want one line with %q)", name, code, exit, stdout, stderr, msg)
+	}
+}
+
 // TestLoginTokenRefusesJSONAndField: the output is the bare value, so
-// --json and --field are usage errors that say why, and print no value.
+// --json and --field are usage errors that say why in one stderr line,
+// with stdout empty and no value printed.
 func TestLoginTokenRefusesJSONAndField(t *testing.T) {
 	f := tokenFixture(t)
 	for _, mode := range [][]string{{"--json"}, {"--field", "data"}, {"--json", "--field", "data"}} {
 		r := f.Run(append([]string{"login", "token", "--id", "plain"}, mode...)...)
-		if r.Code != apperr.ExitUsage || !strings.Contains(r.Stdout+r.Stderr, "bare value for scripts and apiKeyHelper") {
-			t.Errorf("%v: exit %d (want %d)\nstdout %s\nstderr %s", mode, r.Code, apperr.ExitUsage, r.Stdout, r.Stderr)
-		}
+		wantOneLineError(t, strings.Join(mode, " "), r.Code, r.Stdout, r.Stderr, apperr.ExitUsage, "bare value for scripts and apiKeyHelper")
 		noSecret(t, r, tokPlain)
 	}
 }
 
-// TestLoginTokenErrors: an unknown login is not-found, an api-key-helper
-// is unsupported without running its command, a missing --id is a usage
-// error, and an unset reference names the variable but no value.
+// TestLoginTokenErrors: every failure is one stderr line with no hint and
+// an empty stdout: an unknown login (not-found, exit 1), an api-key-helper
+// (unsupported, exit 4, its command not run), a missing --id (exit 2), and
+// an unset reference, which names the variable but no value (exit 1).
 func TestLoginTokenErrors(t *testing.T) {
 	f := tokenFixture(t)
-	r := f.Run("login", "token", "--id", "nope")
-	if r.Code != apperr.ExitFailure || !strings.Contains(r.Stderr, "unknown login nope") || r.Stdout != "" {
-		t.Errorf("unknown: exit %d, stdout %q, stderr %q", r.Code, r.Stdout, r.Stderr)
+	cases := []struct {
+		name string
+		args []string
+		exit int
+		msg  string
+	}{
+		{"unknown", []string{"--id", "nope"}, apperr.ExitFailure, "unknown login nope"},
+		{"helper", []string{"--id", "helper"}, apperr.ExitUnsupported, "api-key-helper"},
+		{"no --id", nil, apperr.ExitUsage, "--id is required"},
+		{"unset", []string{"--id", "unset"}, apperr.ExitFailure, "FAKE_UNSET"},
 	}
-	r = f.Run("login", "token", "--id", "helper")
-	if r.Code != apperr.ExitUnsupported || !strings.Contains(r.Stderr, "api-key-helper") || r.Stdout != "" {
-		t.Errorf("helper: exit %d, stdout %q, stderr %q", r.Code, r.Stdout, r.Stderr)
+	for _, c := range cases {
+		r := f.Run(append([]string{"login", "token"}, c.args...)...)
+		wantOneLineError(t, c.name, r.Code, r.Stdout, r.Stderr, c.exit, c.msg)
+		noSecret(t, r, tokPlain, tokEnv, tokCmd, tokGopass, tokStored, tokOther)
 	}
-	noSecret(t, r, tokPlain)
-	r = f.Run("login", "token")
-	if r.Code != apperr.ExitUsage || !strings.Contains(r.Stderr, "--id is required") {
-		t.Errorf("no --id: exit %d, stderr %q", r.Code, r.Stderr)
-	}
-	r = f.Run("login", "token", "--id", "unset")
-	if r.Code == 0 || r.Stdout != "" || !strings.Contains(r.Stderr, "FAKE_UNSET") {
-		t.Errorf("unset: exit %d, stdout %q, stderr %q", r.Code, r.Stdout, r.Stderr)
-	}
-	noSecret(t, r, tokPlain, tokEnv, tokCmd, tokGopass, tokStored, tokOther)
 }
 
 // runTokenInProcess runs agx login token in-process with stdout reported
@@ -136,13 +145,12 @@ func runTokenInProcess(t *testing.T, args ...string) (int, string, string) {
 	return code, out.String(), errb.String()
 }
 
-// TestLoginTokenTerminal: stdout on a terminal is refused (exit 2, with
-// the pipe and --reveal hint) before anything resolves; --reveal prints.
+// TestLoginTokenTerminal: stdout on a terminal is refused (exit 2, one
+// line naming the pipe and --reveal) before anything resolves; --reveal
+// prints.
 func TestLoginTokenTerminal(t *testing.T) {
 	code, out, errs := runTokenInProcess(t, "login", "token", "--id", "env")
-	if code != apperr.ExitUsage || out != "" || !strings.Contains(errs, "will not print a token to a terminal") || !strings.Contains(errs, "--reveal") {
-		t.Errorf("terminal: exit %d, stdout %q, stderr %q", code, out, errs)
-	}
+	wantOneLineError(t, "terminal", code, out, errs, apperr.ExitUsage, "stdout is a terminal; pipe it (| pbcopy) or add --reveal")
 	if strings.Contains(out+errs, tokEnv) {
 		t.Errorf("terminal refusal printed the value")
 	}

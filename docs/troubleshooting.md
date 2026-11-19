@@ -191,9 +191,9 @@ pi reads a different variable per provider, so a pi token login names its provid
 
 Live login switches the token a running Claude session fetches through `agx credential`, so the run must start on a stored token login: name one with `--login` (exit 125 otherwise). A one-off `--token-ref` and an `api-key-helper` login are refused for the same reason, and so is a profile whose environment sets a variable that outranks the helper. See [live login pitfalls](guides/live-login.md#pitfalls).
 
-### "agx login token will not print a token to a terminal"
+### "stdout is a terminal; pipe it (| pbcopy) or add --reveal"
 
-`agx login token` prints a token only to a pipe or a file, so it does not land in your scrollback or a screen share by accident (exit 2). Pipe it (`agx login token --id NAME | pbcopy`) or add `--reveal` to print it on the terminal anyway. `--json` and `--field` are refused too: the output is the bare value. See [print a login's token](logins.md#print-a-logins-token).
+`agx login token` prints a token only to a pipe or a file, so it does not land in your scrollback or a screen share by accident (exit 2). Pipe it (`agx login token --id NAME | pbcopy`) or add `--reveal` to print it on the terminal anyway. Like every `agx login token` error it is one line on stderr, without hint lines, so a script or an `apiKeyHelper` reads just the reason. `--json` and `--field` are refused too: the output is the bare value. See [print a login's token](logins.md#print-a-logins-token).
 
 ### "login vault is an api-key-helper: it has no token to print"
 
