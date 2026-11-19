@@ -1,0 +1,17 @@
+[1mUse: grace (shared)[0m
+shared account resets within 48h, before any usable own account; using its room before it is lost
+[2mSource: cache (20s old)[0m
+
+[1mCandidates (ready accounts in pick order):[0m
+- grace [shared] [34m#1 READY[0m (5h 0%, week 26%, resets in 1 d 13 hr, room 44%)
+- ivan [shared] [34m#2 READY[0m (5h 4%, week 43%, resets in 1 d 17 hr, room 27%)
+- carol [own] [34m#3 READY[0m (5h 1%, week 59%, resets in 2 d 9 hr, room 41%)
+- alice [own] [34m#4 READY[0m (week 29%, resets in 6 d 11 hr, room 71%)
+- judy [shared] [33mWAIT[0m (5h 41%, week 44%, resets in 2 d 8 hr, room 26%)[2m (shared reset not within 48h while an own account is usable)[0m
+- heidi [shared] [33mWAIT[0m (5h 0%, week 33%, resets in 3 d 8 hr, room 37%)[2m (shared reset not within 48h while an own account is usable)[0m
+- frank [shared] [33mWAIT[0m (5h 0%, week 15%, resets in 3 d 14 hr, room 55%)[2m (shared reset not within 48h while an own account is usable)[0m
+- mallory [shared] [33mWAIT[0m (5h 36%, week 58%, resets in 5 d 5 hr, room 12%)[2m (shared reset not within 48h while an own account is usable)[0m
+- erin [shared] [33mWAIT[0m (5h 6%, week 3%, resets in 6 d 8 hr, room 67%)[2m (shared reset not within 48h while an own account is usable)[0m
+- derek [shared] [33mWAIT[0m (5h 0%, week 1%, resets in 6 d 21 hr, room 69%)[2m (shared reset not within 48h while an own account is usable)[0m
+- bob [own] [31mskip: status is limit-reached; week is 100% (cap 100%)[0m (5h 0%, week 100%, resets in 23 hr 50 min, room 0%)
+- niaj [shared] [31mskip: week is 80% (cap 70%)[0m (week 80%, resets in 4 d 13 hr, room 0%)

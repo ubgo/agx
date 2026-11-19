@@ -304,6 +304,19 @@ type Pool struct {
 	// Log is a file that gets one line per key request (time, pick,
 	// source; never a token); "" = no log. "~" and ${VAR} are expanded.
 	Log string `json:"log,omitempty"`
+	// Picker is a command of the user's that picks the member instead of
+	// the built-in rules; nil = the built-in rules decide.
+	Picker *PoolPicker `json:"picker,omitempty"`
+}
+
+// PoolPicker is logins.<name>.pool.picker: a command run through the
+// shell with the members and their usage as JSON on stdin (never a
+// token), which prints the chosen member's login name on stdout.
+type PoolPicker struct {
+	// Command is the shell command line.
+	Command string `json:"command"`
+	// Timeout bounds one run (default "10s").
+	Timeout string `json:"timeout,omitempty"`
 }
 
 // PoolCaps are window caps in percent: usage below a cap is usable.

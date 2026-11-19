@@ -46,6 +46,31 @@ type account struct {
 	session, weekly float64
 	// headers is false to answer a probe without rate-limit headers.
 	noHeaders bool
+	// weekReset and sessionReset replace the fixed resets when set.
+	weekReset, sessionReset time.Time
+	// fail drops the connection, as a network failure does.
+	fail bool
+	// delay holds every answer this long (a hung endpoint).
+	delay time.Duration
+}
+
+// resets are the account's window resets (the fixed ones by default).
+func (acc account) resets() (session, week time.Time) {
+	session, week = sessionReset, weeklyReset
+	if !acc.sessionReset.IsZero() {
+		session = acc.sessionReset
+	}
+	if !acc.weekReset.IsZero() {
+		week = acc.weekReset
+	}
+	return session, week
+}
+
+// set replaces how the fake server answers tok (between calls).
+func (fv *fakeVendor) set(tok string, acc account) {
+	fv.mu.Lock()
+	defer fv.mu.Unlock()
+	fv.accounts[tok] = acc
 }
 
 // fakeVendor is the httptest server standing in for the vendor API.
@@ -92,12 +117,28 @@ func (fv *fakeVendor) serve(w http.ResponseWriter, r *http.Request) {
 	case "/api/oauth/profile":
 		_, _ = fmt.Fprint(w, `{"organization":{"organization_type":"claude_max","rate_limit_tier":"default_claude_max_20x","billing_type":"stripe_subscription","subscription_status":"active","subscription_created_at":"2025-01-02T00:00:00Z"}}`) // as above
 	case "/v1/messages":
+		if acc.delay > 0 {
+			select {
+			case <-time.After(acc.delay):
+			case <-r.Context().Done():
+				return
+			}
+		}
+		if acc.fail {
+			if hj, ok := w.(http.Hijacker); ok {
+				if conn, _, err := hj.Hijack(); err == nil {
+					_ = conn.Close() // the client sees a dropped connection
+					return
+				}
+			}
+		}
 		if !acc.noHeaders {
+			sess, week := acc.resets()
 			h := w.Header()
 			h.Set("anthropic-ratelimit-unified-5h-utilization", strconv.FormatFloat(acc.session/100, 'f', -1, 64))
-			h.Set("anthropic-ratelimit-unified-5h-reset", strconv.FormatInt(sessionReset.Unix(), 10))
+			h.Set("anthropic-ratelimit-unified-5h-reset", strconv.FormatInt(sess.Unix(), 10))
 			h.Set("anthropic-ratelimit-unified-7d-utilization", strconv.FormatFloat(acc.weekly/100, 'f', -1, 64))
-			h.Set("anthropic-ratelimit-unified-7d-reset", strconv.FormatInt(weeklyReset.Unix(), 10))
+			h.Set("anthropic-ratelimit-unified-7d-reset", strconv.FormatInt(week.Unix(), 10))
 		}
 		if acc.status != 0 {
 			w.WriteHeader(acc.status)
@@ -137,6 +178,10 @@ type machine struct {
 	f   *testkit.Fixture
 	env map[string]string
 	rt  http.RoundTripper
+	// clock replaces the fixed fixture clock when set.
+	clock func() time.Time
+	// timeout replaces the network timeout when set.
+	timeout time.Duration
 }
 
 func newMachine(t *testing.T, cfg string) *machine {
@@ -153,11 +198,16 @@ func (m *machine) app(t *testing.T) *App {
 	if m.rt != nil {
 		client = &http.Client{Transport: m.rt}
 	}
-	h := agenttest.NewHost(t, agenttest.WithUserHome(m.f.Home), agenttest.WithEnv("HOME="+m.f.Home, "PATH="+m.f.Bin), agenttest.WithHTTP(client))
+	opts := []agenttest.HostOption{agenttest.WithUserHome(m.f.Home), agenttest.WithEnv("HOME="+m.f.Home, "PATH="+m.f.Bin+":/usr/bin:/bin"), agenttest.WithHTTP(client)}
+	if m.clock != nil {
+		opts = append(opts, agenttest.WithNow(m.clock))
+	}
+	h := agenttest.NewHost(t, opts...)
 	return New(Deps{
 		Host:       h,
 		Lookup:     func(k string) (string, bool) { v, ok := m.env[k]; return v, ok },
 		Cwd:        m.f.Work,
+		Timeout:    m.timeout,
 		ConfigFlag: filepath.Join(m.f.ConfigDir, "config.jsonc"),
 	})
 }

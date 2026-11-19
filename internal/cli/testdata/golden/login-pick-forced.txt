@@ -1,0 +1,19 @@
+Use: bob (FORCED, ignoring rules)
+  warning: status is limit-reached
+  warning: week is 100% (cap 100%)
+forced by --pool-force; all rules ignored
+Source: cache (20s old)
+
+Candidates (ready accounts in pick order):
+- grace [shared] #1 READY (5h 0%, week 26%, resets in 1 d 13 hr, room 44%)
+- ivan [shared] #2 READY (5h 4%, week 43%, resets in 1 d 17 hr, room 27%)
+- carol [own] #3 READY (5h 1%, week 59%, resets in 2 d 9 hr, room 41%)
+- alice [own] #4 READY (week 29%, resets in 6 d 11 hr, room 71%)
+- judy [shared] WAIT (5h 41%, week 44%, resets in 2 d 8 hr, room 26%) (shared reset not within 48h while an own account is usable)
+- heidi [shared] WAIT (5h 0%, week 33%, resets in 3 d 8 hr, room 37%) (shared reset not within 48h while an own account is usable)
+- frank [shared] WAIT (5h 0%, week 15%, resets in 3 d 14 hr, room 55%) (shared reset not within 48h while an own account is usable)
+- mallory [shared] WAIT (5h 36%, week 58%, resets in 5 d 5 hr, room 12%) (shared reset not within 48h while an own account is usable)
+- erin [shared] WAIT (5h 6%, week 3%, resets in 6 d 8 hr, room 67%) (shared reset not within 48h while an own account is usable)
+- derek [shared] WAIT (5h 0%, week 1%, resets in 6 d 21 hr, room 69%) (shared reset not within 48h while an own account is usable)
+- bob [own] skip: status is limit-reached; week is 100% (cap 100%) (5h 0%, week 100%, resets in 23 hr 50 min, room 0%)
+- niaj [shared] skip: week is 80% (cap 70%) (week 80%, resets in 4 d 13 hr, room 0%)

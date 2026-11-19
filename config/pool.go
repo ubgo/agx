@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ubgo/agx/pool"
@@ -15,6 +16,9 @@ const (
 	// DefaultKeyTTL is how long the agent keeps a pool key before it asks
 	// agx again.
 	DefaultKeyTTL = 60 * time.Second
+	// DefaultPickerTimeout bounds one run of a pool's picker command: it
+	// runs inside the agent's key request, which must not hang.
+	DefaultPickerTimeout = 10 * time.Second
 	// MinKeyTTL keeps a typo ("1ms") from making the agent ask for a key
 	// on every request; Claude Code refuses a shorter helper interval.
 	MinKeyTTL = time.Second
@@ -55,6 +59,9 @@ func (p Pool) Rules() (pool.Config, error) {
 	if _, err := p.TTL(); err != nil {
 		return c, err
 	}
+	if _, err := p.PickerTimeout(); err != nil {
+		return c, err
+	}
 	if err := c.Validate(); err != nil {
 		return c, err
 	}
@@ -82,6 +89,25 @@ func (p Pool) TTL() (time.Duration, error) {
 		return 0, fmt.Errorf("pool: key_ttl %s is below %s", p.KeyTTL, MinKeyTTL)
 	}
 	return d, nil
+}
+
+// PickerTimeout is picker.timeout, or DefaultPickerTimeout when omitted
+// (or when there is no picker); a picker needs a command.
+func (p Pool) PickerTimeout() (time.Duration, error) {
+	if p.Picker == nil {
+		return DefaultPickerTimeout, nil
+	}
+	if strings.TrimSpace(p.Picker.Command) == "" {
+		return 0, fmt.Errorf("pool: picker.command is empty; remove picker to use the built-in rules")
+	}
+	if p.Picker.Timeout == "" {
+		return DefaultPickerTimeout, nil
+	}
+	d, err := parseDuration("picker.timeout", p.Picker.Timeout)
+	if err == nil && d == 0 {
+		return 0, fmt.Errorf("pool: picker.timeout must be more than 0s")
+	}
+	return d, err
 }
 
 // parseDuration reads a Go duration string that is not negative.

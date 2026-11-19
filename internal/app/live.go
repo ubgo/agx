@@ -14,6 +14,7 @@ import (
 	"github.com/ubgo/agx/internal/report"
 	"github.com/ubgo/agx/internal/resolve"
 	"github.com/ubgo/agx/live"
+	"github.com/ubgo/agx/pool"
 )
 
 // credentialVerb is the hidden command the live-login helper runs (spec
@@ -48,6 +49,10 @@ const envSettingPrefix = "env."
 //     own ANTHROPIC_AUTH_TOKEN cannot be live.
 func (a *App) livePlan(ctx context.Context, o LaunchOptions, res resolve.Result, p *LaunchPlan) (*agentio.LiveCredentialPlan, error) {
 	isPool := res.Login.Kind == resolve.LoginNamed && res.Login.Login.Kind == config.KindPool
+	if o.PoolForce != "" && !isPool {
+		return nil, apperr.Usage(fmt.Sprintf("--pool-force picks a member of a pool login; this run's login is %s", loginLabel(res.Login))).
+			WithHint("agx run --login POOL --pool-force MEMBER")
+	}
 	if !o.LiveLogin && !res.Profile.LiveLogin && !isPool {
 		return nil, nil
 	}
@@ -96,13 +101,21 @@ func (a *App) livePlan(ctx context.Context, o LaunchOptions, res resolve.Result,
 		return nil, err
 	}
 	p.Live = &LiveStart{StartLogin: res.Login.Name, Helper: helper}
+	if isPool && o.PoolForce != "" {
+		cfg, err := a.Config()
+		if err != nil {
+			return nil, err
+		}
+		if err := a.checkForce(cfg.Config, o.PoolForce, id); err != nil {
+			return nil, err
+		}
+		p.Live.PoolForce = o.PoolForce
+	}
 	if isPool {
 		// The settings line names the pool; other live runs keep their
 		// documented "--live-login" source.
 		p.liveSrc = src
-		for _, n := range a.poolPlanNotes(ctx, o, res) {
-			p.Decisions = append(p.Decisions, report.Decision{Name: resolve.DecNote, Value: n, Source: src})
-		}
+		p.Decisions = append(p.Decisions, a.poolPlanNotes(ctx, o, res, p)...)
 	}
 	p.Decisions = append(p.Decisions, report.Decision{
 		Name:   resolve.DecNote,
@@ -112,23 +125,76 @@ func (a *App) livePlan(ctx context.Context, o LaunchOptions, res resolve.Result,
 	return &plan, nil
 }
 
-// poolPlanNotes are the lines of a pool launch: the members, then (in a
-// dry run) the member the pool would hand out now. A dry run probes
-// nothing (cost R): that pick comes from the login-usage cache, of any
-// age, and says so; without a usable cached reading the member is picked
-// when the agent first asks for its key.
-func (a *App) poolPlanNotes(ctx context.Context, o LaunchOptions, res resolve.Result) []string {
-	lg := res.Login.Login
-	notes := []string{fmt.Sprintf("login pool %s: own %s; shared %s; picks a member each time %s asks for a key",
-		res.Login.Name, dashIfEmpty(strings.Join(lg.Pool.Own, ", ")), dashIfEmpty(strings.Join(lg.Pool.Shared, ", ")), res.Agent.ID())}
+// decPool is the decision name of a pool launch's lines.
+const decPool = "pool"
+
+// poolPlanNotes are a pool launch's decisions, each with its source, as
+// the rest of the chain shows them: the members, who picks (a run force,
+// the pool's force, its picker command, the built-in rules), the timings
+// and the rules' numbers (config or default), then in a dry run the
+// member the pool would hand out now. A dry run probes nothing (cost R):
+// that pick comes from the login-usage cache, of any age, and says so.
+func (a *App) poolPlanNotes(ctx context.Context, o LaunchOptions, res resolve.Result, p *LaunchPlan) []report.Decision {
+	lg, name := res.Login.Login, res.Login.Name
+	key := "config logins." + name + ".pool"
+	src := func(set bool, k string) string {
+		if set {
+			return key + "." + k
+		}
+		return "default"
+	}
+	pl := lg.Pool
+	rules, _ := pl.Rules() // the config loaded, so it parses
+	ttl, _ := pl.TTL()
+	maxAge, _ := pl.MaxAge()
+	out := []report.Decision{{Name: decPool, Value: fmt.Sprintf("%s: own %s; shared %s", name,
+		dashIfEmpty(strings.Join(pl.Own, ", ")), dashIfEmpty(strings.Join(pl.Shared, ", "))), Source: key}}
+	switch {
+	case p.Live != nil && p.Live.PoolForce != "":
+		out = append(out, report.Decision{Name: decPool, Value: "pick: " + p.Live.PoolForce + " for every key of this run (forced)", Source: "--pool-force"})
+	case pl.Force != nil && *pl.Force != "":
+		out = append(out, report.Decision{Name: decPool, Value: "pick: " + *pl.Force + " for every key (forced)", Source: key + ".force"})
+	case pl.Picker != nil:
+		out = append(out, report.Decision{Name: decPool, Value: "pick: the picker command " + firstWord(pl.Picker.Command) + " at each key request; the built-in rules if it fails", Source: key + ".picker"})
+	default:
+		out = append(out, report.Decision{Name: decPool, Value: "pick: the built-in rules at each key request", Source: "default"})
+	}
+	out = append(out,
+		report.Decision{Name: decPool, Value: "key ttl " + ttl.String(), Source: src(pl.KeyTTL != "", "key_ttl")},
+		report.Decision{Name: decPool, Value: "usage max age " + maxAge.String(), Source: src(pl.UsageMaxAge != "", "usage_max_age")},
+		report.Decision{Name: decPool, Value: "shared borrow window " + pool.Hours(rules.BorrowWindow), Source: src(pl.SharedBorrowWindow != "", "shared_borrow_window")},
+		report.Decision{Name: decPool, Value: fmt.Sprintf("5h cutoff %g%%", rules.ShortUnavailableAt), Source: src(pl.ShortUnavailableAtPercent != nil, "short_unavailable_at_percent")},
+		report.Decision{Name: decPool, Value: fmt.Sprintf("default caps 5h %g%%, week %g%%", rules.Defaults.Short, rules.Defaults.Week), Source: src(pl.Defaults.Short != nil || pl.Defaults.Week != nil, "defaults")},
+	)
+	if len(pl.Accounts) > 0 {
+		out = append(out, report.Decision{Name: decPool, Value: fmt.Sprintf("member entries: %d", len(pl.Accounts)), Source: key + ".accounts"})
+	}
+	if pl.Log != "" {
+		out = append(out, report.Decision{Name: decPool, Value: "log " + pl.Log, Source: key + ".log"})
+	}
 	if !o.DryRun {
-		return notes
+		return out
 	}
-	rep, err := a.poolPick(ctx, res.Login.Name, lg, PoolPickOptions{Cached: true})
+	force := ""
+	if p.Live != nil {
+		force = p.Live.PoolForce
+	}
+	rep, err := a.poolPick(ctx, name, lg, PoolPickOptions{Cached: true, Force: force})
 	if err != nil || rep.Selected == nil {
-		return append(notes, "pick now: none from the cache; picks when "+string(res.Agent.ID())+" first asks for its key")
+		return append(out, report.Decision{Name: decPool, Value: "pick now: none from the cache; picks when " + string(res.Agent.ID()) + " first asks for its key", Source: "login-usage cache"})
 	}
-	return append(notes, fmt.Sprintf("pick now: %s, from the %s; agx login pick --id %s probes", rep.Selected.Name, rep.Source, res.Login.Name))
+	return append(out, report.Decision{Name: decPool, Value: fmt.Sprintf("pick now: %s (%s), from the %s; agx login pick --id %s probes", rep.Selected.Name, rep.Selected.PickedBy, rep.Source, name), Source: "login-usage cache"})
+}
+
+// loginLabel names a resolved login in a message.
+func loginLabel(l resolve.Login) string {
+	switch l.Kind {
+	case resolve.LoginHome:
+		return "the home login"
+	case resolve.LoginTokenRef:
+		return "a one-off --token-ref"
+	}
+	return l.Name + " (" + l.Login.Kind + ")"
 }
 
 // dashIfEmpty is "-" for an empty list.
@@ -212,7 +278,7 @@ func (a *App) writeLiveStart(ctx context.Context, p *LaunchPlan) error {
 	if err := ctxErr(ctx); err != nil {
 		return err
 	}
-	st := live.State{RunID: p.RunID, Agent: string(p.Agent), StartLogin: p.Live.StartLogin, Helper: p.Live.Helper}
+	st := live.State{RunID: p.RunID, Agent: string(p.Agent), StartLogin: p.Live.StartLogin, Helper: p.Live.Helper, PoolForce: p.Live.PoolForce}
 	if err := live.Create(p.RunDir, st); err != nil {
 		return apperr.Wrap(err, apperr.CodeIO, apperr.ClassFailure, "write live.jsonc: "+err.Error())
 	}

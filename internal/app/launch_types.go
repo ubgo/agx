@@ -54,6 +54,10 @@ type LaunchOptions struct {
 	BeforeRun string
 	// LiveLogin is --live-login.
 	LiveLogin bool
+	// PoolForce is --pool-force: on a pool login, the member every key
+	// request of this run gets, over the pool's rules, force and picker
+	// (kept in live.jsonc; agx live use clears it).
+	PoolForce string
 	// DryRun prints the plan and starts nothing; ResolvedSecrets also
 	// resolves references (cost X) and reports "resolved" or the error.
 	DryRun          bool
@@ -153,6 +157,8 @@ type LiveStart struct {
 	StartLogin string `json:"start_login"`
 	// Helper is the command the agent runs to fetch its credential.
 	Helper string `json:"helper"`
+	// PoolForce is the run's --pool-force member; "" = none.
+	PoolForce string `json:"pool_force,omitempty"`
 }
 
 // CommandView is the printable form of a built command.

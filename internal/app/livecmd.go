@@ -131,6 +131,10 @@ func (a *App) LiveUse(ctx context.Context, o LiveUseOptions) (LiveRun, error) {
 	st, err = live.Update(ctx, f.Dir, func(s *live.State) error {
 		s.ChosenLogin = o.Login
 		s.ChosenAt = a.Now()
+		// A choice of the user's ends the run's --pool-force: pinning a
+		// member is the new choice, and --login POOL or --start-login
+		// hands the run back to the pool's own rules.
+		s.PoolForce = ""
 		return nil
 	})
 	if err != nil {
@@ -186,7 +190,9 @@ func (a *App) liveCredential(ctx context.Context) (Credential, error) {
 		// A pool run: pick a member now, by usage, each time the agent
 		// asks (spec: login pools). The pick is what is in use.
 		pool = name
-		inUse, tok, warnings, err = a.poolMemberToken(ctx, name, lg, poolModeCredential)
+		var rep PoolReport
+		inUse, tok, rep, err = a.poolMemberToken(ctx, name, lg, poolModeCredential, st.PoolForce)
+		warnings = rep.StderrWarnings()
 		if err != nil {
 			if inUse != "" {
 				return Credential{Warnings: warnings}, withCheckHint(err, inUse)
