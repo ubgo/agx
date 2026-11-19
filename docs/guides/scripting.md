@@ -472,6 +472,10 @@ $ agx login token --id spare
 agx: login spare: SPARE_CLAUDE_TOKEN is not set
 [exit 1]
 
+$ agx login token
+agx: --id is required: the login name (agx login list)
+[exit 2]
+
 $ agx login token --id nosuch
 agx: unknown login nosuch
 [exit 1]

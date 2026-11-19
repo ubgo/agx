@@ -285,7 +285,7 @@ agx login add --name console --agent claude --kind api-key-helper --helper-comma
 agx run --profile work --login console
 ```
 
-To use any agx login as the helper, wherever its token lives (gopass, a command, a variable, a pasted token), make the helper `agx login token`, which prints only that login's token:
+To use any agx login as the helper, wherever its token lives (gopass, a command, a variable, a pasted token), make the helper `agx login token`, which prints only that login's token. The login may be a plan token (`oauth-token`) or an API key: Claude Code accepts either from its helper, which is how `--live-login` delivers plan tokens:
 
 ```sh
 agx login add --name console --agent claude --kind api-key-helper --helper-command 'agx login token --id work-key'

@@ -382,6 +382,46 @@ func runExample(t *testing.T, fixtures map[string]string, r runnable) {
 // runShown runs one shown command line on fx in dir with stdin: its
 // leading NAME=value words set the environment of this command only.
 func runShown(fx *testkit.Fixture, dir, line, stdin string) (testkit.Result, error) {
+	line, filter := splitPipe(line)
+	res, err := runAgx(fx, dir, line, stdin)
+	if err != nil || filter == "" {
+		return res, err
+	}
+	// A pipeline: agx's stdout feeds the filter; stderr is both, and the
+	// exit code is agx's when it failed (as with pipefail), else the
+	// filter's, so a refused command still shows its own code.
+	out := fx.Filter(dir, res.Stdout, filter)
+	code := res.Code
+	if code == 0 {
+		code = out.Code
+	}
+	return testkit.Result{Stdout: out.Stdout, Stderr: res.Stderr + out.Stderr, Code: code}, nil
+}
+
+// pipeSep separates agx from a filter in a shown command ("agx … | wc -c").
+const pipeSep = " | "
+
+// splitPipe splits a shown command at its first " | " outside quotes:
+// the agx part and the filter after it ("" when there is none).
+func splitPipe(line string) (string, string) {
+	var quote rune
+	for i, r := range line {
+		switch {
+		case quote != 0:
+			if r == quote {
+				quote = 0
+			}
+		case r == '\'' || r == '"':
+			quote = r
+		case strings.HasPrefix(line[i:], pipeSep):
+			return line[:i], strings.TrimSpace(line[i+len(pipeSep):])
+		}
+	}
+	return line, ""
+}
+
+// runAgx runs one agx command line (NAME=value words, quotes, ~) in dir.
+func runAgx(fx *testkit.Fixture, dir, line, stdin string) (testkit.Result, error) {
 	words, err := shellWords(line, fx.Home)
 	if err != nil {
 		return testkit.Result{}, err

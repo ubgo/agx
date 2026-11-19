@@ -35,7 +35,8 @@
 //     "<!-- runnable -->" directly above a ```sh block marks it runnable.
 //     Each "$ agx …" line in the block is a command (leading NAME=value
 //     words set its environment; '…' and "…" quote; a leading ~ is the
-//     fixture home; pipes and substitutions are not supported). The lines
+//     fixture home; a trailing " | filter" pipes stdout through a
+//     standard tool run by /bin/sh; substitutions are not supported). The lines
 //     under it, up to the next "$ " line, are its shown output: what the
 //     terminal shows, stderr notes first, then stdout. Comparison ignores
 //     column alignment (every run of spaces is one space) and replaces run

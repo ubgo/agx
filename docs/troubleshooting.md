@@ -195,6 +195,22 @@ Live login switches the token a running Claude session fetches through `agx cred
 
 `agx login token` prints a token only to a pipe or a file, so it does not land in your scrollback or a screen share by accident (exit 2). Pipe it (`agx login token --id NAME | pbcopy`) or add `--reveal` to print it on the terminal anyway. Like every `agx login token` error it is one line on stderr, without hint lines, so a script or an `apiKeyHelper` reads just the reason. `--json` and `--field` are refused too: the output is the bare value. See [print a login's token](logins.md#print-a-logins-token).
 
+### "login token prints the bare value for scripts and apiKeyHelper; it takes no --json or --field"
+
+`agx login token` prints the token alone, so a script or an `apiKeyHelper` reads it as is; wrapping a secret in a JSON envelope would put it where tools log harmless data. Drop `--json` and `--field` (exit 2).
+
+### "--id is required: the login name (agx login list)" from `agx login token`
+
+Name the login with `--id` (exit 2); `agx login list` shows the names.
+
+### "unknown login NAME" from `agx login token`
+
+No login has that name (exit 1). Check the spelling with `agx login list`; an `apiKeyHelper` that runs `agx login token --id NAME` fails the same way after the login is renamed or removed.
+
+### "login NAME: VAR is not set" from `agx login token`
+
+The login's reference did not resolve, so there is no token to print (exit 1); the line names the reference, never a value. Set the variable, or fix the gopass entry or command, and check with `agx login check --id NAME --no-probe`.
+
 ### "login vault is an api-key-helper: it has no token to print"
 
 An `api-key-helper` login holds a command the agent runs, not a token, and `agx login token` does not run it for you (exit 4). Run the helper command yourself, or point `agx login token` at the token login the helper would read.

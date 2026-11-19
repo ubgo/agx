@@ -111,7 +111,7 @@ env       set AGX_RUN_ID=20261118-120000-zm29                                   
 note      installed Claude Code version unknown; flags not checked
 ```
 
-Any agx login can be the helper, wherever its token lives: make the helper command [`agx login token`](#print-a-logins-token), which prints only that login's token. Claude then gets the key of `ci` (here from `${FAKE_TOK}`; it could be gopass, a command or a pasted token) each time it runs the helper:
+Any agx login can be the helper, wherever its token lives: make the helper command [`agx login token`](#print-a-logins-token), which prints only that login's token. It works with a plan token (`oauth-token`) as well as an API key: Claude Code accepts either from its helper, which is how [live login](guides/live-login.md) delivers plan tokens, so `--helper-command 'agx login token --id carol'` with a plan login is valid. Claude then gets the key of `ci` (here from `${FAKE_TOK}`; it could be gopass, a command or a pasted token) each time it runs the helper:
 
 <!-- snippet: examples/acct-login-token/session.txt#helper -->
 ```sh
@@ -475,7 +475,18 @@ $ agx login token --id pasted
 fake-pasted-token
 ```
 
-Stdout on a terminal is refused (exit 2) unless you add `--reveal`, so a token does not land in your scrollback by accident. The other refusals: a key helper has no token of its own and agx does not run its command (exit 4), the output is never wrapped in `--json` or `--field` (exit 2), and a reference that does not resolve fails as it does in `agx login check`, without a value:
+To check a token without showing it, pipe it into `wc -c` (its length plus one for the newline) or take a short fingerprint of it and compare it with the one you expect:
+
+<!-- snippet: examples/acct-login-token/session.txt#check -->
+```sh
+$ agx login token --id ci | wc -c
+14
+
+$ agx login token --id ci | shasum -a 256 | cut -c1-12
+2ca17f7da649
+```
+
+Stdout on a terminal is refused (exit 2) unless you add `--reveal`, so a token does not land in your scrollback by accident. The other refusals: a key helper has no token of its own and agx does not run its command (exit 4), the output is never wrapped in `--json` or `--field` (exit 2), and a reference that does not resolve fails as it does in `agx login check`, without a value. Each refusal is one line on stderr, without hint lines, and stdout stays empty:
 
 <!-- snippet: examples/acct-login-token/session.txt#refusals -->
 ```sh
@@ -490,6 +501,10 @@ agx: login token prints the bare value for scripts and apiKeyHelper; it takes no
 $ agx login token --id spare
 agx: login spare: SPARE_CLAUDE_TOKEN is not set
 [exit 1]
+
+$ agx login token
+agx: --id is required: the login name (agx login list)
+[exit 2]
 
 $ agx login token --id nosuch
 agx: unknown login nosuch

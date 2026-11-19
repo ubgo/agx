@@ -136,7 +136,7 @@ agx: unknown profile nosuch
 #endregion
 ```
 
-- `$ agx …` is a command. Leading `NAME=value` words set its environment; `'…'` and `"…"` quote; a leading `~` is the fake home. A trailing `< ~/file` (in the home) or `< file` (relative to the folder the commands run in) is its stdin. Pipes and substitutions are not supported.
+- `$ agx …` is a command. Leading `NAME=value` words set its environment; `'…'` and `"…"` quote; a leading `~` is the fake home. A trailing `< ~/file` (in the home) or `< file` (relative to the folder the commands run in) is its stdin. A trailing ` | filter` pipes agx's stdout through a standard tool (`wc -c`, `shasum -a 256 | cut -c1-12`), run by `/bin/sh`; the shown output is the filter's, and the exit code is agx's when agx failed. Substitutions are not supported.
 - The lines under a command, up to the next command, are its output as a terminal shows it: stderr notes first, then stdout. Every run of spaces counts as one space, so columns may be aligned freely; run ids, times, session stamps and backup stamps (`20261118T061007Z`) match any value; a line `...` matches any number of lines.
 - `[exit N]` alone on a line after the output is the exit code the command must return. Without it the command must exit 0.
 - `#options` (only before the first command): `dir=` the folder the commands run in (default `~/projects/app`), `env=NAME=value` an environment variable for every command (repeatable), `mode=~/path=octal` the mode of one `home/` file (repeatable; `examples/cfg-doctor` uses `mode=~/tokens.jsonc=644` to show doctor failing a readable tokens file).

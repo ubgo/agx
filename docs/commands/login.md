@@ -287,7 +287,44 @@ agx login token --id work-key | pbcopy
 agx login add --name console --agent claude --kind api-key-helper --helper-command 'agx login token --id work-key'
 ```
 
-The second line makes any agx login, wherever its token lives, the `apiKeyHelper` of a Claude Code launch.
+The second line makes any agx login, wherever its token lives, the `apiKeyHelper` of a Claude Code launch. The login may be a plan token (`oauth-token`) or an API key: Claude Code accepts either from a helper, which is how [live login](../guides/live-login.md) delivers plan tokens.
+
+Check a token without showing it: `wc -c` prints its length plus one for the newline, and the first 12 hex digits of its SHA-256 are a fingerprint to compare with the one you expect (`printf '%s\n' "$EXPECTED" | shasum -a 256 | cut -c1-12`):
+
+<!-- snippet: examples/acct-login-token/session.txt#check -->
+```sh
+$ agx login token --id ci | wc -c
+14
+
+$ agx login token --id ci | shasum -a 256 | cut -c1-12
+2ca17f7da649
+```
+
+Refusals. Each is exactly this one line on stderr, without hint lines, and stdout stays empty:
+
+| Case | Exit | stderr |
+|---|---|---|
+| stdout is a terminal, no `--reveal` | 2 | `agx: stdout is a terminal; pipe it (\| pbcopy) or add --reveal` |
+| `--json` or `--field` | 2 | `agx: login token prints the bare value for scripts and apiKeyHelper; it takes no --json or --field` |
+| no `--id` | 2 | `agx: --id is required: the login name (agx login list)` |
+| unknown login | 1 | `agx: unknown login NAME` |
+| `api-key-helper` login | 4 | `agx: login NAME is an api-key-helper: it has no token to print; the agent runs its helper command itself` |
+| a reference that does not resolve | 1 | the reason, as `agx login check` gives it, such as `agx: login NAME: VAR is not set`; never a value |
+
+The whole sequence, to try on your own machine with one of your logins in place of `work-key` and a Claude profile in place of `work`:
+
+```sh
+agx login token --id work-key                                # refused: stdout is a terminal
+agx login token --id work-key --reveal                       # prints it on the terminal
+agx login token --id work-key | wc -c                        # length + 1
+agx login token --id work-key | shasum -a 256 | cut -c1-12   # fingerprint
+agx login token --id work-key | pbcopy                       # to the clipboard (macOS)
+agx login token --id work-key --json                         # refused: the output is the bare value
+agx login token --id nosuch                                  # refused: unknown login
+agx login add --name console --agent claude --kind api-key-helper --helper-command 'agx login token --id work-key'
+agx run --profile work --login console --dry-run             # settings apiKeyHelper … from login console
+agx login remove --id console
+```
 
 Try it (from [`examples/acct-login-token`](../../examples/acct-login-token/README.md); the test runner gives stdout a pipe):
 
@@ -319,6 +356,10 @@ agx: login token prints the bare value for scripts and apiKeyHelper; it takes no
 $ agx login token --id spare
 agx: login spare: SPARE_CLAUDE_TOKEN is not set
 [exit 1]
+
+$ agx login token
+agx: --id is required: the login name (agx login list)
+[exit 2]
 
 $ agx login token --id nosuch
 agx: unknown login nosuch

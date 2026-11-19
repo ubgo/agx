@@ -279,6 +279,29 @@ func (f *Fixture) environ() []string {
 	return out
 }
 
+// Filter runs a shell filter (the part of an example command after
+// "|", such as "wc -c") in dir with input on its stdin and the fixture's
+// environment, as a shell pipeline would after agx. Only standard tools
+// on /usr/bin and /bin are meant here.
+func (f *Fixture) Filter(dir, input, script string) Result {
+	f.t.Helper()
+	cmd := exec.Command("/bin/sh", "-c", script)
+	cmd.Dir = dir
+	cmd.Env = f.environ()
+	cmd.Stdin = strings.NewReader(input)
+	var out, errb bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &out, &errb
+	err := cmd.Run()
+	code := 0
+	var ee *exec.ExitError
+	if errors.As(err, &ee) {
+		code = ee.ExitCode()
+	} else if err != nil {
+		f.t.Fatal(err)
+	}
+	return Result{Stdout: out.String(), Stderr: errb.String(), Code: code}
+}
+
 // Run runs agx in Work with args.
 func (f *Fixture) Run(args ...string) Result { return f.RunIn(f.Work, "", args...) }
 

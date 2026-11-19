@@ -14,6 +14,15 @@ $ agx login token --id pasted
 fake-pasted-token
 
 #endregion
+#: Check a token without showing it: its length (plus the newline) and a short fingerprint to compare with the one you expect.
+#region check
+$ agx login token --id ci | wc -c
+14
+
+$ agx login token --id ci | shasum -a 256 | cut -c1-12
+2ca17f7da649
+
+#endregion
 #region helper
 $ agx login add --name console --agent claude --kind api-key-helper --helper-command 'agx login token --id ci'
 added login console (api-key-helper, helper agx)
@@ -48,6 +57,9 @@ env       set AGX_RUN_ID=20261118-120000-xhsd                                   
           set CLAUDE_CONFIG_DIR=~/.claude-work                                                          from launch environment
 note      installed Claude Code version unknown; flags not checked
 
+$ agx login remove --id console
+removed login console
+
 #endregion
 #region refusals
 $ agx login token --id vault
@@ -61,6 +73,10 @@ agx: login token prints the bare value for scripts and apiKeyHelper; it takes no
 $ agx login token --id spare
 agx: login spare: SPARE_CLAUDE_TOKEN is not set
 [exit 1]
+
+$ agx login token
+agx: --id is required: the login name (agx login list)
+[exit 2]
 
 $ agx login token --id nosuch
 agx: unknown login nosuch
