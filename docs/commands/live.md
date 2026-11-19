@@ -66,8 +66,10 @@ Choose the login of a live run. The agent picks it up at its next key refresh (a
 | Flag | Meaning |
 |---|---|
 | `--id` | the run id |
-| `--login` | the login to switch to |
-| `--start-login` | go back to the login the run started with |
+| `--login` | the login to switch to; on a pool run, a member pins the run to it and the pool's name hands it back to the pool's rules |
+| `--start-login` | go back to the login the run started with (on a pool run, the pool) |
+
+On a [pool](../guides/login-pool.md) run, either flag also ends a `--pool-force` the run was started with. `agx whoami` inside the session shows the login in use and the next one.
 
 Try it:
 

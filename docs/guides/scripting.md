@@ -481,7 +481,14 @@ agx: unknown login nosuch
 [exit 1]
 ```
 
-## Try it
+## Read a login pool in a script
+
+`agx login pick --id auto --json` carries the pool's decision: `--field data.selected.name` is the member a key request would get now, `data.source` says whether that came from a probe or the cache, and `data.candidates` lists every member with `state`, `reasons` and `room_percent`. Use `--cached` in a loop: without it, a cache older than the pool's `usage_max_age` is probed. Inside a session, `agx whoami --json --field data.in_use` is the member the agent got last and `data.next` the one it gets next (empty when no switch is pending). `agx login token --id auto` prints the picked member's token for a pipe.
+
+```sh
+member=$(agx login pick --id auto --cached --json --field data.selected.name) || echo "no member usable (exit $?)"
+```
+
 
 ```sh
 go test -count=1 ./internal/docscheck/ -run 'TestExamples/(out-|acct-login-token$)'

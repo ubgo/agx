@@ -219,6 +219,14 @@ An `api-key-helper` login holds a command the agent runs, not a token, and `agx 
 
 A live-login session asks `agx credential` for its key at every refresh. When the chosen login does not resolve to one token, `agx credential` prints nothing and exits non-zero, and Claude Code treats that as a hard failure: it tries three times, then exits 1. It does not fall back to the home's own login. Claude's `/status` shows agx's one-line reason, for example `agx: login alice: token is empty (try: agx login check --id alice --no-probe)`. Run that check, fix the login, and resume the conversation (`agx resume --last --login NAME --live-login`); the ended run cannot be switched back. Check a login before you switch to it. See [a helper that fails stops the session](guides/live-login.md#a-helper-that-fails-stops-the-session). A helper of your own that runs `agx login token --id NAME` fails the same way when that login does not resolve: `agx login check --id NAME --no-probe` shows why.
 
+### A 429 right after a pool or live switch
+
+`API Error: Request rejected (429)` mid-task means the account ran out before the next key refresh. Claude does not retry it on another key: type `continue`. The first `continue` can fail once more (the request that fetches the new key still uses the old one); the next runs on the new account. `/status` shows only `apiKeyHelper` throughout; `! agx whoami` shows the login in use. See [when an account runs out mid-task](guides/login-pool.md#when-an-account-runs-out-mid-task).
+
+### "login pick is for pool logins; login NAME is …"
+
+`agx login pick` reads a pool login; NAME is a token login (exit 2). The message says which agents can have a pool today (from their capabilities) and, for another agent's login, why it cannot. `agx login list` shows the kinds.
+
 ### Which account is my session on?
 
 Run `! agx whoami` inside Claude (the `!` runs it in the session's shell, which has `AGX_RUN_ID`). In a pool or `--live-login` session it shows `login:  auto (pool)`, `in use:` (the login or member whose key Claude got last) and `next:` when a switch is pending; `--json` has `login_kind`, `in_use` and `next`. /status only says apiKeyHelper, and Claude's own guess reads the keychain login, not the key it uses.
