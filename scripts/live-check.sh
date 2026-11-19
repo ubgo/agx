@@ -11,7 +11,7 @@
 #
 # Environment: AGX (the agx binary, default agx), AGX_POOL (the pool
 # login, default auto), AGX_ARGS (global flags for every call, such as
-# "--config $HOME/.agx/config.pool.jsonc").
+# "--config FILE"; default none: plain agx and your normal config).
 set -u
 
 agx=${AGX:-agx}

@@ -328,7 +328,7 @@ scripts/live-check.sh --with-claude   # 5: one tiny real Claude call through the
 scripts/limit-recovery-check.sh LIMITED WORKING   # a real session on a limited login, switched mid-session (spends a few tokens)
 ```
 
-Both read `AGX` (the binary, default `agx`), `AGX_POOL` (default `auto`) and `AGX_ARGS` (global flags, such as `--config ~/.agx/config.pool.jsonc`). `limit-recovery-check.sh` adds a temporary pool of your two logins, forced to the limited one, switches the force after the first message of a four-message session, and removes the temporary login at the end. Expected with Claude Code 2.1.328: message 1 fails (429), message 2 fails too (the new key applies one request late), messages 3 and 4 succeed in the same session.
+Both read `AGX` (the binary, default `agx`), `AGX_POOL` (default `auto`) and `AGX_ARGS` (extra global flags, such as `--config FILE`; by default none, so the scripts use plain `agx` and your normal config). `limit-recovery-check.sh` adds a temporary pool of your two logins, forced to the limited one, switches the force after the first message of a four-message session, and removes the temporary login at the end. Expected with Claude Code 2.1.328: message 1 fails (429), message 2 fails too (the new key applies one request late), messages 3 and 4 succeed in the same session.
 
 ## Open items
 

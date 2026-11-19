@@ -11,7 +11,7 @@
 #
 # LIMITED is one of your logins at its limit, WORKING a usable one
 # (agx login pick --id auto shows both). Environment: AGX (default agx),
-# AGX_ARGS (global flags, such as "--config $HOME/.agx/config.pool.jsonc").
+# AGX_ARGS (extra global flags, such as "--config FILE"; default none).
 set -u
 
 agx=${AGX:-agx}
