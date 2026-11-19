@@ -242,6 +242,11 @@ func (l *Loaded) checkPool(name string, lg Login, sources int, known Known) []Pr
 			}
 		}
 	}
+	if p.Force != nil && *p.Force == "" {
+		// An empty name would read as "off" while looking set: refused,
+		// like every other value that could be silently ignored.
+		add([]string{"pool", "force"}, `force is empty; name a login or write null`)
+	}
 	if p.Force != nil && *p.Force != "" {
 		if msg := l.memberProblem(*p.Force, lg.Agents); msg != "" {
 			add([]string{"pool", "force"}, "force: "+msg)
@@ -249,6 +254,38 @@ func (l *Loaded) checkPool(name string, lg Login, sources int, known Known) []Pr
 	}
 	if _, err := p.Rules(); err != nil {
 		add([]string{"pool"}, err.Error())
+	}
+	for _, keys := range l.poolNulls(name, p) {
+		add(keys, strings.Join(keys, ".")+" is null; give a value or leave the key out")
+	}
+	return out
+}
+
+// poolNulls finds an explicit null where a pool needs a value (a cap, the
+// cutoff, enabled): decoded it would read as "use the default", a value
+// silently ignored. Only force takes null (off).
+func (l *Loaded) poolNulls(name string, p *Pool) [][]string {
+	var out [][]string
+	isNull := func(keys ...string) bool {
+		ptr := Pointer(append([]string{"logins", name, "pool"}, keys...)...)
+		if l.Doc == nil || !l.Doc.Has(ptr) {
+			return false
+		}
+		v, err := l.Doc.Get(ptr)
+		return err == nil && v == nil
+	}
+	check := func(keys ...string) {
+		if isNull(keys...) {
+			out = append(out, append([]string{"pool"}, keys...))
+		}
+	}
+	check("short_unavailable_at_percent")
+	check("defaults", "short")
+	check("defaults", "week")
+	for _, m := range sortedKeys(p.Accounts) {
+		check("accounts", m, "short")
+		check("accounts", m, "week")
+		check("accounts", m, "enabled")
 	}
 	return out
 }

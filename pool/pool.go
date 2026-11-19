@@ -99,6 +99,10 @@ const (
 // nothing to hand out, so it is an error rather than a pick.
 var ErrForcedMissing = errors.New("forced account has no usage reading")
 
+// ErrBadNow is a selection without a clock: every reset would be
+// measured from year 1, a silently wrong order.
+var ErrBadNow = errors.New("pool: Options.Now is not set")
+
 // Caps are an account's window caps in percent (exclusive).
 type Caps struct {
 	Short float64 `json:"short"`
@@ -298,6 +302,8 @@ type Result struct {
 const (
 	reasonDisabled  = "disabled in config"
 	reasonNoReading = "no usage reading"
+	unreadableFmt   = "%s usage is unreadable"
+	noteBadReset    = "weekly reset time is unreadable; treated as unknown"
 	reasonUnlisted  = "not listed in own or shared"
 	noteStaleReset  = "weekly reset time has passed; usage data is stale"
 	statusMissing   = "missing"
@@ -306,9 +312,12 @@ const (
 )
 
 // Select applies the rules (package comment) and returns the report. The
-// only error is ErrForcedMissing: a forced account without a reading.
-// Select does not validate cfg; call Validate first.
+// errors are ErrForcedMissing (a forced account without a reading) and
+// ErrBadNow (no clock). Select does not validate cfg; call Validate.
 func Select(cfg Config, readings map[string]Reading, o Options) (Result, error) {
+	if o.Now.IsZero() {
+		return Result{}, ErrBadNow
+	}
 	res := Result{Now: o.Now, ShortUnavailableAt: cfg.ShortUnavailableAt, BorrowWindow: cfg.BorrowWindow}
 	cands := make([]*Candidate, 0, len(cfg.Own)+len(cfg.Shared))
 	add := func(names []string, g Group) {
@@ -384,15 +393,20 @@ func candidate(cfg Config, name string, g Group, order int, rd Reading, found bo
 		return c
 	}
 	c.Status = rd.Status
-	if rd.Short != nil {
+	if readable(rd.Short) {
 		c.Short = ptr(round(rd.Short.Percent))
 	}
 	if rd.Week == nil {
 		return c
 	}
-	c.Week = ptr(round(rd.Week.Percent))
-	c.Room = ptr(round(math.Max(0, c.Caps.Week-rd.Week.Percent)))
-	if rd.Week.ResetsAt != nil {
+	if readable(rd.Week) {
+		c.Week = ptr(round(rd.Week.Percent))
+		c.Room = ptr(round(math.Max(0, c.Caps.Week-rd.Week.Percent)))
+	}
+	if rd.Week.ResetsAt != nil && rd.Week.ResetsAt.IsZero() {
+		// A reset that could not be read carries no deadline.
+		c.Notes = append(c.Notes, noteBadReset)
+	} else if rd.Week.ResetsAt != nil {
 		at := *rd.Week.ResetsAt
 		until := at.Sub(now)
 		c.WeeklyResetsAt, c.UntilReset, c.hasWeekReset = &at, &until, true
@@ -426,16 +440,32 @@ func blockReasons(rd Reading, found, enabled bool, caps Caps, shortUnavailableAt
 	if rd.Status != StatusOK {
 		reasons = append(reasons, "status is "+rd.Status)
 	}
-	if rd.Short != nil && rd.Short.Percent >= shortUnavailableAt {
+	// A reported window whose usage is not a finite number cannot be
+	// checked against its cap, so it blocks the account instead of
+	// passing as if it were fine.
+	for _, w := range []struct {
+		label string
+		win   *Window
+	}{{shortLabel, rd.Short}, {weekLabel, rd.Week}} {
+		if w.win != nil && !readable(w.win) {
+			reasons = append(reasons, fmt.Sprintf(unreadableFmt, w.label))
+		}
+	}
+	if readable(rd.Short) && rd.Short.Percent >= shortUnavailableAt {
 		reasons = append(reasons, fmt.Sprintf("%s is %s%% (unavailable at %s%%)", shortLabel, num(rd.Short.Percent), num(shortUnavailableAt)))
 	}
-	if rd.Short != nil && rd.Short.Percent >= caps.Short {
+	if readable(rd.Short) && rd.Short.Percent >= caps.Short {
 		reasons = append(reasons, fmt.Sprintf("%s is %s%% (cap %s%%)", shortLabel, num(rd.Short.Percent), num(caps.Short)))
 	}
-	if rd.Week != nil && rd.Week.Percent >= caps.Week {
+	if readable(rd.Week) && rd.Week.Percent >= caps.Week {
 		reasons = append(reasons, fmt.Sprintf("%s is %s%% (cap %s%%)", weekLabel, num(rd.Week.Percent), num(caps.Week)))
 	}
 	return reasons
+}
+
+// readable reports a window whose usage is a finite number.
+func readable(w *Window) bool {
+	return w != nil && !math.IsNaN(w.Percent) && !math.IsInf(w.Percent, 0)
 }
 
 // forced builds the selection of a forced account: listed accounts carry
