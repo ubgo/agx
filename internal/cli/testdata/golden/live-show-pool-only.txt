@@ -1,0 +1,10 @@
+run         <run-id>
+agent       claude
+profile     work
+folder      <root>/work
+started on  auto
+chosen      —
+next        auto
+only        ivan (caps enforced)
+in use      none (ivan over cap: week is 43% (cap 40%))
+liveness    alive (running)

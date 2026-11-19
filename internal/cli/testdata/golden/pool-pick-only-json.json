@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "command": "pool pick",
+  "ok": true,
+  "data": {
+    "pool": "auto",
+    "agent": "claude",
+    "selected": {
+      "name": "ivan",
+      "group": "shared",
+      "forced": false,
+      "only": true,
+      "picked_by": "only",
+      "reason": "the only member of this run (--pool-only); its caps and the pool's rules still apply",
+      "warnings": [],
+      "weekly_resets_at": "<time>",
+      "room_percent": 27
+    },
+    "source": "cache (20s old)",
+    "now": "<time>",
+    "short_unavailable_at_percent": 99,
+    "shared_borrow_window_hours": 48,
+    "warnings": [],
+    "candidates": [
+      {
+        "name": "ivan",
+        "group": "shared",
+        "state": "ready",
+        "rank": 1,
+        "eligible": true,
+        "enabled": true,
+        "status": "ok",
+        "account": "",
+        "short": 4,
+        "week": 43,
+        "weekly_resets_at": "<time>",
+        "hours_to_reset": 41.8,
+        "room_percent": 27,
+        "caps": {
+          "short": 50,
+          "week": 70
+        },
+        "reasons": [],
+        "notes": [],
+        "source": "cache",
+        "age_seconds": 20
+      }
+    ]
+  },
+  "decisions": [],
+  "warnings": [],
+  "error": null
+}

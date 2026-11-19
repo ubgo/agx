@@ -312,3 +312,51 @@ agx: --key logins.team.pool.accounts.erin.week takes a number from 0 to 100, not
 [exit 2]
 
 #endregion
+#region only
+$ agx pool pick --id auto --pool-only derek
+Pool: auto (claude)
+Use: derek (shared)
+the only member of this run (--pool-only); its caps and the pool's rules still apply
+Source: cache (20s old)
+
+Candidates (ready accounts in pick order):
+- derek [shared] #1 READY (5h 0%, week 15%, resets in 4 d 0 hr, room 55%)
+
+$ agx pool pick --id auto --pool-only erin
+agx: erin: 5h is 55% (cap 50%)
+Pool: auto (claude)
+No configured account is currently usable.
+Source: cache (20s old)
+
+Candidates (ready accounts in pick order):
+- erin [shared] skip: 5h is 55% (cap 50%) (5h 55%, week 43%, resets in 3 hr 0 min, room 27%)
+[exit 1]
+
+$ agx pool pick --id auto --pool-only derek --pool-only-week 15
+agx: derek: week is 15% (cap 15%)
+Pool: auto (claude)
+No configured account is currently usable.
+Source: cache (20s old)
+
+Candidates (ready accounts in pick order):
+- derek [shared] skip: week is 15% (cap 15%) (5h 0%, week 15%, resets in 4 d 0 hr, room 0%)
+[exit 1]
+
+$ agx run --login auto --pool-only derek --dry-run --quiet --json --field data.live.pool_only
+derek
+
+#endregion
+#region only-refusals
+$ agx run --login auto --pool-only derek --pool-force bob --dry-run
+agx: --pool-only and --pool-force both choose the member: --pool-only keeps its caps, --pool-force ignores them; pick one
+[exit 125]
+
+$ agx run --login auto --pool-only derek --pool-only-week 80 --dry-run
+agx: --pool-only-week 80 is above derek's week cap 70; it may only lower it
+[exit 125]
+
+$ agx pool pick --id auto --pool-only zoe
+agx: --pool-only zoe: zoe is not a member of pool auto (members: alice, bob, carol, derek, erin)
+[exit 2]
+
+#endregion

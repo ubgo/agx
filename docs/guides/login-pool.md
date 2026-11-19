@@ -12,15 +12,18 @@ Nothing changes for anyone without a `pool` login: plain logins, an `api-key-hel
 |---|---|---|
 | one member, bypassing the pool | `agx run --login carol` (or a binding, a profile login, `AGX_LOGIN=carol`) | that run |
 | one member for every key of one run | `agx run --login auto --pool-force carol` | that run |
+| one member for every key of one run, its caps still enforced (no key while it is over one) | `agx run --login auto --pool-only carol` ([more](#pin-one-account-but-keep-its-limits)) | that run |
 | one member for every key of every run, until you clear it | `agx login edit --id auto --pool-force carol` (clear: `--pool-force ''`) | every pool run, from its next key |
 | a running session pinned to one member | `agx live use --id RUN --login carol` | that run |
 | a pinned session back on the pool's rules | `agx live use --id RUN --login auto` (or `--start-login`) | that run |
+| a running session kept on one member, caps enforced | `agx live use --id RUN --pool-only carol` (clear: `--login auto`) | that run |
 | the pool for this terminal | `AGX_LOGIN=auto` or `AGX_LOGIN_CLAUDE=auto`, like any login | this terminal |
 | what `pool pick` and `login token` would do with a force | `--pool-force carol` on either | one call |
+| what `pool pick` and `login token` would do with a pin | `--pool-only carol` on either | one call |
 | your own rules | a [picker command](#your-own-picker) of yours in the pool | every key request |
 | your own key helper instead of a pool | an `api-key-helper` login: `agx login add --name mine --agent claude --kind api-key-helper --helper-command '/path/to/your-helper'`, then `agx run --login mine` | runs on that login |
 
-Who decides a key, first match wins: a run's `--pool-force`, the pool's `force`, its `picker`, the built-in [rules](#the-rules). The dry run shows each pool decision with its source (a config key, `default`, `--pool-force`, the cache), like every other decision.
+Who decides a key, first match wins: a run's `--pool-force`, the pool's `force`, its `picker`, the built-in [rules](#the-rules). A run's `--pool-only` sets the first three aside and applies the rules to its one member. The dry run shows each pool decision with its source (a config key, `default`, `--pool-force`, the cache), like every other decision.
 
 Every pool setting has a default: `shared_borrow_window` `48h`, `short_unavailable_at_percent` 99, `defaults` 5h 50% and week 70%, `usage_max_age` `60s`, `key_ttl` `60s`, no `force`, no `picker` (built-in rules), `picker.timeout` `10s`, no `log`. Each is in the [config reference](../config.md#login-pools).
 
@@ -240,6 +243,82 @@ agx reads `config.jsonc` on every key request, so a change applies from the next
 
 `agx pool pick --id auto --pool-force alice` shows what a force would do without changing anything.
 
+## Pin one account but keep its limits
+
+Sometimes a session must stay on one account, say a teammate's carol, but must never go over the caps you agreed with her. `--pool-only` does that: every key of the run is carol's while the pool's rules allow it (her caps, per-member or the pool's `defaults`, the 5-hour cutoff, `enabled`, her status), and while they do not, agx hands out no key at all, so Claude's request fails instead of moving to another member or going over the cap. It starts working again by itself once her usage falls under the cap (or the window resets), at the next key request.
+
+```sh
+agx run --login auto --pool-only carol                        # carol, within her caps
+agx run --login auto --pool-only carol --pool-only-week 50    # and a stricter weekly cap for this run
+agx live use --id RUN --pool-only carol                        # the same for a session already running
+agx live use --id RUN --login auto                             # back to the pool's rules
+```
+
+`--pool-only-short N` and `--pool-only-week N` lower the member's caps for that run only; they never raise one (`--pool-only-week 80 is above carol's week cap 70; it may only lower it`, exit 2, or 125 from a launch). To lift a cap, change the pool (`agx login edit --id auto --pool-cap-week carol=80`). The name must be a member of the pool, and a disabled member is refused at launch: it would never get a key.
+
+When carol reaches a cap, the key helper prints nothing on stdout and one line on stderr, `carol: week is 70% (cap 70%)`, and exits 1; `! agx whoami` shows `only:  carol (caps enforced)` and `in use:  none (carol over cap: week is 70% (cap 70%))`. `agx pool pick --id auto --pool-only carol` shows the same report the pool uses, restricted to carol:
+
+<!-- snippet: examples/acct-login-pool/session.txt#only -->
+```sh
+$ agx pool pick --id auto --pool-only derek
+Pool: auto (claude)
+Use: derek (shared)
+the only member of this run (--pool-only); its caps and the pool's rules still apply
+Source: cache (20s old)
+
+Candidates (ready accounts in pick order):
+- derek [shared] #1 READY (5h 0%, week 15%, resets in 4 d 0 hr, room 55%)
+
+$ agx pool pick --id auto --pool-only erin
+agx: erin: 5h is 55% (cap 50%)
+Pool: auto (claude)
+No configured account is currently usable.
+Source: cache (20s old)
+
+Candidates (ready accounts in pick order):
+- erin [shared] skip: 5h is 55% (cap 50%) (5h 55%, week 43%, resets in 3 hr 0 min, room 27%)
+[exit 1]
+
+$ agx pool pick --id auto --pool-only derek --pool-only-week 15
+agx: derek: week is 15% (cap 15%)
+Pool: auto (claude)
+No configured account is currently usable.
+Source: cache (20s old)
+
+Candidates (ready accounts in pick order):
+- derek [shared] skip: week is 15% (cap 15%) (5h 0%, week 15%, resets in 4 d 0 hr, room 0%)
+[exit 1]
+
+$ agx run --login auto --pool-only derek --dry-run --quiet --json --field data.live.pool_only
+derek
+```
+
+Which to use:
+
+| You want | Use | Caps | When the member is at a cap |
+|---|---|---|---|
+| one member, within its caps, for one run | `--pool-only NAME` (`agx run`, `new`, `resume`, `agx live use`) | enforced; can be lowered for the run | no key until it is under them; never another member |
+| one member whatever its usage, for one run | `--pool-force NAME`, or `agx live use --login NAME` | ignored, each broken rule a warning | Claude gets 429s from the account |
+| one member for every run, within its caps | a one-member pool (`agx login add --name carol-only --kind pool --pool-shared carol`) | the new pool's, set on it | no key, like `--pool-only` |
+| one member for every run, whatever its usage | `agx login edit --id auto --pool-force NAME` | ignored | 429s |
+
+`--pool-only` needs no extra login and keeps the pool's own caps, so it is the usual choice; a one-member pool is for a binding or profile that should always behave that way. `--pool-only` and `--pool-force` together are refused (exit 2, 125 from a launch): one keeps the caps, the other ignores them. The pool's `force` and its picker do not apply to a pinned run, and the dry run shows the pin and the member's effective caps with their sources (`pick: only carol (caps enforced) for every key of this run  from --pool-only`, `carol week cap 50%  from --pool-only-week`).
+
+<!-- snippet: examples/acct-login-pool/session.txt#only-refusals -->
+```sh
+$ agx run --login auto --pool-only derek --pool-force bob --dry-run
+agx: --pool-only and --pool-force both choose the member: --pool-only keeps its caps, --pool-force ignores them; pick one
+[exit 125]
+
+$ agx run --login auto --pool-only derek --pool-only-week 80 --dry-run
+agx: --pool-only-week 80 is above derek's week cap 70; it may only lower it
+[exit 125]
+
+$ agx pool pick --id auto --pool-only zoe
+agx: --pool-only zoe: zoe is not a member of pool auto (members: alice, bob, carol, derek, erin)
+[exit 2]
+```
+
 ## Your own picker
 
 Set `picker.command` and agx runs it at every key request instead of the built-in rules (a force still wins over it). The command runs through `sh -c` with your environment plus `AGX_POOL` (the pool's name). It reads one JSON object on stdin and prints the chosen member's login name on stdout:
@@ -317,7 +396,7 @@ Candidates (ready accounts in pick order):
 
 ## The rules
 
-1. **Force.** `--pool-force` (one run, `pool pick` or `login token` call), else the pool's `force`, wins outright and every rule below is ignored. Each rule the forced member breaks is printed as a warning. Forcing a login without a usage reading is an error (exit 1). Forcing a login listed in neither group works, checked against the default caps, with the warning `not listed in own or shared`.
+1. **Force.** `--pool-force` (one run, `pool pick` or `login token` call), else the pool's `force`, wins outright and every rule below is ignored. A `--pool-only` member instead makes the pool that one member, with every rule below applied to it and no force; when it is blocked nothing is picked. Each rule the forced member breaks is printed as a warning. Forcing a login without a usage reading is an error (exit 1). Forcing a login listed in neither group works, checked against the default caps, with the warning `not listed in own or shared`.
 2. **Usable.** A member is skipped when any of these holds, and every reason is listed: disabled in config; no usage reading; status is not `ok` (`limit-reached`, `rejected`, `secret`, `network`, …); usage that is not a number (`week usage is unreadable`: a cap cannot be checked on it, so the member is blocked rather than treated as fine); 5-hour use at or over `short_unavailable_at_percent` (99), even when the status is `ok`; 5-hour use at or over its 5-hour cap; weekly use at or over its weekly cap. Caps are exclusive: under the cap is usable. Caps count the account's total use: at 60% of a 70% weekly cap you can use 10%, and the teammate keeps 30%. A window the probe does not report is not checked.
 3. **Pool.** While any own member is usable, the pool is the usable own members plus the usable shared members whose weekly reset is within `shared_borrow_window`; the other usable shared members wait. With no own member usable, the pool is every usable shared member.
 4. **Order.** The pool is sorted by weekly reset, soonest first. An unknown reset, an unreadable one (noted `weekly reset time is unreadable; treated as unknown`), or one that has already passed (stale data, noted on the member), sorts last. Ties keep config order, own before shared.
@@ -376,6 +455,7 @@ To make this rare, give your own members caps a little under 100 (95 and 98), so
 | claude.ai connectors warning | `claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set` | a helper key counts as another auth source | expected; connectors do not load in that session |
 | Nothing usable | Claude's request fails with `pool auto: no member is usable: …` | the helper exits 1 with no key | `agx pool pick --id auto` shows why; force a member if you must go on |
 | Forced member at its limit | every request is a 429 | force ignores every rule | clear it: `agx login edit --id auto --pool-force ''` |
+| A pinned session stops | Claude's request fails with `carol: week is 70% (cap 70%)` | `--pool-only` never goes over a cap and never switches | wait for it to fall under the cap, or hand the run back: `agx live use --id RUN --login auto` |
 | A teammate's account is picked before yours | `Use: carol (shared)` while yours have room | her weekly quota expires within the window; yours can wait | intended; `"shared_borrow_window": "0s"` borrows only when none of yours is usable |
 | Teammate caps can be overshot | a teammate's 5-hour use goes past 50% | usage is checked only when Claude asks for a key | lower the cap for a buffer (40) |
 | `WAIT` is not `skip` | `derek [shared] WAIT` | usable, held back by the window while one of yours is usable | nothing; it moves up as its reset nears |
@@ -396,7 +476,7 @@ Picking cannot silently go wrong because three layers check the rules (package `
 
 1. **Example tests**: every case of the stand-alone selector's suite ported one to one (the mapping, case by case, is in [`pool/testdata/SELECTOR_PORT.md`](../../pool/testdata/SELECTOR_PORT.md)), every config mistake and the built-in defaults, plus boundary tables for every cap, window and cutoff.
 2. **Randomised tests**: thousands of seeded pools and readings, odd ones included (missing windows, usage that is not a number, stale or unreadable resets, caps at their edges). For each, the pick and the whole pick order must equal a second implementation of the rules written separately inside the test, and invariants must hold: the pick is never blocked, disabled, at or over a cap or the 5-hour cutoff; a teammate's account goes before a usable own one only inside the window and only when it resets sooner; nothing in the pool resets sooner than the pick; reading order never changes the result; a force always wins; the same input always gives the same output. A failure names its seed: `SEED=1234 go test -run TestPortRandomised ./pool/` replays it, `CASES=50000` runs more.
-3. **Mutation check** (`task mutation`, opt-in, a few minutes): breaks the rules on purpose 47 ways (a `>=` turned into `>`, a rule skipped, an order reversed, a default changed, a config check removed) on a temporary copy of the repository and confirms the tests fail every time. Last run: 47/47 caught. Run it after any change to the rules; if a break survives, add a test for it. The key-helper flow runs end to end through `agx credential` with a moving clock and a fake usage server: first call, cache reuse, a change while fresh, re-probe after max age, caps, limits, probe failure, disabled, force, nothing usable, six helpers at once, and a log that never holds a token.
+3. **Mutation check** (`task mutation`, opt-in, a few minutes): breaks the rules on purpose 60 ways (a `>=` turned into `>`, a rule skipped, an order reversed, a default changed, a config check removed, a `--pool-only` pin ignored or its caps lifted) on a temporary copy of the repository and confirms the tests fail every time. Last run: 60/60 caught. Run it after any change to the rules; if a break survives, add a test for it. The key-helper flow runs end to end through `agx credential` with a moving clock and a fake usage server: first call, cache reuse, a change while fresh, re-probe after max age, caps, limits, probe failure, disabled, force, nothing usable, six helpers at once, and a log that never holds a token.
 
 Live, opt-in (run them yourself; they print no token value, only its length):
 

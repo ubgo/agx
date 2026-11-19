@@ -13,7 +13,7 @@ agx is one CLI for AI coding agents (Claude Code, OpenAI Codex, Gemini CLI, pi a
 
 - **Profiles** name an agent home (`~/.claude-work`) plus launch defaults: `agx run --profile work`.
 - **Logins** run any home on any account: a plan token or API key from a reference (`${gopass:…}`, `$(…)`, `${VAR}`), a pasted value in `tokens.jsonc` (0600), or a key helper. `agx run --login carol`. agx never prints a token, except `agx login token` on request (to a pipe, or with `--reveal`).
-- **Login pools** (Claude Code only): a login of kind `pool` lists your own logins and teammates' shared ones; `agx run --login auto` is a live run in which each key request picks a member by usage (soonest weekly reset first, own accounts almost fully, shared ones up to their caps). `agx pool pick --id auto` shows the pick and why, `agx pool list` and `agx pool show --id auto` the pools and their settings (create and change one with `agx login add --kind pool` and `agx login edit --pool-…`); `--pool-force NAME` forces one member; `agx live use --id RUN --login NAME` pins a running session and `--login auto` unpins it.
+- **Login pools** (Claude Code only): a login of kind `pool` lists your own logins and teammates' shared ones; `agx run --login auto` is a live run in which each key request picks a member by usage (soonest weekly reset first, own accounts almost fully, shared ones up to their caps). `agx pool pick --id auto` shows the pick and why, `agx pool list` and `agx pool show --id auto` the pools and their settings (create and change one with `agx login add --kind pool` and `agx login edit --pool-…`); `--pool-force NAME` forces one member, ignoring its caps; `--pool-only NAME` (on run, new, resume, `pool pick`, `login token` and `live use`) keeps a run on one member with its caps enforced, so it gets no key while that member is over a cap (`--pool-only-short N` / `--pool-only-week N` lower the caps for that run only); `agx live use --id RUN --login NAME` pins a running session and `--login auto` unpins it.
 - **Live login**: `--live-login` makes a Claude session's login switchable while it runs (`agx live use`).
 - **Which account a session is on**: run `! agx whoami` inside Claude (`in use:`, `next:`); Claude's /status only says apiKeyHelper.
 - **Resolution chain**: agent, profile, home, login, binary, folder and args are each decided by the first source that sets them: flags, then `AGX_LOGIN`/`AGX_LOGIN_<AGENT>`, a folder binding (`agx project use`), the profile, the agent defaults, the default profile. `--dry-run` on `run`/`new`/`resume` prints every decision with its source and starts nothing: use it before launching.
@@ -274,12 +274,17 @@ Choose the login of a live run.
 ```sh
 agx live use --id 20261114-101500-k3x9 --login alice
 agx live use --id 20261114-101500-k3x9 --start-login
+agx live use --id 20261114-101500-k3x9 --pool-only alice
+agx live use --id 20261114-101500-k3x9 --login auto
 ```
 
 | Flag | Meaning |
 |---|---|
 | `--id VALUE` | the run id |
 | `--login VALUE` | the login the agent gets at its next refresh |
+| `--pool-only VALUE` | pin a pool run to this member with its caps enforced (--login clears it) |
+| `--pool-only-short VALUE` | with --pool-only: a lower 5-hour cap for that member, for this run (never above its own) |
+| `--pool-only-week VALUE` | with --pool-only: a lower weekly cap for that member, for this run (never above its own) |
 | `--start-login` | back to the login the run started with |
 
 ### agx login
@@ -413,6 +418,9 @@ agx login add --name console --agent claude --kind api-key-helper --helper-comma
 |---|---|
 | `--id VALUE` | the login name |
 | `--pool-force VALUE` | on a pool login: print this member's token, over the pool's rules |
+| `--pool-only VALUE` | on a pool login: print this member's token while its caps allow, else none (never another member) |
+| `--pool-only-short VALUE` | with --pool-only: a lower 5-hour cap for that member, for this call (never above its own) |
+| `--pool-only-week VALUE` | with --pool-only: a lower weekly cap for that member, for this call (never above its own) |
 | `--reveal` | print the token even when stdout is a terminal |
 
 ### agx login use
@@ -465,6 +473,9 @@ agx new --name "pglite golang" --profile work
 | `--no-env VALUE` | remove this variable (repeat) (repeatable) |
 | `--option VALUE` | typed agent launch option key=value (repeat) (repeatable) |
 | `--pool-force VALUE` | on a pool login: every key of this run comes from this member, over the pool's rules |
+| `--pool-only VALUE` | on a pool login: every key of this run comes from this member while its caps allow, else no key (never another member) |
+| `--pool-only-short VALUE` | with --pool-only: a lower 5-hour cap for that member, for this run (never above its own) |
+| `--pool-only-week VALUE` | with --pool-only: a lower weekly cap for that member, for this run (never above its own) |
 | `--profile VALUE`, `-p` | the profile |
 | `--prompt VALUE` | initial prompt |
 | `--resolved-secrets` | with --dry-run: resolve references (cost X) and say resolved or why not |
@@ -509,6 +520,9 @@ agx pool pick --id auto --json --field data.selected.name
 | `--id VALUE` | the pool login |
 | `--max-age DURATION` | reuse cached usage younger than this; 0 probes every member (default: the pool's usage_max_age) (default 0s) |
 | `--pool-force VALUE` | pick this member for this one run, over the pool's rules, force and picker |
+| `--pool-only VALUE` | pick only this member, with its caps enforced; none when it is blocked |
+| `--pool-only-short VALUE` | with --pool-only: a lower 5-hour cap for that member, for this pick (never above its own) |
+| `--pool-only-week VALUE` | with --pool-only: a lower weekly cap for that member, for this pick (never above its own) |
 | `--time-format VALUE` | how reset times read: relative, day, absolute, both (default: config usage.time_format, else relative) |
 | `--tz VALUE` | IANA zone for reset days and dates (default: this machine's) |
 
@@ -743,6 +757,9 @@ agx resume --picker folder
 | `--option VALUE` | typed agent launch option key=value (repeat) (repeatable) |
 | `--picker VALUE` | chat or folder: pick a chat, or a folder then a chat (default chat) |
 | `--pool-force VALUE` | on a pool login: every key of this run comes from this member, over the pool's rules |
+| `--pool-only VALUE` | on a pool login: every key of this run comes from this member while its caps allow, else no key (never another member) |
+| `--pool-only-short VALUE` | with --pool-only: a lower 5-hour cap for that member, for this run (never above its own) |
+| `--pool-only-week VALUE` | with --pool-only: a lower weekly cap for that member, for this run (never above its own) |
 | `--profile VALUE`, `-p` | the profile |
 | `--prompt VALUE` | initial prompt |
 | `--query VALUE` | narrow the list by title, folder or id |
@@ -786,6 +803,9 @@ agx run --agent codex -- --search
 | `--no-env VALUE` | remove this variable (repeat) (repeatable) |
 | `--option VALUE` | typed agent launch option key=value (repeat) (repeatable) |
 | `--pool-force VALUE` | on a pool login: every key of this run comes from this member, over the pool's rules |
+| `--pool-only VALUE` | on a pool login: every key of this run comes from this member while its caps allow, else no key (never another member) |
+| `--pool-only-short VALUE` | with --pool-only: a lower 5-hour cap for that member, for this run (never above its own) |
+| `--pool-only-week VALUE` | with --pool-only: a lower weekly cap for that member, for this run (never above its own) |
 | `--profile VALUE`, `-p` | the profile |
 | `--prompt VALUE` | initial prompt |
 | `--resolved-secrets` | with --dry-run: resolve references (cost X) and say resolved or why not |

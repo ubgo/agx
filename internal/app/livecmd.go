@@ -33,6 +33,12 @@ type LiveRun struct {
 	InUseAt     time.Time `json:"in_use_at,omitzero"`
 	// Next is the login the agent gets at its next refresh.
 	Next string `json:"next"`
+	// Only is the member a pool run is pinned to with its caps enforced
+	// (--pool-only); "" = none.
+	Only string `json:"only,omitempty"`
+	// NoKey says why the pinned run's last key request got no key; ""
+	// once one did.
+	NoKey string `json:"no_key,omitempty"`
 	// Liveness is alive, ended or unknown (agx clean's check); Reason
 	// says how it was decided.
 	Liveness string `json:"liveness"`
@@ -47,6 +53,9 @@ type LiveUseOptions struct {
 	Login string
 	// StartLogin goes back to the login the run started with.
 	StartLogin bool
+	// PoolOnly pins a pool run to one member with its caps enforced
+	// (--pool-only, --pool-only-short, --pool-only-week).
+	PoolOnly PoolOnly
 }
 
 // Credential is what agx credential hands the agent: the token, printed
@@ -105,12 +114,18 @@ func (a *App) LiveShow(ctx context.Context, id string) (LiveRun, error) {
 // serve the run's agent and be a token login; it is not resolved here
 // (agx credential resolves it when the agent asks). A run that has ended
 // is refused: nothing would ever read the choice.
+//
+// --pool-only MEMBER pins a pool run to one member with its caps
+// enforced: the pool is --login POOL when given, else the run's current
+// pool (its chosen login, else its start login). Any other choice
+// (--login, --start-login without --pool-only) clears the pin, so
+// --login POOL hands the run back to the pool's rules.
 func (a *App) LiveUse(ctx context.Context, o LiveUseOptions) (LiveRun, error) {
 	switch {
 	case o.Login != "" && o.StartLogin:
 		return LiveRun{}, apperr.Conflict("--login and --start-login both choose the login; pick one")
-	case o.Login == "" && !o.StartLogin:
-		return LiveRun{}, apperr.Usage("choose the login: --login NAME or --start-login")
+	case o.Login == "" && !o.StartLogin && !o.PoolOnly.given():
+		return LiveRun{}, apperr.Usage("choose the login: --login NAME, --start-login or " + flagPoolOnly + " MEMBER")
 	}
 	f, st, err := a.liveFolder(o.ID)
 	if err != nil {
@@ -119,28 +134,63 @@ func (a *App) LiveUse(ctx context.Context, o LiveUseOptions) (LiveRun, error) {
 	if l, _ := a.runLiveness(ctx, f); l == agentio.LivenessEnded {
 		return LiveRun{}, apperr.Failure(apperr.CodeNotFound, fmt.Sprintf("run %s has ended; its login can no longer change", f.ID)).WithHint("agx clean --yes")
 	}
-	if o.Login != "" {
+	chosen := o.Login
+	if o.Login != "" || o.PoolOnly.given() {
 		cfg, err := a.Config()
 		if err != nil {
 			return LiveRun{}, err
 		}
-		if _, err := liveLogin(cfg.Config, o.Login, st.Agent); err != nil {
-			return LiveRun{}, err
+		if o.Login != "" {
+			if _, err := liveLogin(cfg.Config, o.Login, st.Agent); err != nil {
+				return LiveRun{}, err
+			}
+		}
+		if o.PoolOnly.given() {
+			if chosen, err = livePoolOnly(cfg.Config, st, o); err != nil {
+				return LiveRun{}, err
+			}
 		}
 	}
 	st, err = live.Update(ctx, f.Dir, func(s *live.State) error {
-		s.ChosenLogin = o.Login
+		s.ChosenLogin = chosen
 		s.ChosenAt = a.Now()
-		// A choice of the user's ends the run's --pool-force: pinning a
-		// member is the new choice, and --login POOL or --start-login
-		// hands the run back to the pool's own rules.
+		// A choice of the user's ends the run's --pool-force and its pin:
+		// pinning a member is the new choice, and --login POOL or
+		// --start-login hands the run back to the pool's own rules.
 		s.PoolForce = ""
+		s.PoolOnly, s.PoolOnlyShort, s.PoolOnlyWeek, s.NoKey = o.PoolOnly.Member, o.PoolOnly.Caps.Short, o.PoolOnly.Caps.Week, ""
 		return nil
 	})
 	if err != nil {
 		return LiveRun{}, liveErr(err)
 	}
 	return a.liveRun(ctx, f, st), nil
+}
+
+// livePoolOnly checks agx live use --pool-only and returns the chosen
+// login to keep: the pool is --login when given, the start login with
+// --start-login, else the run's current login (chosen, else start); it
+// must be a pool of the run's agent with MEMBER in it.
+func livePoolOnly(c config.Config, st live.State, o LiveUseOptions) (string, error) {
+	name, chosen := st.Want(), st.ChosenLogin
+	switch {
+	case o.Login != "":
+		name, chosen = o.Login, o.Login
+	case o.StartLogin:
+		name, chosen = st.StartLogin, ""
+	}
+	lg, err := liveLogin(c, name, st.Agent)
+	if err != nil {
+		return "", err
+	}
+	if lg.Kind != config.KindPool {
+		return "", errNotPoolOnly("login " + name + " is " + lg.Kind)
+	}
+	rules, _ := lg.Pool.Rules() // the config loaded, so it parses
+	if err := checkPoolOnly(name, lg.Pool, rules, o.PoolOnly, "", true); err != nil {
+		return "", err
+	}
+	return chosen, nil
 }
 
 // Credential is the hidden agx credential (spec 10): it finds its run by
@@ -191,8 +241,14 @@ func (a *App) liveCredential(ctx context.Context) (Credential, error) {
 		// asks (spec: login pools). The pick is what is in use.
 		pool = name
 		var rep PoolReport
-		inUse, tok, rep, err = a.poolMemberToken(ctx, name, lg, poolModeCredential, st.PoolForce)
+		only := stateOnly(st)
+		inUse, tok, rep, err = a.poolMemberToken(ctx, name, lg, poolModeCredential, st.PoolForce, only)
 		warnings = rep.StderrWarnings()
+		if err != nil && only.Member != "" && rep.Selected == nil && len(rep.Candidates) == 1 {
+			// The pin is blocked: no key, and live.jsonc says why, so
+			// whoami and live show read "in use: none (…)".
+			a.recordNoKey(ctx, f.Dir, onlyNoKey(only.Member, rep.Candidates[0].Reasons))
+		}
 		if err != nil {
 			if inUse != "" {
 				return Credential{Warnings: warnings}, withCheckHint(err, inUse)
@@ -209,11 +265,23 @@ func (a *App) liveCredential(ctx context.Context) (Credential, error) {
 	if _, err := live.Update(ctx, f.Dir, func(s *live.State) error {
 		s.InUse = inUse
 		s.InUseAt = a.Now()
+		s.NoKey = ""
 		return nil
 	}); err != nil {
 		return Credential{Warnings: warnings}, liveErr(err)
 	}
 	return Credential{RunID: f.ID, Login: inUse, Pool: pool, Token: tok, Warnings: warnings}, nil
+}
+
+// recordNoKey keeps why a pinned run's key request got no key: nothing
+// is in use until the member is usable again. A write failure is
+// dropped: the request fails with its own reason either way, and a
+// second message would make the helper's stderr two lines.
+func (a *App) recordNoKey(ctx context.Context, dir, why string) {
+	_, _ = live.Update(ctx, dir, func(s *live.State) error {
+		s.InUse, s.InUseAt, s.NoKey = "", a.Now(), why
+		return nil
+	})
 }
 
 // hintPrefix introduces the next step inside a one-line error.
@@ -300,7 +368,7 @@ func (a *App) liveRun(ctx context.Context, f run.Folder, st live.State) LiveRun 
 	l, reason := a.runLiveness(ctx, f)
 	return LiveRun{
 		ID: f.ID, Dir: f.Dir, Agent: st.Agent, Profile: f.Record.Profile, Home: f.Record.Home, Folder: f.Record.Folder,
-		StartLogin: st.StartLogin, ChosenLogin: st.ChosenLogin, InUse: st.InUse, InUseAt: st.InUseAt, Next: st.Want(),
+		StartLogin: st.StartLogin, ChosenLogin: st.ChosenLogin, InUse: st.InUse, InUseAt: st.InUseAt, Next: st.Want(), Only: st.PoolOnly, NoKey: st.NoKey,
 		Liveness: l.String(), Reason: reason,
 	}
 }

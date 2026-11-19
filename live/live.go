@@ -58,6 +58,17 @@ type State struct {
 	// PoolForce is the member a pool run's --pool-force named: every key
 	// request gets it over the pool's rules. agx live use clears it.
 	PoolForce string `json:"pool_force,omitempty"`
+	// PoolOnly is the member a pool run is pinned to with its caps
+	// enforced (--pool-only): every key request gets it while the pool's
+	// rules allow, and no key otherwise. agx live use --login clears it.
+	PoolOnly string `json:"pool_only,omitempty"`
+	// PoolOnlyShort and PoolOnlyWeek are the pin's tighter caps for this
+	// run (--pool-only-short, --pool-only-week); nil = the configured cap.
+	PoolOnlyShort *float64 `json:"pool_only_short,omitempty"`
+	PoolOnlyWeek  *float64 `json:"pool_only_week,omitempty"`
+	// NoKey says why the last key request of a pinned run handed out no
+	// key ("alice over cap: week is 70% (cap 70%)"); "" once one did.
+	NoKey string `json:"no_key,omitempty"`
 }
 
 // Want is the login the next credential request gets: the chosen login,

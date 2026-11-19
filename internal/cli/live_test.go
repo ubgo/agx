@@ -242,7 +242,7 @@ func TestLiveRefusals(t *testing.T) {
 		ecode, msg string
 	}{
 		{[]string{"live", "use", "--id", runAlive, "--login", "alice", "--start-login"}, 2, "conflict", "--login and --start-login both choose the login; pick one"},
-		{[]string{"live", "use", "--id", runAlive}, 2, "usage", "choose the login: --login NAME or --start-login"},
+		{[]string{"live", "use", "--id", runAlive}, 2, "usage", "choose the login: --login NAME, --start-login or --pool-only MEMBER"},
 		{[]string{"live", "use", "--id", runAlive, "--login", "cx"}, 2, "wrong-agent", "login cx serves codex; this run is claude"},
 		{[]string{"live", "use", "--id", runAlive, "--login", "helper"}, 4, "unsupported", "login helper is an api-key-helper; a live run needs a token login"},
 		{[]string{"live", "use", "--id", runEnded, "--login", "alice"}, 1, "not-found", "run " + runEnded + " has ended; its login can no longer change"},

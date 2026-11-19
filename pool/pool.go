@@ -27,6 +27,12 @@
 //     already-passed reset sorts last (a passed reset means stale data);
 //     ties keep config order, own before shared.
 //  5. The first in the pool is selected; an empty pool selects nothing.
+//
+// Options.Only pins one member for a selection without dropping the
+// rules: the pool shrinks to that member alone (its caps lowered by
+// Options.OnlyCaps when given), every block reason above still applies,
+// and no force does. When it is blocked nothing is selected, so a caller
+// hands out no key rather than another member's or one over its caps.
 package pool
 
 import (
@@ -107,6 +113,23 @@ const (
 // ErrForcedMissing is a forced account that has no reading: there is
 // nothing to hand out, so it is an error rather than a pick.
 var ErrForcedMissing = errors.New("forced account has no usage reading")
+
+// ErrOnlyNotMember is an Options.Only that names no member of the pool:
+// pinning someone outside it would skip the pool's caps altogether.
+var ErrOnlyNotMember = errors.New("pool: the only account is not a member of the pool")
+
+// ErrOnlyAndForce is a selection with both Options.Only and
+// Options.Force: one keeps the caps, the other ignores them, so either
+// answer would silently drop what the caller asked for.
+var ErrOnlyAndForce = errors.New("pool: Only and Force both choose the account; pick one")
+
+// ErrCapsWithoutOnly is Options.OnlyCaps without Options.Only: there is
+// no account to lower the caps of.
+var ErrCapsWithoutOnly = errors.New("pool: OnlyCaps lowers the Only account's caps; Only is not set")
+
+// ErrCapRaised is a tighter cap above the account's configured cap: a
+// one-run limit may lower a teammate's cap, never lift it.
+var ErrCapRaised = errors.New("pool: a cap may only be lowered")
 
 // ErrBadNow is a selection without a clock: every reset would be
 // measured from year 1, a silently wrong order.
@@ -219,6 +242,55 @@ func (c Config) CapsFor(name string) Caps {
 	return caps
 }
 
+// Tighter lowers one account's caps for one selection (Options.OnlyCaps).
+// A nil field keeps the configured cap.
+type Tighter struct {
+	Short *float64
+	Week  *float64
+}
+
+// Given reports whether any cap is set.
+func (t Tighter) Given() bool { return t.Short != nil || t.Week != nil }
+
+// Tightened is account name's caps with t applied: each value must be a
+// percent from 0 to 100 and at or below the configured cap
+// (ErrCapRaised otherwise), so a run can only make the limit stricter.
+func (c Config) Tightened(name string, t Tighter) (Caps, error) {
+	caps := c.CapsFor(name)
+	for _, w := range []struct {
+		label string
+		v     *float64
+		cap   *float64
+	}{{shortLabel, t.Short, &caps.Short}, {weekLabel, t.Week, &caps.Week}} {
+		switch {
+		case w.v == nil:
+		case !validPercent(*w.v):
+			return Caps{}, fmt.Errorf("pool: %s cap %v for %s is outside 0..100", w.label, *w.v, name)
+		case *w.v > *w.cap:
+			return Caps{}, fmt.Errorf("%w: %s %s%% is above %s's %s cap %s%%", ErrCapRaised, w.label, num(*w.v), name, w.label, num(*w.cap))
+		default:
+			*w.cap = *w.v
+		}
+	}
+	return caps, nil
+}
+
+// only is the one-member pool of a pinned selection: the member in its
+// own group, its caps tightened, no force (a pin keeps the rules, so a
+// force must not undo it). The account entry is rebuilt, never shared
+// with the caller's map.
+func (c Config) only(name string, caps Caps) Config {
+	out := c
+	out.Own, out.Shared, out.Force = nil, nil, ""
+	if slices.Contains(c.Own, name) {
+		out.Own = []string{name}
+	} else {
+		out.Shared = []string{name}
+	}
+	out.Accounts = map[string]Account{name: {Short: &caps.Short, Week: &caps.Week, Enabled: c.Accounts[name].Enabled}}
+	return out
+}
+
 // Enabled reports whether an account takes part (default true).
 func (c Config) Enabled(name string) bool {
 	a, ok := c.Accounts[name]
@@ -249,6 +321,13 @@ type Options struct {
 	Now time.Time
 	// Force overrides Config.Force for this selection; "" = none.
 	Force string
+	// Only pins this selection to one member with every rule still
+	// applied to it; "" = every member. It sets aside Config.Force (a
+	// pin for this selection outranks the pool's standing force) and
+	// cannot go with Force (ErrOnlyAndForce).
+	Only string
+	// OnlyCaps lowers Only's caps for this selection (Config.Tightened).
+	OnlyCaps Tighter
 }
 
 // Candidate is one listed account in the report.
@@ -288,6 +367,8 @@ type Selection struct {
 	Forced bool   `json:"forced"`
 	// ForcedBy is set when Forced.
 	ForcedBy ForcedBy `json:"forced_by,omitempty"`
+	// Only is true when Options.Only pinned the selection.
+	Only bool `json:"only,omitempty"`
 	// Reason is one sentence: the rule that chose it.
 	Reason string `json:"reason"`
 	// Warnings are the rules a forced account breaks.
@@ -321,11 +402,22 @@ const (
 )
 
 // Select applies the rules (package comment) and returns the report. The
-// errors are ErrForcedMissing (a forced account without a reading) and
-// ErrBadNow (no clock). Select does not validate cfg; call Validate.
+// errors are ErrForcedMissing (a forced account without a reading),
+// ErrBadNow (no clock), and for Options.Only ErrOnlyAndForce,
+// ErrOnlyNotMember, ErrCapsWithoutOnly, ErrCapRaised or a cap outside
+// 0..100. Select does not validate cfg; call Validate.
 func Select(cfg Config, readings map[string]Reading, o Options) (Result, error) {
 	if o.Now.IsZero() {
 		return Result{}, ErrBadNow
+	}
+	if o.Only != "" {
+		pinned, err := onlyConfig(cfg, o)
+		if err != nil {
+			return Result{}, err
+		}
+		cfg = pinned
+	} else if o.OnlyCaps.Given() {
+		return Result{}, ErrCapsWithoutOnly
 	}
 	res := Result{Now: o.Now, ShortUnavailableAt: cfg.ShortUnavailableAt, BorrowWindow: cfg.BorrowWindow}
 	cands := make([]*Candidate, 0, len(cfg.Own)+len(cfg.Shared))
@@ -386,8 +478,30 @@ func Select(cfg Config, readings map[string]Reading, o Options) (Result, error) 
 			Name: pick.Name, Group: pick.Group, Reason: pickReason(pick.Group, ownUsable, cfg.BorrowWindow),
 			Warnings: []string{}, WeeklyResetsAt: pick.WeeklyResetsAt, Room: pick.Room,
 		}
+		if o.Only != "" {
+			res.Selected.Only, res.Selected.Reason = true, reasonOnly
+		}
 	}
 	return res, nil
+}
+
+// reasonOnly is a pinned selection's reason.
+const reasonOnly = "the only member of this run (--pool-only); its caps and the pool's rules still apply"
+
+// onlyConfig checks a pinned selection's options and returns its
+// one-member pool.
+func onlyConfig(cfg Config, o Options) (Config, error) {
+	if o.Force != "" {
+		return Config{}, ErrOnlyAndForce
+	}
+	if !slices.Contains(cfg.Own, o.Only) && !slices.Contains(cfg.Shared, o.Only) {
+		return Config{}, fmt.Errorf("%w: %s", ErrOnlyNotMember, o.Only)
+	}
+	caps, err := cfg.Tightened(o.Only, o.OnlyCaps)
+	if err != nil {
+		return Config{}, err
+	}
+	return cfg.only(o.Only, caps), nil
 }
 
 // candidate builds one listed account from its reading.

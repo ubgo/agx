@@ -401,6 +401,9 @@ Print one login's token: the value and a newline on stdout, nothing else, for a 
 | `--id` | the login |
 | `--reveal` | print it even when stdout is a terminal |
 | `--pool-force` | on a pool login: print this member's token, over the pool's rules (each rule it breaks is a `warning:` line on stderr) |
+| `--pool-only` | on a pool login: print this member's token while the pool's rules allow it, else nothing (exit 1, `auto-pick`, one line naming why); not with `--pool-force` (exit 2) |
+| `--pool-only-short` | with `--pool-only`: a lower 5-hour cap for that member, for this call only |
+| `--pool-only-week` | with `--pool-only`: a lower weekly cap for that member, for this call only |
 
 ```sh
 agx login token --id work-key | pbcopy

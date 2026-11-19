@@ -146,24 +146,28 @@ func (a *App) LoginShow(o LoginShowOptions) (LoginInfo, error) {
 // command's stderr is never repeated. No hint is added: the caller is a
 // script or an agent, which reads one line (the CLI drops any hint).
 func (a *App) LoginToken(ctx context.Context, id string) (agentio.Token, error) {
-	tok, _, err := a.LoginTokenWarn(ctx, id, "")
+	tok, _, err := a.LoginTokenWarn(ctx, id, "", PoolOnly{})
 	return tok, err
 }
 
 // LoginTokenWarn is LoginToken plus its warnings for stderr: a pool login
 // picks a member by usage first (cost Q when the cache is old) and prints
 // that member's token; a forced pick or a cache fallback is a warning.
-func (a *App) LoginTokenWarn(ctx context.Context, id, poolForce string) (agentio.Token, []report.Warning, error) {
+// poolForce and only are --pool-force and --pool-only, for pool logins.
+func (a *App) LoginTokenWarn(ctx context.Context, id, poolForce string, only PoolOnly) (agentio.Token, []report.Warning, error) {
 	_, l, err := a.namedLogin(id)
 	if err != nil {
 		return agentio.Token{}, nil, err
 	}
 	if l.Kind == config.KindPool {
-		_, tok, rep, err := a.poolMemberToken(ctx, id, l, poolModeToken, poolForce)
+		_, tok, rep, err := a.poolMemberToken(ctx, id, l, poolModeToken, poolForce, only)
 		return tok, rep.StderrWarnings(), err
 	}
 	if poolForce != "" {
 		return agentio.Token{}, nil, apperr.Usage(fmt.Sprintf("--pool-force picks a member of a pool login; %s is %s", id, l.Kind))
+	}
+	if only.given() {
+		return agentio.Token{}, nil, errNotPoolOnly(id + " is " + l.Kind)
 	}
 	tok, err := a.loginToken(ctx, id, l)
 	return tok, nil, err

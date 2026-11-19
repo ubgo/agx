@@ -53,6 +53,9 @@ func (a *App) livePlan(ctx context.Context, o LaunchOptions, res resolve.Result,
 		return nil, apperr.Usage(fmt.Sprintf("--pool-force picks a member of a pool login; this run's login is %s", loginLabel(res.Login))).
 			WithHint("agx run --login POOL --pool-force MEMBER")
 	}
+	if o.PoolOnly.given() && !isPool {
+		return nil, errNotPoolOnly("this run's login is " + loginLabel(res.Login))
+	}
 	if !o.LiveLogin && !res.Profile.LiveLogin && !isPool {
 		return nil, nil
 	}
@@ -101,6 +104,14 @@ func (a *App) livePlan(ctx context.Context, o LaunchOptions, res resolve.Result,
 		return nil, err
 	}
 	p.Live = &LiveStart{StartLogin: res.Login.Name, Helper: helper}
+	if isPool && o.PoolOnly.given() {
+		pl := res.Login.Login.Pool
+		rules, _ := pl.Rules() // the config loaded, so it parses
+		if err := checkPoolOnly(res.Login.Name, pl, rules, o.PoolOnly, o.PoolForce, true); err != nil {
+			return nil, err
+		}
+		p.Live.PoolOnly, p.Live.PoolOnlyShort, p.Live.PoolOnlyWeek = o.PoolOnly.Member, o.PoolOnly.Caps.Short, o.PoolOnly.Caps.Week
+	}
 	if isPool && o.PoolForce != "" {
 		cfg, err := a.Config()
 		if err != nil {
@@ -150,6 +161,8 @@ func (a *App) poolPlanNotes(ctx context.Context, o LaunchOptions, res resolve.Re
 	out := []report.Decision{{Name: decPool, Value: fmt.Sprintf("%s (%s): own %s; shared %s", name, res.Agent.ID(),
 		dashIfEmpty(strings.Join(pl.Own, ", ")), dashIfEmpty(strings.Join(pl.Shared, ", "))), Source: key}}
 	switch {
+	case p.Live != nil && p.Live.PoolOnly != "":
+		out = append(out, onlyDecisions(key, pl, rules, p.Live.only())...)
 	case p.Live != nil && p.Live.PoolForce != "":
 		out = append(out, report.Decision{Name: decPool, Value: "pick: " + p.Live.PoolForce + " for every key of this run (forced)", Source: "--pool-force"})
 	case pl.Force != nil && *pl.Force != "":
@@ -179,7 +192,11 @@ func (a *App) poolPlanNotes(ctx context.Context, o LaunchOptions, res resolve.Re
 	if p.Live != nil {
 		force = p.Live.PoolForce
 	}
-	rep, err := a.poolPick(ctx, name, lg, PoolPickOptions{Cached: true, Force: force})
+	rep, err := a.poolPick(ctx, name, lg, PoolPickOptions{Cached: true, Force: force, Only: p.Live.only()})
+	if p.Live.only().Member != "" && rep.Selected == nil && len(rep.Candidates) > 0 {
+		// The pin is blocked by the cached usage: say so, not "none".
+		return append(out, report.Decision{Name: decPool, Value: "pick now: none, " + onlyNoKey(p.Live.PoolOnly, rep.Candidates[0].Reasons) + ", from the " + rep.Source + "; no key until it is under its caps", Source: "login-usage cache"})
+	}
 	if err != nil || rep.Selected == nil {
 		return append(out, report.Decision{Name: decPool, Value: "pick now: none from the cache; picks when " + string(res.Agent.ID()) + " first asks for its key", Source: "login-usage cache"})
 	}
@@ -278,7 +295,8 @@ func (a *App) writeLiveStart(ctx context.Context, p *LaunchPlan) error {
 	if err := ctxErr(ctx); err != nil {
 		return err
 	}
-	st := live.State{RunID: p.RunID, Agent: string(p.Agent), StartLogin: p.Live.StartLogin, Helper: p.Live.Helper, PoolForce: p.Live.PoolForce}
+	st := live.State{RunID: p.RunID, Agent: string(p.Agent), StartLogin: p.Live.StartLogin, Helper: p.Live.Helper, PoolForce: p.Live.PoolForce,
+		PoolOnly: p.Live.PoolOnly, PoolOnlyShort: p.Live.PoolOnlyShort, PoolOnlyWeek: p.Live.PoolOnlyWeek}
 	if err := live.Create(p.RunDir, st); err != nil {
 		return apperr.Wrap(err, apperr.CodeIO, apperr.ClassFailure, "write live.jsonc: "+err.Error())
 	}

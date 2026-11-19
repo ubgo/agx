@@ -42,6 +42,7 @@ func addLaunchFlags(cmd *cobra.Command, o *app.LaunchOptions, withDir bool) {
 	f.StringVar(&o.BeforeRun, "before-run", "", "a script to run first, for this run (relative to the current folder)")
 	f.BoolVar(&o.LiveLogin, "live-login", false, "switch this session's login while it runs (agx live use)")
 	f.StringVar(&o.PoolForce, "pool-force", "", "on a pool login: every key of this run comes from this member, over the pool's rules")
+	addPoolOnlyFlags(f, &o.PoolOnly, "on a pool login: every key of this run comes from this member while its caps allow, else no key (never another member)", "this run")
 	f.BoolVar(&o.DryRun, "dry-run", false, "print every decision with its source; start nothing")
 	f.BoolVar(&o.ResolvedSecrets, "resolved-secrets", false, "with --dry-run: resolve references (cost X) and say resolved or why not")
 	f.StringVar(&o.PlanFile, "plan-file", "", "write the launch plan for the shell layer instead of starting")

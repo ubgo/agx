@@ -1,0 +1,46 @@
+[
+  {
+    "source": "config logins.auto.pool",
+    "value": "auto (claude): own alice, bob, carol; shared derek, erin, frank, grace, heidi, ivan, judy, mallory, niaj"
+  },
+  {
+    "source": "--pool-only",
+    "value": "pick: only ivan (caps enforced) for every key of this run"
+  },
+  {
+    "source": "default",
+    "value": "ivan 5h cap 50%"
+  },
+  {
+    "source": "--pool-only-week",
+    "value": "ivan week cap 60%"
+  },
+  {
+    "source": "default",
+    "value": "key ttl 1m0s"
+  },
+  {
+    "source": "default",
+    "value": "usage max age 1m0s"
+  },
+  {
+    "source": "default",
+    "value": "shared borrow window 48h"
+  },
+  {
+    "source": "default",
+    "value": "5h cutoff 99%"
+  },
+  {
+    "source": "default",
+    "value": "default caps 5h 50%, week 70%"
+  },
+  {
+    "source": "config logins.auto.pool.accounts",
+    "value": "member entries: 3"
+  },
+  {
+    "source": "login-usage cache",
+    "value": "pick now: ivan (only), from the cache (20s old); agx pool pick --id auto probes"
+  }
+]

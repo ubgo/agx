@@ -411,9 +411,10 @@ func (c *cliCtx) loginTokenCmd() *cobra.Command {
 	var (
 		id, poolForce string
 		reveal        bool
+		only          app.PoolOnly
 	)
 	cmd := c.newCmd("token", "Print one login's token for a pipe or an apiKeyHelper (a terminal needs --reveal)", CostExec, func(cmd *cobra.Command, _ []string) (render.Output, error) {
-		out, err := c.loginToken(cmd, id, poolForce, reveal)
+		out, err := c.loginToken(cmd, id, poolForce, only, reveal)
 		return out, bareError(err)
 	})
 	cmd.Long = "Resolve a login's token from its source (a stored value, ${gopass:…}, $(…), ${VAR} or a plain value) and print only the value and a newline on stdout. It reads what is stored or referenced and never refreshes a token; a $(…) or gopass reference runs that local command. Stdout must be a pipe or a file unless --reveal is given. An api-key-helper login has no token and is refused. Every error is one line on stderr, without hint lines, and stdout stays empty."
@@ -423,12 +424,13 @@ func (c *cliCtx) loginTokenCmd() *cobra.Command {
 	f.StringVar(&id, "id", "", "the login name")
 	f.BoolVar(&reveal, "reveal", false, "print the token even when stdout is a terminal")
 	f.StringVar(&poolForce, "pool-force", "", "on a pool login: print this member's token, over the pool's rules")
+	addPoolOnlyFlags(f, &only, "on a pool login: print this member's token while its caps allow, else none (never another member)", "this call")
 	return cmd
 }
 
 // loginToken is agx login token's body; loginTokenCmd makes its error one
 // line.
-func (c *cliCtx) loginToken(cmd *cobra.Command, id, poolForce string, reveal bool) (render.Output, error) {
+func (c *cliCtx) loginToken(cmd *cobra.Command, id, poolForce string, only app.PoolOnly, reveal bool) (render.Output, error) {
 	if c.g.JSON || len(c.g.Fields) > 0 {
 		// The refusal prints as the command's other errors do, one line
 		// on stderr with stdout empty: a --field path would select from
@@ -440,7 +442,7 @@ func (c *cliCtx) loginToken(cmd *cobra.Command, id, poolForce string, reveal boo
 	if c.env.StdoutTTY && !reveal {
 		return render.Output{}, apperr.Usage(loginTokenTerminal)
 	}
-	tok, warnings, err := c.App().LoginTokenWarn(cmd.Context(), id, poolForce)
+	tok, warnings, err := c.App().LoginTokenWarn(cmd.Context(), id, poolForce, only)
 	if err != nil {
 		return render.Output{Warnings: warnings}, err
 	}

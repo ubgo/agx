@@ -53,6 +53,8 @@ const (
 	PickedByForce = "force"
 	// PickedByPicker is the pool's picker command.
 	PickedByPicker = "picker"
+	// PickedByOnly is a pin (--pool-only): its one member, caps enforced.
+	PickedByOnly = "only"
 )
 
 // Force sources (PoolSelection.ForcedBy).
@@ -84,6 +86,9 @@ type PoolPickOptions struct {
 	// Force picks this member for this one call, over every rule, the
 	// pool's force and its picker.
 	Force string
+	// Only pins this call to one member with the pool's rules still
+	// applied to it (--pool-only): no other member, no force, no picker.
+	Only PoolOnly
 	// Now replaces the clock (--now, for reading old caches); zero = now.
 	Now time.Time
 }
@@ -95,7 +100,9 @@ type PoolSelection struct {
 	// Forced is true for a force; ForcedBy says which.
 	Forced   bool   `json:"forced"`
 	ForcedBy string `json:"forced_by,omitempty"`
-	// PickedBy is rules, force or picker.
+	// Only is true for a pin (--pool-only): the one member, caps enforced.
+	Only bool `json:"only,omitempty"`
+	// PickedBy is rules, force, picker or only.
 	PickedBy string `json:"picked_by"`
 	// Reason is one sentence: what chose it.
 	Reason string `json:"reason"`
@@ -269,8 +276,14 @@ func (a *App) poolPick(ctx context.Context, name string, lg config.Login, o Pool
 	rep.Agent, rep.Now, rep.ShortUnavailableAt = string(ag.ID()), now, rules.ShortUnavailableAt
 	rep.BorrowWindowHours = rules.BorrowWindow.Hours()
 
+	if err := checkPoolOnly(name, lg.Pool, rules, o.Only, o.Force, false); err != nil {
+		// A refused flag is not a pick: no report to print.
+		return PoolReport{}, err
+	}
 	force, forcedBy := o.Force, ForcedByFlag
-	if force == "" {
+	if force == "" && o.Only.Member == "" {
+		// A pin outranks the pool's standing force: the force would
+		// ignore the very caps the pin keeps.
 		force, forcedBy = rules.Force, ForcedByConfig
 	}
 	if force != "" {
@@ -280,7 +293,8 @@ func (a *App) poolPick(ctx context.Context, name string, lg config.Login, o Pool
 	}
 	read := []string{}
 	for _, m := range lg.Pool.Members() {
-		if rules.Enabled(m) || m == force {
+		pinnedOut := o.Only.Member != "" && m != o.Only.Member
+		if (rules.Enabled(m) || m == force) && !pinnedOut {
 			read = append(read, m)
 		}
 	}
@@ -300,7 +314,7 @@ func (a *App) poolPick(ctx context.Context, name string, lg config.Login, o Pool
 	for m, e := range entries {
 		readings[m] = readingOf(e)
 	}
-	res, err := pool.Select(rules, readings, pool.Options{Now: now, Force: o.Force})
+	res, err := pool.Select(rules, readings, pool.Options{Now: now, Force: o.Force, Only: o.Only.Member, OnlyCaps: o.Only.Caps})
 	if errors.Is(err, pool.ErrForcedMissing) {
 		return rep, apperr.Failure(apperr.CodeNotFound, fmt.Sprintf("forced login %s has no usage reading (run without --cached)", force))
 	}
@@ -315,10 +329,16 @@ func (a *App) poolPick(ctx context.Context, name string, lg config.Login, o Pool
 	case s != nil && s.Forced:
 		rep.Selected = selectionOf(s, PickedByForce)
 		rep.Selected.ForcedBy = forcedBy
-	case lg.Pool.Picker != nil:
+	case lg.Pool.Picker != nil && o.Only.Member == "":
+		// A pin is not the picker's to change: it keeps one member.
 		rep.Selected = a.runPicker(ctx, name, lg, rules, readings, res, &rep)
+	case s != nil && s.Only:
+		rep.Selected = selectionOf(s, PickedByOnly)
 	case s != nil:
 		rep.Selected = selectionOf(s, PickedByRules)
+	}
+	if rep.Selected == nil && o.Only.Member != "" {
+		return rep, onlyFailure(o.Only.Member, res)
 	}
 	if rep.Selected == nil {
 		parts := make([]string, 0, len(res.Candidates))
@@ -345,7 +365,7 @@ func (a *App) checkForce(c config.Config, force string, agent agentio.ID) error 
 
 // selectionOf copies the rules' selection.
 func selectionOf(s *pool.Selection, by string) *PoolSelection {
-	return &PoolSelection{Name: s.Name, Group: s.Group, Forced: s.Forced, PickedBy: by, Reason: s.Reason,
+	return &PoolSelection{Name: s.Name, Group: s.Group, Forced: s.Forced, Only: s.Only, PickedBy: by, Reason: s.Reason,
 		Warnings: append([]string{}, s.Warnings...), WeeklyResetsAt: s.WeeklyResetsAt, RoomPercent: s.Room}
 }
 
@@ -700,9 +720,10 @@ func quote(s string) string {
 }
 
 // poolMemberToken picks a pool member and resolves its token (agx
-// credential and agx login token). The report's warnings go to stderr.
-func (a *App) poolMemberToken(ctx context.Context, name string, lg config.Login, mode, force string) (string, agentio.Token, PoolReport, error) {
-	rep, err := a.poolPick(ctx, name, lg, PoolPickOptions{Force: force})
+// credential and agx login token), with a one-run force or pin. The
+// report's warnings go to stderr.
+func (a *App) poolMemberToken(ctx context.Context, name string, lg config.Login, mode, force string, only PoolOnly) (string, agentio.Token, PoolReport, error) {
+	rep, err := a.poolPick(ctx, name, lg, PoolPickOptions{Force: force, Only: only})
 	if err != nil {
 		a.logPoolInto(&rep, lg, mode, err)
 		return "", agentio.Token{}, rep, err

@@ -1,0 +1,7 @@
+run:      <run-id>
+agent:    claude
+profile:  personal
+login:    auto (pool)
+home:     <root>/home/.claude
+only:     ivan (caps enforced)
+in use:   none (ivan over cap: week is 43% (cap 40%))

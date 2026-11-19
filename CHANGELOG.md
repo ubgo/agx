@@ -2,6 +2,12 @@
 
 All notable changes to agx are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and agx uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `--pool-only NAME` pins one pool member with its caps enforced, on `agx run`, `agx new`, `agx resume`, `agx live use`, `agx pool pick` and `agx login token`: every key comes from that member while the pool's rules allow it (its caps, the 5-hour cutoff, `enabled`, its status), and no key while they do not, so Claude's request fails with one line (`carol: week is 70% (cap 70%)`, exit 1, `auto-pick`) instead of switching to another member or going over the cap; it starts working again by itself once usage is under the cap. The pool's `force` and its picker do not apply to a pinned run. `--pool-only-short N` and `--pool-only-week N` lower that member's caps for the run or call only (a value above its own cap is refused). `--pool-only` with `--pool-force` is refused (exit 2; 125 from a launch), as are a name that is not a member and, at launch, a disabled member. `agx live use --id RUN --pool-only NAME` pins a running session, `--login POOL` clears the pin, and the run keeps it in `live.jsonc` (`pool_only`, `pool_only_short`, `pool_only_week`, `no_key`). `agx whoami` and `agx live show` add `only: NAME (caps enforced)`, and `in use: none (NAME over cap: …)` while it is blocked (`--json`: `only`, and `no_key` on live runs). The dry run shows the pin and the member's effective caps, each with its source. A pinned pick's `picked_by` is `only`.
+
 ## [0.4.11] - 2026-11-19
 
 ### Changed

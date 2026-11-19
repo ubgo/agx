@@ -37,6 +37,9 @@ type Whoami struct {
 	// the member the pool picks now from the login-usage cache. "" = no
 	// switch pending.
 	Next string `json:"next"`
+	// Only is the member a pool run is pinned to with its caps enforced
+	// (--pool-only); "" = none.
+	Only string `json:"only"`
 	// Live is the live-login state of the run; nil = not a live run.
 	Live *live.State `json:"live"`
 	// TerminalLogins are the AGX_LOGIN* variables set, sorted by name.
@@ -83,7 +86,7 @@ func (a *App) Whoami() (Whoami, error) {
 			w.LoginKind = lg.Kind
 		}
 		if w.Live != nil {
-			w.InUse = w.Live.InUse
+			w.InUse, w.Only = w.Live.InUse, w.Live.PoolOnly
 			if next := a.nextLogin(cfg.Config.Logins, *w.Live); next != w.InUse {
 				w.Next = next
 			}
@@ -105,7 +108,8 @@ func (a *App) nextLogin(logins map[string]config.Login, st live.State) string {
 	if st.PoolForce != "" {
 		return st.PoolForce
 	}
-	rep, err := a.poolPick(context.Background(), want, lg, PoolPickOptions{Cached: true})
+	only := stateOnly(st)
+	rep, err := a.poolPick(context.Background(), want, lg, PoolPickOptions{Cached: true, Only: only})
 	if err != nil || rep.Selected == nil {
 		return ""
 	}

@@ -1,0 +1,7 @@
+Pool: auto (claude)
+Use: ivan (shared)
+the only member of this run (--pool-only); its caps and the pool's rules still apply
+Source: cache (20s old)
+
+Candidates (ready accounts in pick order):
+- ivan [shared] #1 READY (5h 4%, week 43%, resets in 1 d 17 hr, room 27%)

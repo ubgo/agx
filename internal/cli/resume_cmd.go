@@ -49,7 +49,7 @@ func (c *cliCtx) whoamiCmd() *cobra.Command {
 			}
 			return render.Output{Data: data, Text: func(out io.Writer) error { return whoamiText(out, w) }}, nil
 		})
-	return fields(cmd, "data.in_session", "data.run_id", "data.agent", "data.profile", "data.login", "data.home", "data.run_dir", "data.login_kind", "data.in_use", "data.next", "data.live", "data.terminal_logins")
+	return fields(cmd, "data.in_session", "data.run_id", "data.agent", "data.profile", "data.login", "data.home", "data.run_dir", "data.login_kind", "data.in_use", "data.next", "data.only", "data.live", "data.terminal_logins")
 }
 
 // whoamiText prints the session as name/value lines.
@@ -67,11 +67,10 @@ func whoamiText(w io.Writer, s app.Whoami) error {
 		if s.Live != nil {
 			// What the session is on now: Claude's own /status says only
 			// "apiKeyHelper", and its guess reads the keychain login.
-			inUse := s.InUse
-			if inUse == "" {
-				inUse = "— (the agent has not asked for a key yet)"
+			if s.Only != "" {
+				line("only", app.OnlyText(s.Only))
 			}
-			line("in use", inUse)
+			line("in use", app.InUseText(s.InUse, s.Live.NoKey, "— (the agent has not asked for a key yet)"))
 			if s.Next != "" {
 				line("next", s.Next)
 			}
@@ -195,7 +194,7 @@ var liveColumns = []render.Column{
 }
 
 // liveFields are the --field paths of one live run.
-var liveFields = []string{"id", "dir", "agent", "profile", "home", "folder", "start_login", "chosen_login", "in_use", "in_use_at", "next", "liveness", "reason"}
+var liveFields = []string{"id", "dir", "agent", "profile", "home", "folder", "start_login", "chosen_login", "in_use", "in_use_at", "next", "only", "no_key", "liveness", "reason"}
 
 // prefixed returns each key with prefix ("data.*." + "id").
 func prefixed(prefix string, keys []string) []string {
@@ -242,11 +241,12 @@ func (c *cliCtx) liveCmd() *cobra.Command {
 			}
 			return liveOutput(r)
 		})
-	use.Example = "  agx live use --id 20261114-101500-k3x9 --login alice\n  agx live use --id 20261114-101500-k3x9 --start-login"
+	use.Example = "  agx live use --id 20261114-101500-k3x9 --login alice\n  agx live use --id 20261114-101500-k3x9 --start-login\n  agx live use --id 20261114-101500-k3x9 --pool-only alice\n  agx live use --id 20261114-101500-k3x9 --login auto"
 	uf := use.Flags()
 	uf.StringVar(&uo.ID, "id", "", "the run id")
 	uf.StringVar(&uo.Login, "login", "", "the login the agent gets at its next refresh")
 	uf.BoolVar(&uo.StartLogin, "start-login", false, "back to the login the run started with")
+	addPoolOnlyFlags(uf, &uo.PoolOnly, "pin a pool run to this member with its caps enforced (--login clears it)", "this run")
 	fields(use, prefixed("data.", liveFields)...)
 
 	return group("live", "Running sessions started with --live-login", list, show, use)
@@ -261,11 +261,15 @@ func liveOutput(r app.LiveRun) (render.Output, error) {
 	return render.Output{Data: data, Text: func(w io.Writer) error {
 		tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
 		ew := textout.New(tw)
-		for _, kv := range [][2]string{
+		rows := [][2]string{
 			{"run", r.ID}, {"agent", r.Agent}, {"profile", r.Profile}, {"folder", r.Folder},
-			{"started on", r.StartLogin}, {"chosen", r.ChosenLogin}, {"next", r.Next}, {"in use", r.InUse},
-			{"liveness", r.Liveness + " (" + r.Reason + ")"},
-		} {
+			{"started on", r.StartLogin}, {"chosen", r.ChosenLogin}, {"next", r.Next},
+		}
+		if r.Only != "" {
+			rows = append(rows, [2]string{"only", app.OnlyText(r.Only)})
+		}
+		rows = append(rows, [2]string{"in use", app.InUseText(r.InUse, r.NoKey, "")}, [2]string{"liveness", r.Liveness + " (" + r.Reason + ")"})
+		for _, kv := range rows {
 			ew.Line(kv[0] + "\t" + orDash(kv[1]))
 		}
 		if ew.Err() != nil {

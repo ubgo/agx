@@ -34,6 +34,9 @@ Start an agent in the current folder (or `--dir`). Cost R, plus N for `--auto-pr
 | `--before-run` | a script to run first, for this run |
 | `--live-login` | make the session's login switchable while it runs |
 | `--pool-force` | on a [pool login](../guides/login-pool.md): every key of this run comes from this member, over the pool's rules, force and picker (`agx live use` ends it) |
+| `--pool-only` | on a pool login: every key of this run comes from this member while the pool's rules allow it (its caps, the 5-hour cutoff, enabled, status), and no key while they do not, never another member's; the pool's `force` and picker do not apply. Not with `--pool-force` (exit 125). See [Pin one account but keep its limits](../guides/login-pool.md#pin-one-account-but-keep-its-limits) |
+| `--pool-only-short` | with `--pool-only`: a lower 5-hour cap for that member, for this run only; a value above the member's own cap is refused |
+| `--pool-only-week` | with `--pool-only`: a lower weekly cap for that member, for this run only; a value above the member's own cap is refused |
 | `--dry-run` | print every decision with its source; start nothing |
 | `--resolved-secrets` | with `--dry-run` (refused without it, exit 125): resolve each reference and say "resolved" or why not, never the value (cost X) |
 | `--` | everything after it goes to the agent untouched; see [Raw args](../guides/raw-args.md) |
@@ -113,6 +116,7 @@ Create a timestamped session folder under `sessions.root` and start an agent in 
 | `--model`, `--prompt`, `--add-dir`, `--autonomy`, `--consent`, `--headless` | as `run` |
 | `--option`, `--setting`, `--settings-delivery` | as `run` |
 | `--env`, `--no-env`, `--env-file`, `--before-run`, `--live-login`, `--pool-force` | as `run` |
+| `--pool-only`, `--pool-only-short`, `--pool-only-week` | as `run` |
 | `--dry-run`, `--resolved-secrets` | as `run`; with `--dry-run` no folder is created |
 
 ```sh
@@ -177,6 +181,7 @@ agx asks every configured home whose agent lists conversations whether it stores
 | `--model`, `--prompt`, `--add-dir`, `--autonomy`, `--consent`, `--headless` | as `run` |
 | `--option`, `--setting`, `--settings-delivery` | as `run` |
 | `--env`, `--no-env`, `--env-file`, `--before-run`, `--live-login`, `--pool-force` | as `run` |
+| `--pool-only`, `--pool-only-short`, `--pool-only-week` | as `run` |
 | `--dry-run`, `--resolved-secrets` | as `run` |
 | `--` | raw args to the agent |
 
@@ -254,7 +259,7 @@ $ agx whoami
 session:  not inside a session started by agx (AGX_RUN_ID is not set)
 ```
 
-Inside a session started by agx, it prints the run's id, agent, profile, login and home as `label:  value` lines; `agx whoami --json --field data.login` gives one value for a prompt or status line. In a pool or `--live-login` session it adds `in use:` (the login, or the pool member, whose key the agent got last) and `next:` when the next key request will get another one (a pin, a run's `--pool-force`, or the member the pool picks now from the login-usage cache), and marks a pool login `(pool)`: the only way to see from inside Claude which account it is on, since /status says only apiKeyHelper. The `--json` data also holds `login_kind`, `in_use`, `next`, `run_dir` (when the run folder exists in this config dir), `live` (the live login state of a `--live-login` or pool run) and `terminal_logins` (the `AGX_LOGIN` variables of this shell).
+Inside a session started by agx, it prints the run's id, agent, profile, login and home as `label:  value` lines; `agx whoami --json --field data.login` gives one value for a prompt or status line. In a pool or `--live-login` session it adds `in use:` (the login, or the pool member, whose key the agent got last) and `next:` when the next key request will get another one (a pin, a run's `--pool-force`, or the member the pool picks now from the login-usage cache), and marks a pool login `(pool)`: the only way to see from inside Claude which account it is on, since /status says only apiKeyHelper. A run pinned with `--pool-only` adds `only:  alice (caps enforced)`, and while that member is over a cap `in use:` reads `none (alice over cap: week is 70% (cap 70%))`. The `--json` data also holds `login_kind`, `in_use`, `next`, `only`, `run_dir` (when the run folder exists in this config dir), `live` (the live login state of a `--live-login` or pool run) and `terminal_logins` (the `AGX_LOGIN` variables of this shell).
 
 ### Try it: agx whoami
 

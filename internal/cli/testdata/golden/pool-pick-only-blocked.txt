@@ -1,0 +1,6 @@
+Pool: auto (claude)
+No configured account is currently usable.
+Source: cache (20s old)
+
+Candidates (ready accounts in pick order):
+- ivan [shared] skip: week is 43% (cap 43%) (5h 4%, week 43%, resets in 1 d 17 hr, room 0%)

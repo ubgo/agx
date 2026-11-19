@@ -175,6 +175,7 @@ func (c *cliCtx) poolPickCmd() *cobra.Command {
 	f.BoolVar(&o.Cached, "cached", false, "use the login-usage cache only, of any age; probe nothing")
 	f.DurationVar(&o.MaxAge, "max-age", 0, "reuse cached usage younger than this; 0 probes every member (default: the pool's usage_max_age)")
 	f.StringVar(&o.Force, "pool-force", "", "pick this member for this one run, over the pool's rules, force and picker")
+	addPoolOnlyFlags(f, &o.Only, "pick only this member, with its caps enforced; none when it is blocked", "this pick")
 	f.StringVar(&now, "now", "", "pretend it is this RFC 3339 time (to read an old cache)")
 	_ = f.MarkHidden("now") // the flag exists, so marking it cannot fail
 	timeFlags(cmd, &to)

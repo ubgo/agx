@@ -68,8 +68,11 @@ Choose the login of a live run. The agent picks it up at its next key refresh (a
 | `--id` | the run id |
 | `--login` | the login to switch to; on a pool run, a member pins the run to it and the pool's name hands it back to the pool's rules |
 | `--start-login` | go back to the login the run started with (on a pool run, the pool) |
+| `--pool-only` | pin a pool run to this member with its caps enforced: it gets that member's key while the pool's rules allow it, and no key while they do not. The pool is `--login POOL` when given, the start login with `--start-login`, else the run's current pool |
+| `--pool-only-short` | with `--pool-only`: a lower 5-hour cap for that member, for this run only (never above its own) |
+| `--pool-only-week` | with `--pool-only`: a lower weekly cap for that member, for this run only (never above its own) |
 
-On a [pool](../guides/login-pool.md) run, either flag also ends a `--pool-force` the run was started with. `agx whoami` inside the session shows the login in use and the next one.
+On a [pool](../guides/login-pool.md) run, `--login` or `--start-login` without `--pool-only` also ends a `--pool-force` and a `--pool-only` the run was started with: `--login auto` hands the run back to the pool's rules, and `--login MEMBER` is the pin that ignores caps. `agx live use --id RUN --pool-only alice` keeps the run on alice while she is under her caps ([Pin one account but keep its limits](../guides/login-pool.md#pin-one-account-but-keep-its-limits)); `agx live show` then adds `only  alice (caps enforced)` and, while she is over a cap, `in use  none (alice over cap: …)` (`--json`: `only`, `no_key`). `agx whoami` inside the session shows the login in use and the next one.
 
 Try it:
 

@@ -244,7 +244,7 @@ func TestPoolCredentialNoneUsableIsOneLine(t *testing.T) {
 func TestPoolLoginToken(t *testing.T) {
 	m, _ := poolMachine(t, map[string]account{tokPersonal: {weekly: 5}, tokWork: {weekly: 5}, tokCarol: {weekly: 5}, tokDave: {weekly: 5}})
 	a := m.app(t)
-	tok, warnings, err := a.LoginTokenWarn(context.Background(), "auto", "")
+	tok, warnings, err := a.LoginTokenWarn(context.Background(), "auto", "", PoolOnly{})
 	if err != nil || tok.Reveal() != tokPersonal || len(warnings) != 0 {
 		t.Fatalf("token err %v warnings %v", err, warnings)
 	}

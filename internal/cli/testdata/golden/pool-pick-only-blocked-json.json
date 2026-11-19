@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "command": "pool pick",
+  "ok": false,
+  "data": {
+    "pool": "auto",
+    "agent": "claude",
+    "selected": null,
+    "source": "cache (20s old)",
+    "now": "<time>",
+    "short_unavailable_at_percent": 99,
+    "shared_borrow_window_hours": 48,
+    "warnings": [],
+    "candidates": [
+      {
+        "name": "ivan",
+        "group": "shared",
+        "state": "blocked",
+        "rank": null,
+        "eligible": false,
+        "enabled": true,
+        "status": "ok",
+        "account": "",
+        "short": 4,
+        "week": 43,
+        "weekly_resets_at": "<time>",
+        "hours_to_reset": 41.8,
+        "room_percent": 0,
+        "caps": {
+          "short": 50,
+          "week": 43
+        },
+        "reasons": [
+          "week is 43% (cap 43%)"
+        ],
+        "notes": [],
+        "source": "cache",
+        "age_seconds": 20
+      }
+    ]
+  },
+  "decisions": [],
+  "warnings": [],
+  "error": {
+    "code": "auto-pick",
+    "message": "ivan: week is 43% (cap 43%)"
+  }
+}

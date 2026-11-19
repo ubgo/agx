@@ -103,6 +103,8 @@ var noLeakExtra = [][]string{
 	{"login", "use", "--id", "ref", "--terminal"},
 	{"pool", "pick", "--id", "pl", "--cached"}, {"pool", "show", "--id", "pl"}, {"pool", "list"}, {"login", "show", "--id", "pl"}, {"login", "check", "--no-probe", "--id", "pl"},
 	{"run", "--dry-run", "--resolved-secrets", "--login", "pl"},
+	{"run", "--dry-run", "--resolved-secrets", "--login", "pl", "--pool-only", "ref", "--pool-only-week", "50"},
+	{"pool", "pick", "--id", "pl", "--cached", "--pool-only", "plain", "--pool-only-short", "10"},
 }
 
 // noLeakExempt are the only commands that print a token by design, so

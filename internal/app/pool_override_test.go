@@ -140,11 +140,11 @@ func TestPoolRunForcePinUnpin(t *testing.T) {
 // token with a warning per broken rule; on a token login it is refused.
 func TestPoolTokenForce(t *testing.T) {
 	_, _, a := freshPool(t)
-	tok, warns, err := a.LoginTokenWarn(context.Background(), "auto", "derek")
+	tok, warns, err := a.LoginTokenWarn(context.Background(), "auto", "derek", PoolOnly{})
 	if err != nil || tok.Reveal() != tokDave || len(warns) != 1 || warns[0].Message != "forced derek: 5h is 60% (cap 50%)" {
 		t.Fatalf("tok %v warns %+v err %v", tok.Reveal() == tokDave, warns, err)
 	}
-	if _, _, err := a.LoginTokenWarn(context.Background(), "bob", "carol"); err == nil || apperr.As(err).Code != apperr.CodeUsage {
+	if _, _, err := a.LoginTokenWarn(context.Background(), "bob", "carol", PoolOnly{}); err == nil || apperr.As(err).Code != apperr.CodeUsage {
 		t.Errorf("token login: %v", err)
 	}
 }

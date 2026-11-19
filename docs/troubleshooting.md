@@ -235,6 +235,10 @@ Run `! agx whoami` inside Claude (the `!` runs it in the session's shell, which 
 
 Every member of the login pool is skipped, and the line lists each with its reasons (`status is limit-reached`, `week is 70% (cap 70%)`, `disabled in config`). `agx pool pick --id auto` shows the same as a report; `agx login token` and the key helper of a running session exit 1 with it, so Claude's request fails. Wait for a reset, raise a cap (`agx login edit --id auto --pool-cap-week NAME=N`), take a disabled member back (`--pool-enable NAME`), add a member, or force one: `agx login edit --id auto --pool-force NAME` (clear it later with `--pool-force ''`). See [the rules](guides/login-pool.md#the-rules).
 
+### My pinned session stopped: the member hit its cap
+
+A run started with `--pool-only carol` (or pinned with `agx live use --id RUN --pool-only carol`) fails Claude's requests with one line such as `carol: week is 70% (cap 70%)`, and `! agx whoami` shows `in use:  none (carol over cap: …)`. That is the pin working: it keeps carol's caps, so it hands out no key rather than going over one or switching to another member. It starts again by itself once her usage is under the cap. To go on now, hand the run back to the pool's rules (`agx live use --id RUN --login auto`), pin another member, or, if going over the cap is fine, pin carol without caps (`agx live use --id RUN --login carol`). `agx pool pick --id auto --pool-only carol` shows her reasons. See [Pin one account but keep its limits](guides/login-pool.md#pin-one-account-but-keep-its-limits).
+
 ### "codex cannot use a login pool (…)"
 
 A pool needs an agent that asks for its key again while it runs and whose logins agx can probe; today that is Claude Code. The reason is the agent's own (exit 4 from `agx login add`; a config error at the line from `agx config check`).

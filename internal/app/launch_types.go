@@ -6,6 +6,7 @@ import (
 	"github.com/ubgo/agx/internal/report"
 	"github.com/ubgo/agx/internal/resolve"
 	"github.com/ubgo/agx/internal/run"
+	"github.com/ubgo/agx/pool"
 )
 
 // LaunchMode is which launching command built the plan.
@@ -58,6 +59,11 @@ type LaunchOptions struct {
 	// request of this run gets, over the pool's rules, force and picker
 	// (kept in live.jsonc; agx live use clears it).
 	PoolForce string
+	// PoolOnly is --pool-only (with --pool-only-short / --pool-only-week):
+	// on a pool login, the member every key request of this run gets
+	// while the pool's rules allow, and no key otherwise (kept in
+	// live.jsonc; agx live use --login clears it).
+	PoolOnly PoolOnly
 	// DryRun prints the plan and starts nothing; ResolvedSecrets also
 	// resolves references (cost X) and reports "resolved" or the error.
 	DryRun          bool
@@ -159,6 +165,20 @@ type LiveStart struct {
 	Helper string `json:"helper"`
 	// PoolForce is the run's --pool-force member; "" = none.
 	PoolForce string `json:"pool_force,omitempty"`
+	// PoolOnly is the run's --pool-only member; "" = none.
+	PoolOnly string `json:"pool_only,omitempty"`
+	// PoolOnlyShort and PoolOnlyWeek are its tighter caps; nil = the
+	// configured cap.
+	PoolOnlyShort *float64 `json:"pool_only_short,omitempty"`
+	PoolOnlyWeek  *float64 `json:"pool_only_week,omitempty"`
+}
+
+// only is the run's pin as the pool pick takes it.
+func (l *LiveStart) only() PoolOnly {
+	if l == nil {
+		return PoolOnly{}
+	}
+	return PoolOnly{Member: l.PoolOnly, Caps: pool.Tighter{Short: l.PoolOnlyShort, Week: l.PoolOnlyWeek}}
 }
 
 // CommandView is the printable form of a built command.

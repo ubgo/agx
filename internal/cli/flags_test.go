@@ -41,7 +41,7 @@ func repeatValue(h cli.HelpFlag) string {
 	switch h.Type {
 	case "bool":
 		return "true"
-	case "int":
+	case "int", "percent":
 		return "1"
 	}
 	return "x"
