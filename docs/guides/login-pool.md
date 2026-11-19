@@ -99,6 +99,19 @@ agx run --login auto
 
 A run on a pool is always live: Claude gets an `apiKeyHelper` setting that runs agx's hidden `agx credential`, and `CLAUDE_CODE_API_KEY_HELPER_TTL_MS` from `key_ttl`, so it asks for a key again every minute. Each time, `agx credential` picks a member by the rules and prints that member's token to Claude alone. Make it the default with `agx login use --id auto --profile work`, or bind a folder to it (`agx project use --agent claude --login auto`).
 
+Compare with a fixed account, `agx run --login carol`, which stays on carol until you stop it. What happens after `agx run --login auto`:
+
+```text
+1. agx reads the "auto" login: kind pool, with members and rules, no token
+2. agx starts Claude with the setting apiKeyHelper = "<agx> credential" and CLAUDE_CODE_API_KEY_HELPER_TTL_MS = key_ttl
+3. Claude runs the helper when it needs a key
+4. agx credential reads the members' usage (cache or probe), picks a member (e.g. carol) and prints its token
+5. Claude uses that token
+6. after key_ttl, on its next request, Claude runs the helper again and may get another member
+```
+
+The whole connection is the pool login in `~/.agx/config.jsonc`; `agx login show --id auto` shows it, and `agx config set` or an edit of the file changes it from the next key request.
+
 A dry run probes nothing: it shows the members and the member the pool would pick now from the cache, of any age, or that it picks when Claude first asks:
 
 <!-- snippet: examples/acct-login-pool/session.txt#run -->
@@ -225,9 +238,9 @@ Candidates (ready accounts in pick order):
 ## The rules
 
 1. **Force.** `--pool-force` (one run, `login pick` or `login token` call), else the pool's `force`, wins outright and every rule below is ignored. Each rule the forced member breaks is printed as a warning. Forcing a login without a usage reading is an error (exit 1). Forcing a login listed in neither group works, checked against the default caps, with the warning `not listed in own or shared`.
-2. **Usable.** A member is skipped when any of these holds, and every reason is listed: disabled in config; no usage reading; status is not `ok` (`limit-reached`, `rejected`, `secret`, `network`, …); 5-hour use at or over `short_unavailable_at_percent` (99), even when the status is `ok`; 5-hour use at or over its 5-hour cap; weekly use at or over its weekly cap. Caps are exclusive: under the cap is usable. Caps count the account's total use: at 60% of a 70% weekly cap you can use 10%, and the teammate keeps 30%. A window the probe does not report is not checked.
+2. **Usable.** A member is skipped when any of these holds, and every reason is listed: disabled in config; no usage reading; status is not `ok` (`limit-reached`, `rejected`, `secret`, `network`, …); usage that is not a number (`week usage is unreadable`: a cap cannot be checked on it, so the member is blocked rather than treated as fine); 5-hour use at or over `short_unavailable_at_percent` (99), even when the status is `ok`; 5-hour use at or over its 5-hour cap; weekly use at or over its weekly cap. Caps are exclusive: under the cap is usable. Caps count the account's total use: at 60% of a 70% weekly cap you can use 10%, and the teammate keeps 30%. A window the probe does not report is not checked.
 3. **Pool.** While any own member is usable, the pool is the usable own members plus the usable shared members whose weekly reset is within `shared_borrow_window`; the other usable shared members wait. With no own member usable, the pool is every usable shared member.
-4. **Order.** The pool is sorted by weekly reset, soonest first. An unknown reset, or one that has already passed (stale data, noted on the member), sorts last. Ties keep config order, own before shared.
+4. **Order.** The pool is sorted by weekly reset, soonest first. An unknown reset, an unreadable one (noted `weekly reset time is unreadable; treated as unknown`), or one that has already passed (stale data, noted on the member), sorts last. Ties keep config order, own before shared.
 5. **Pick.** The first of the pool. An empty pool picks nothing: `agx login pick` and `agx login token` exit 1 with error code `auto-pick` and each member's reasons, and the key helper fails, so Claude's request fails with that line.
 
 Caps always apply: a reset coming soon moves a member up the order, it never lifts a cap. Examples with the example's names:
@@ -238,6 +251,8 @@ Caps always apply: a reset coming soon moves a member up the order, it never lif
 | alice (own) week 29%, 6 days; derek (shared) week 15%, resets in 4 days | alice | derek is outside the 48 h window: `WAIT` |
 | alice (own) week 29%, 6 days; erin (shared) 5h 55%, week resets in 3 h | alice | erin is over her 5-hour cap of 50%, even on reset day |
 | alice and bob limit-reached; carol week 1% in 7 days, derek week 3% in 6 days | derek | with no own member usable the window does not apply; soonest reset wins |
+
+The config is strict, so nothing is ignored silently: an unknown key anywhere (a typo such as `"weekly"` or `"shared_borrow_window_hour"`), a cap that is not a number from 0 to 100 (`null` included), an `enabled` that is not `true`/`false`, a name in both lists, an empty `force` (write `null`), a member that does not exist or serves another agent, and a bad duration are each an error at their line when the config loads, and `agx config check` lists them all.
 
 The 48 h window is fixed: it does not know how fast you use quota, so if you borrow a lot an own account can still end its week with room left. Lower `shared_borrow_window` then (`0s` borrows only when none of yours is usable). There is no daily cap: the probe reports no daily window.
 
@@ -289,10 +304,19 @@ To make this rare, give your own members caps a little under 100 (95 and 98), so
 | Stale data | a member noted `weekly reset time has passed; usage data is stale` | a `--cached` reading older than the member's weekly reset | run without `--cached` |
 | `--cached` never refreshes | the same answer every time | it reads the cache only | use `--max-age` in scripts |
 | The cache holds emails | — | account labels are kept with each reading | it is 0600; do not share it |
+| Usage that is not a number | `skip: week usage is unreadable` | a cap cannot be checked on it, so the member is blocked rather than treated as fine | check `agx login check --id NAME` |
+| Unreadable reset time | note `weekly reset time is unreadable; treated as unknown` | no deadline can be read, so the member sorts after those with one | check `agx login check --id NAME` |
+| A broken cache file | `warning: login-usage cache: …`, then fresh probes | a cache agx cannot read is ignored and rewritten, never half-used | nothing; it heals on the next write |
+| A typo in config | `unknown key "weekly"` at its line | every key is checked; unknown ones are errors so they cannot be ignored silently | fix the name |
+| Wrong value type | `logins.auto.pool.accounts.alice.week: must be number or null, got string`, `force is empty; name a login or write null`, `….week is null; give a value or leave the key out` | `"70"`, `"false"`, `""` or a `null` cap would otherwise behave unexpectedly | plain numbers and `true`/`false`; `null` only for `force` |
 
 ## Testing
 
-Automated (in `task check`, never a real account, network or token): the rules are a pure function with every case of the stand-alone selector's test suite ported one to one (the mapping, case by case, is in [`pool/testdata/SELECTOR_PORT.md`](../../pool/testdata/SELECTOR_PORT.md)), boundary tables for every cap, window and cutoff, and a property test that, for 20 000 random pools, the pick is always usable, under every cap and has the soonest weekly reset of the members the rules allow. The key-helper flow runs end to end through `agx credential` with a moving clock and a fake usage server: first call, cache reuse, a change while fresh, re-probe after max age, caps, limits, probe failure, disabled, force, nothing usable, six helpers at once, and a log that never holds a token.
+Picking cannot silently go wrong because three layers check the rules (package `pool`), all in `task check` except the last, none touching a real account, network or token:
+
+1. **Example tests**: every case of the stand-alone selector's suite ported one to one (the mapping, case by case, is in [`pool/testdata/SELECTOR_PORT.md`](../../pool/testdata/SELECTOR_PORT.md)), every config mistake and the built-in defaults, plus boundary tables for every cap, window and cutoff.
+2. **Randomised tests**: thousands of seeded pools and readings, odd ones included (missing windows, usage that is not a number, stale or unreadable resets, caps at their edges). For each, the pick and the whole pick order must equal a second implementation of the rules written separately inside the test, and invariants must hold: the pick is never blocked, disabled, at or over a cap or the 5-hour cutoff; a teammate's account goes before a usable own one only inside the window and only when it resets sooner; nothing in the pool resets sooner than the pick; reading order never changes the result; a force always wins; the same input always gives the same output. A failure names its seed: `SEED=1234 go test -run TestPortRandomised ./pool/` replays it, `CASES=50000` runs more.
+3. **Mutation check** (`task mutation`, opt-in, a few minutes): breaks the rules on purpose 46 ways (a `>=` turned into `>`, a rule skipped, an order reversed, a default changed, a config check removed) on a temporary copy of the repository and confirms the tests fail every time. Last run: 46/46 caught. Run it after any change to the rules; if a break survives, add a test for it. The key-helper flow runs end to end through `agx credential` with a moving clock and a fake usage server: first call, cache reuse, a change while fresh, re-probe after max age, caps, limits, probe failure, disabled, force, nothing usable, six helpers at once, and a log that never holds a token.
 
 Live, opt-in (run them yourself; they print no token value, only its length):
 
@@ -303,6 +327,14 @@ scripts/limit-recovery-check.sh LIMITED WORKING   # a real session on a limited 
 ```
 
 Both read `AGX` (the binary, default `agx`), `AGX_POOL` (default `auto`) and `AGX_ARGS` (global flags, such as `--config ~/.agx/config.pool.jsonc`). `limit-recovery-check.sh` adds a temporary pool of your two logins, forced to the limited one, switches the force after the first message of a four-message session, and removes the temporary login at the end. Expected with Claude Code 2.1.328: message 1 fails (429), message 2 fails too (the new key applies one request late), messages 3 and 4 succeed in the same session.
+
+## Open items
+
+Not built; listed so they are not forgotten:
+
+- A short shell alias for the pool launch (`alias cauto='agx run --login auto'`): documented here, added by nobody's shell file. `agx alias add` can make one.
+- An automatic `continue` after a 429 mid-task: Claude Code does not retry a rejected request on a new key by itself; a Claude Code hook might, not investigated.
+- A borrow window based on how fast quota is used, instead of the fixed `shared_borrow_window`, if an own account ever ends its week with room left.
 
 ## Try it
 

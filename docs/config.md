@@ -418,7 +418,7 @@ A `pool` login serves exactly one agent that can re-ask for its key while it run
 | `logins.<login>.pool.picker.timeout` | duration | how long one run may take; default `10s` |
 | `logins.<login>.pool.log` | path | a file that gets one line per key request (time, pick, group, forced, source; never a token); `~` and `${VAR}` expand |
 
-Durations are Go duration strings (`48h`, `90m`, `60s`). Caps and the cutoff are 0 to 100. The old setting names of the stand-alone selector (`burnToFullest`, `priority`, `accountLimits`, `limits`, `sharedBorrowWindowHours`) are unknown keys and refused at their line.
+Durations are Go duration strings (`48h`, `90m`, `60s`). Caps and the cutoff are 0 to 100. Nothing in a pool is ignored silently: an unknown key anywhere, a cap that is not a number from 0 to 100, `null` for anything but `force`, an empty `force`, an `enabled` that is not `true`/`false` and a bad duration are each an error at their line. The old setting names of the stand-alone selector (`burnToFullest`, `priority`, `accountLimits`, `limits`, `sharedBorrowWindowHours`) are unknown keys and refused at their line.
 
 ## Projects
 
