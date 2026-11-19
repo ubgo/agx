@@ -11,6 +11,7 @@ import (
 
 	"github.com/ubgo/agentio"
 
+	"github.com/ubgo/agx/config"
 	"github.com/ubgo/agx/internal/app"
 	"github.com/ubgo/agx/internal/render"
 	"github.com/ubgo/agx/internal/textout"
@@ -48,7 +49,7 @@ func (c *cliCtx) whoamiCmd() *cobra.Command {
 			}
 			return render.Output{Data: data, Text: func(out io.Writer) error { return whoamiText(out, w) }}, nil
 		})
-	return fields(cmd, "data.in_session", "data.run_id", "data.agent", "data.profile", "data.login", "data.home", "data.run_dir", "data.live", "data.terminal_logins")
+	return fields(cmd, "data.in_session", "data.run_id", "data.agent", "data.profile", "data.login", "data.home", "data.run_dir", "data.login_kind", "data.in_use", "data.next", "data.live", "data.terminal_logins")
 }
 
 // whoamiText prints the session as name/value lines.
@@ -56,11 +57,24 @@ func whoamiText(w io.Writer, s app.Whoami) error {
 	var pairs [][2]string
 	line := func(key, value string) { pairs = append(pairs, [2]string{key + ":", value}) }
 	if s.InSession {
-		for _, kv := range [][2]string{{"run", s.RunID}, {"agent", s.Agent}, {"profile", s.Profile}, {"login", s.Login}, {"home", s.Home}} {
+		login := s.Login
+		if s.LoginKind == config.KindPool {
+			login += " (pool)"
+		}
+		for _, kv := range [][2]string{{"run", s.RunID}, {"agent", s.Agent}, {"profile", s.Profile}, {"login", login}, {"home", s.Home}} {
 			line(kv[0], orDash(kv[1]))
 		}
 		if s.Live != nil {
-			line("live", "started on "+s.Live.StartLogin+", next "+s.Live.Want()+", in use "+orDash(s.Live.InUse))
+			// What the session is on now: Claude's own /status says only
+			// "apiKeyHelper", and its guess reads the keychain login.
+			inUse := s.InUse
+			if inUse == "" {
+				inUse = "— (the agent has not asked for a key yet)"
+			}
+			line("in use", inUse)
+			if s.Next != "" {
+				line("next", s.Next)
+			}
 		}
 	} else {
 		line("session", "not inside a session started by agx (AGX_RUN_ID is not set)")

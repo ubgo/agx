@@ -1,0 +1,7 @@
+run:      <run-id>
+agent:    claude
+profile:  personal
+login:    auto (pool)
+home:     <root>/home/.claude
+in use:   carol
+next:     grace

@@ -237,3 +237,37 @@ func TestLoginPickCacheFollowsConfigDir(t *testing.T) {
 		t.Error("a cache was written in the current folder")
 	}
 }
+
+// TestWhoamiInPoolSession: inside a pool session agx whoami says the
+// login is a pool, the member in use (the key Claude got last) and, when
+// the pool would pick another member now (from the cache), next. Claude's
+// own /status says only "apiKeyHelper".
+func TestWhoamiInPoolSession(t *testing.T) {
+	f := pickFixture(t)
+	const id = "20261118-180000-pool"
+	dir := f.ConfigDir + "/runs/" + id
+	f.WriteFile(dir+"/live.jsonc", `{"run_id":"`+id+`","agent":"claude","start_login":"auto","in_use":"carol","helper":"agx credential"}`, 0o600)
+	f.Env["AGX_RUN_ID"], f.Env["AGX_RUN_AGENT"], f.Env["AGX_RUN_PROFILE"], f.Env["AGX_RUN_LOGIN"], f.Env["AGX_RUN_HOME"] = id, "claude", "personal", "auto", f.Home+"/.claude"
+	r := f.Run("whoami", "--color", "never")
+	if r.Code != 0 {
+		t.Fatalf("%d %s", r.Code, r.Stderr)
+	}
+	testkit.GoldenText(t, "whoami-pool", f.Normalize(r.Stdout))
+	for _, want := range []string{"login:    auto (pool)", "in use:   carol", "next:     grace"} {
+		if !strings.Contains(r.Stdout, want) {
+			t.Errorf("missing %q:\n%s", want, r.Stdout)
+		}
+	}
+	r = f.Run("whoami", "--json", "--field", "data.next")
+	if strings.TrimSpace(r.Stdout) != "grace" {
+		t.Errorf("--field data.next: %q", r.Stdout)
+	}
+	f.WriteFile(dir+"/live.jsonc", `{"run_id":"`+id+`","agent":"claude","start_login":"auto","in_use":"grace","helper":"agx credential"}`, 0o600)
+	if r := f.Run("whoami"); strings.Contains(r.Stdout, "next:") || !strings.Contains(r.Stdout, "in use:   grace") {
+		t.Errorf("no switch pending:\n%s", r.Stdout)
+	}
+	f.WriteFile(dir+"/live.jsonc", `{"run_id":"`+id+`","agent":"claude","start_login":"auto","chosen_login":"alice","in_use":"grace","helper":"agx credential"}`, 0o600)
+	if r := f.Run("whoami"); !strings.Contains(r.Stdout, "next:     alice") {
+		t.Errorf("pinned:\n%s", r.Stdout)
+	}
+}

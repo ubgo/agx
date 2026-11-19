@@ -282,7 +282,7 @@ func TestWhoamiInSession(t *testing.T) {
 	}
 	f.Golden(t, "whoami", r.Stdout)
 	r = f.Run("whoami")
-	for _, want := range []string{runAlive, "started on carol, next carol, in use —", "AGX_LOGIN_CLAUDE: alice", "profile:          work"} {
+	for _, want := range []string{runAlive, "in use:           — (the agent has not asked for a key yet)", "next:             carol", "AGX_LOGIN_CLAUDE: alice", "profile:          work"} {
 		if !strings.Contains(r.Stdout, want) {
 			t.Errorf("text lacks %q:\n%s", want, r.Stdout)
 		}

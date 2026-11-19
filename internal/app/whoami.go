@@ -1,10 +1,12 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"slices"
 	"strings"
 
+	"github.com/ubgo/agx/config"
 	"github.com/ubgo/agx/internal/resolve"
 	"github.com/ubgo/agx/internal/run"
 	"github.com/ubgo/agx/live"
@@ -24,6 +26,17 @@ type Whoami struct {
 	Home      string `json:"home"`
 	// RunDir is the run folder when it exists in this config dir.
 	RunDir string `json:"run_dir"`
+	// LoginKind is the run login's kind in config ("pool", "oauth-token",
+	// …); "" when it is not a named login.
+	LoginKind string `json:"login_kind"`
+	// InUse is the login whose key the agent got last (live runs; for a
+	// pool, the member): what the session is on now. "" = not asked yet.
+	InUse string `json:"in_use"`
+	// Next is the login the agent gets at its next key request when that
+	// differs from InUse: a pin (agx live use), a run's --pool-force, or
+	// the member the pool picks now from the login-usage cache. "" = no
+	// switch pending.
+	Next string `json:"next"`
 	// Live is the live-login state of the run; nil = not a live run.
 	Live *live.State `json:"live"`
 	// TerminalLogins are the AGX_LOGIN* variables set, sorted by name.
@@ -64,7 +77,39 @@ func (a *App) Whoami() (Whoami, error) {
 	default:
 		w.Live = &st
 	}
+	if cfg, err := a.Config(); err == nil {
+		lg, ok := cfg.Config.Logins[w.Login]
+		if ok {
+			w.LoginKind = lg.Kind
+		}
+		if w.Live != nil {
+			w.InUse = w.Live.InUse
+			if next := a.nextLogin(cfg.Config.Logins, *w.Live); next != w.InUse {
+				w.Next = next
+			}
+		}
+	}
 	return w, nil
+}
+
+// nextLogin is the login a live run's next key request gets: the pinned
+// or start login when it is a token login; for a pool, the run's
+// --pool-force, else the member the pool picks now from the login-usage
+// cache (cost R: nothing is probed). "" when it cannot be told.
+func (a *App) nextLogin(logins map[string]config.Login, st live.State) string {
+	want := st.Want()
+	lg, ok := logins[want]
+	if !ok || lg.Kind != config.KindPool {
+		return want
+	}
+	if st.PoolForce != "" {
+		return st.PoolForce
+	}
+	rep, err := a.poolPick(context.Background(), want, lg, PoolPickOptions{Cached: true})
+	if err != nil || rep.Selected == nil {
+		return ""
+	}
+	return rep.Selected.Name
 }
 
 // terminalLogins lists AGX_LOGIN and every AGX_LOGIN_<AGENT> set to a

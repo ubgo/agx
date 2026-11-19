@@ -10,6 +10,9 @@
     "login": "carol",
     "home": "<root>/home/.claude-work",
     "run_dir": "<root>/home/.agx/runs/<run-id>",
+    "login_kind": "oauth-token",
+    "in_use": "",
+    "next": "carol",
     "live": {
       "run_id": "<run-id>",
       "agent": "claude",

@@ -151,6 +151,8 @@ note      installed Claude Code version unknown; flags not checked
 
 `agx live list` shows the run; its `NEXT` is the pool and `IN USE` the member Claude got last.
 
+Which account is my session on? Run `! agx whoami` inside Claude: it shows `login:  auto (pool)`, `in use:` (the member whose key Claude got last) and `next:` when a switch is pending. /status only says apiKeyHelper, and Claude's own guess reads the keychain login, not the key it uses.
+
 ## Step 4: steer it while sessions run
 
 agx reads `config.jsonc` on every key request, so a change applies from the next refresh, without restarting anything:

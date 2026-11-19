@@ -254,7 +254,7 @@ $ agx whoami
 session:  not inside a session started by agx (AGX_RUN_ID is not set)
 ```
 
-Inside a session started by agx, it prints the run's id, agent, profile, login and home as `label:  value` lines; `agx whoami --json --field data.login` gives one value for a prompt or status line. The `--json` data also holds `run_dir` (when the run folder exists in this config dir), `live` (the live login state of a `--live-login` run) and `terminal_logins` (the `AGX_LOGIN` variables of this shell).
+Inside a session started by agx, it prints the run's id, agent, profile, login and home as `label:  value` lines; `agx whoami --json --field data.login` gives one value for a prompt or status line. In a pool or `--live-login` session it adds `in use:` (the login, or the pool member, whose key the agent got last) and `next:` when the next key request will get another one (a pin, a run's `--pool-force`, or the member the pool picks now from the login-usage cache), and marks a pool login `(pool)`: the only way to see from inside Claude which account it is on, since /status says only apiKeyHelper. The `--json` data also holds `login_kind`, `in_use`, `next`, `run_dir` (when the run folder exists in this config dir), `live` (the live login state of a `--live-login` or pool run) and `terminal_logins` (the `AGX_LOGIN` variables of this shell).
 
 ### Try it: agx whoami
 

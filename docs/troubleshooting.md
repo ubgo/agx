@@ -219,6 +219,10 @@ An `api-key-helper` login holds a command the agent runs, not a token, and `agx 
 
 A live-login session asks `agx credential` for its key at every refresh. When the chosen login does not resolve to one token, `agx credential` prints nothing and exits non-zero, and Claude Code treats that as a hard failure: it tries three times, then exits 1. It does not fall back to the home's own login. Claude's `/status` shows agx's one-line reason, for example `agx: login alice: token is empty (try: agx login check --id alice --no-probe)`. Run that check, fix the login, and resume the conversation (`agx resume --last --login NAME --live-login`); the ended run cannot be switched back. Check a login before you switch to it. See [a helper that fails stops the session](guides/live-login.md#a-helper-that-fails-stops-the-session). A helper of your own that runs `agx login token --id NAME` fails the same way when that login does not resolve: `agx login check --id NAME --no-probe` shows why.
 
+### Which account is my session on?
+
+Run `! agx whoami` inside Claude (the `!` runs it in the session's shell, which has `AGX_RUN_ID`). In a pool or `--live-login` session it shows `login:  auto (pool)`, `in use:` (the login or member whose key Claude got last) and `next:` when a switch is pending; `--json` has `login_kind`, `in_use` and `next`. /status only says apiKeyHelper, and Claude's own guess reads the keychain login, not the key it uses.
+
 ### "pool auto: no member is usable: …"
 
 Every member of the login pool is skipped, and the line lists each with its reasons (`status is limit-reached`, `week is 70% (cap 70%)`, `disabled in config`). `agx login pick --id auto` shows the same as a report; `agx login token` and the key helper of a running session exit 1 with it, so Claude's request fails. Wait for a reset, raise a cap, add a member, or force one: `agx login edit --id auto --pool-force NAME` (clear it later with `--pool-force ''`). See [the rules](guides/login-pool.md#the-rules).

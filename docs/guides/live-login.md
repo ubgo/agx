@@ -142,6 +142,8 @@ agx run --login auto                 # live without --live-login
 agx login pick --id auto             # which member the next key comes from, and why
 ```
 
+Which account is my session on? Run `! agx whoami` inside Claude: `in use:` is the login whose key Claude got last, and `next:` the one it gets at its next refresh when a switch is pending. /status only says apiKeyHelper, and Claude's own guess reads the keychain login, not the key it uses.
+
 ## When a switch applies
 
 `agx live use` only records the choice. Claude Code picks it up the next time it runs its key helper, which happens:
