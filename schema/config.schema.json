@@ -1030,6 +1030,14 @@
         },
         "date_format": {
           "type": "string"
+        },
+        "duration_format": {
+          "type": "string",
+          "enum": [
+            "truncate",
+            "round",
+            "minutes"
+          ]
         }
       },
       "additionalProperties": false

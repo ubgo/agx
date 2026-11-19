@@ -33,11 +33,12 @@ import (
 // relative times are measured from, the --tz zone, the time format, the
 // date format of its clock and date parts, and the colours.
 type usageView struct {
-	now    time.Time
-	loc    *time.Location
-	format string
-	date   datefmt.Format
-	st     render.Style
+	now      time.Time
+	loc      *time.Location
+	format   string
+	date     datefmt.Format
+	duration human.DurationMode
+	st       render.Style
 }
 
 // viewOf is the view of a report painted with st.
@@ -50,8 +51,23 @@ func viewOf(rep app.UsageReport, st render.Style) usageView {
 	if date.IsZero() {
 		date = datefmt.Preset(datefmt.PresetLong)
 	}
-	return usageView{now: rep.Now, loc: loc, format: cmp.Or(rep.TimeFormat, config.TimeRelative), date: date, st: st}
+	return usageView{now: rep.Now, loc: loc, format: cmp.Or(rep.TimeFormat, config.TimeRelative), date: date, duration: durationMode(rep.DurationFormat), st: st}
 }
+
+// durationMode maps usage.duration_format / --duration-format to the
+// formatter's mode; "" and unknown values (refused earlier) truncate.
+func durationMode(s string) human.DurationMode {
+	switch s {
+	case config.DurationRound:
+		return human.DurationRound
+	case config.DurationMinutes:
+		return human.DurationMinutes
+	}
+	return human.DurationTruncate
+}
+
+// until is a relative time in the view's duration mode.
+func (v usageView) until(d time.Duration) string { return human.UntilAs(d, v.duration) }
 
 // Bars view layout (v0.3's render.Usage).
 const (
@@ -201,7 +217,7 @@ func resetPhrase(at time.Time, v usageView) string {
 	case config.TimeRelative, config.TimeBoth:
 		// A reset already passed (an old cached reading) reads "resets
 		// now", not "resets in now".
-		if human.Until(at.Sub(v.now)) == human.Now {
+		if v.until(at.Sub(v.now)) == human.Now {
 			return resetsWord + human.Now
 		}
 		return resetsInWord + resetText(at, v)
@@ -230,13 +246,13 @@ func resetText(at time.Time, v usageView) string {
 	case config.TimeAbsolute:
 		return v.date.Date(local)
 	case config.TimeBoth:
-		rel := human.Until(at.Sub(v.now))
+		rel := v.until(at.Sub(v.now))
 		if rel == human.Now {
 			return rel
 		}
 		return rel + " (" + bothWhen(local, v) + ")"
 	}
-	return human.Until(at.Sub(v.now))
+	return v.until(at.Sub(v.now))
 }
 
 // weekdayClock is "Tue 05:30": the weekday, then the date format's clock;

@@ -57,3 +57,43 @@ func TestConversationLine(t *testing.T) {
 		t.Errorf("ShortID %q", got)
 	}
 }
+
+// TestUntilAsModes: each duration mode at its boundaries. Under a day
+// every mode keeps the hr/min rule (truncated to the minute); from a day
+// truncate drops the minutes, round rounds to the nearest hour (:29
+// down, :30 and :31 up, rolling over into the next day), minutes keeps
+// them.
+func TestUntilAsModes(t *testing.T) {
+	const (
+		m = time.Minute
+		h = time.Hour
+		d = 24 * time.Hour
+	)
+	cases := []struct {
+		in                      time.Duration
+		truncate, round, minute string
+	}{
+		{0, "now", "now", "now"},
+		{30 * time.Second, "now", "now", "now"},
+		{12*m + 59*time.Second, "12 min", "12 min", "12 min"},
+		{23*h + 59*m + 40*time.Second, "23 hr 59 min", "23 hr 59 min", "23 hr 59 min"},
+		{d, "1 d 0 hr", "1 d 0 hr", "1 d 0 hr 0 min"},
+		{d + 2*h + 29*m, "1 d 2 hr", "1 d 2 hr", "1 d 2 hr 29 min"},
+		{d + 2*h + 30*m, "1 d 2 hr", "1 d 3 hr", "1 d 2 hr 30 min"},
+		{d + 2*h + 31*m, "1 d 2 hr", "1 d 3 hr", "1 d 2 hr 31 min"},
+		{d + 2*h + 52*m, "1 d 2 hr", "1 d 3 hr", "1 d 2 hr 52 min"},
+		{d + 23*h + 29*m, "1 d 23 hr", "1 d 23 hr", "1 d 23 hr 29 min"},
+		{d + 23*h + 40*m, "1 d 23 hr", "2 d 0 hr", "1 d 23 hr 40 min"},
+		{6*d + 23*h + 59*m + 59*time.Second, "6 d 23 hr", "7 d 0 hr", "6 d 23 hr 59 min"},
+	}
+	for _, c := range cases {
+		for mode, want := range map[human.DurationMode]string{human.DurationTruncate: c.truncate, human.DurationRound: c.round, human.DurationMinutes: c.minute} {
+			if got := human.UntilAs(c.in, mode); got != want {
+				t.Errorf("UntilAs(%s, %d) = %q, want %q", c.in, mode, got, want)
+			}
+		}
+		if got := human.Until(c.in); got != c.truncate {
+			t.Errorf("Until(%s) = %q, want the truncate form %q", c.in, got, c.truncate)
+		}
+	}
+}

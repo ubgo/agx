@@ -124,6 +124,36 @@ you@example.com  Max  personal · claude  ~/.claude  cached 30 min ago
   Sonnet             █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░    3% used  resets Wed 25 Nov 18:00
 ```
 
+A relative time a day or more away drops its minutes by default ("2 d 4 hr" for 2 d 4 hr 30 min, as agx v0.3 and claude.ai write it), so a reset can look up to an hour earlier than it is. `--duration-format round` rounds to the nearest hour instead, and `minutes` keeps the minutes; under a day every mode reads the same. Keep a choice with `agx config set --key usage.duration_format --value round`:
+
+<!-- snippet: examples/acct-usage-times/session.txt#duration -->
+```sh
+$ agx usage --cached --profile personal --duration-format truncate
+you@example.com  Max  personal · claude  ~/.claude  cached 30 min ago
+  Current session    ████░░░░░░░░░░░░░░░░░░░░░░░░░░   13% used  resets in 3 hr 10 min
+  Weekly limits
+  All models         ███████████████░░░░░░░░░░░░░░░   49% used  resets in 2 d 4 hr
+  Sonnet             █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░    3% used  resets in 7 d 6 hr
+
+$ agx usage --cached --profile personal --duration-format round
+you@example.com  Max  personal · claude  ~/.claude  cached 30 min ago
+  Current session    ████░░░░░░░░░░░░░░░░░░░░░░░░░░   13% used  resets in 3 hr 10 min
+  Weekly limits
+  All models         ███████████████░░░░░░░░░░░░░░░   49% used  resets in 2 d 5 hr
+  Sonnet             █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░    3% used  resets in 7 d 6 hr
+
+$ agx usage --cached --profile personal --duration-format minutes
+you@example.com  Max  personal · claude  ~/.claude  cached 30 min ago
+  Current session    ████░░░░░░░░░░░░░░░░░░░░░░░░░░   13% used  resets in 3 hr 10 min
+  Weekly limits
+  All models         ███████████████░░░░░░░░░░░░░░░   49% used  resets in 2 d 4 hr 30 min
+  Sonnet             █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░    3% used  resets in 7 d 6 hr 0 min
+
+$ agx usage --cached --profile personal --duration-format hours
+agx: --duration-format "hours": use one of truncate, round, minutes
+[exit 2]
+```
+
 `--date-format` takes a preset (`iso`, `short`, `long` (the default for usage), `us`) or tokens: `YYYY`, `MM`, `MMM` (Nov), `DD`, `D`, `ddd` (Thu), `dddd` (Thursday), `HH`, `H`, `hh`, `h`, `mm`, `ss`, `a` (am/pm), `A` (AM/PM), with any punctuation between them and words in `[brackets]`. The clock part of a format (from its first to its last time token) is what `day` and `both` show, so `us` turns them to the 12-hour clock; durations never change:
 
 <!-- snippet: examples/acct-usage-times/session.txt#formats -->

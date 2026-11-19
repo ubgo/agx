@@ -20,6 +20,7 @@ Plan usage, one row per configured home: the 5-hour window, the weekly window an
 | `--sort` | `login`, `left`, `5h`, `5h-reset`, `weekly`, `weekly-reset`, `day` or `status`; a `-` prefix sorts descending; repeat for tie-breaks |
 | `--tz` | an IANA time zone for reset days and dates; default this machine's |
 | `--time-format` | how reset times read: `relative` ("2 hr 50 min", the default), `day` ("Tue 05:30"), `absolute` ("Tue 24 Nov 05:30") or `both` ("3 hr 10 min (22:20)"; the weekday is added when the reset is not today, "1 d 4 hr (Thu 23:30)", and the date when it is more than six days away); default config `usage.time_format`, else `relative`. The clock and date parts, and `RESETS ON`, follow the global `--date-format` (default config `usage.date_format`, else `date_format`, else `long`); see [change how times read](../guides/usage.md#step-4-change-how-times-read) |
+| `--duration-format` | how a relative time a day or more away reads: `truncate` ("1 d 2 hr", the default, as agx v0.3 and claude.ai), `round` (to the nearest hour, "1 d 3 hr" for 1 d 2 hr 52 min) or `minutes` ("1 d 2 hr 52 min"); under a day every mode reads "3 hr 10 min"; default config `usage.duration_format`, else `truncate`; another value is refused (exit 2) |
 
 ```sh
 agx usage

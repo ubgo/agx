@@ -57,9 +57,17 @@ func (c *cliCtx) usageCmd() *cobra.Command {
 	f.BoolVar(&o.LoginPicker, "login-picker", false, "tick logins in a checklist first (cost Q; terminal)")
 	f.BoolVar(&table, "table", false, "one compact row per home or login")
 	f.StringArrayVar(&o.Sort, "sort", nil, "order rows: "+strings.Join(app.SortKeyValues(), ", ")+"; - prefix for high to low; repeat for tie-breaks")
+	timeFlags(cmd, &o.TimeOptions)
+	return fields(cmd, usageFields...)
+}
+
+// timeFlags declares how reset times read, shared by agx usage and agx
+// login pick (the global --date-format completes the set).
+func timeFlags(cmd *cobra.Command, o *app.TimeOptions) {
+	f := cmd.Flags()
 	f.StringVar(&o.TZ, "tz", "", "IANA zone for reset days and dates (default: this machine's)")
 	f.StringVar(&o.TimeFormat, "time-format", "", "how reset times read: "+strings.Join(config.TimeFormatValues(), ", ")+" (default: config usage.time_format, else relative)")
-	return fields(cmd, usageFields...)
+	f.StringVar(&o.DurationFormat, "duration-format", "", "how a reset a day or more away reads: "+strings.Join(config.DurationFormatValues(), ", ")+" (default: config usage.duration_format, else truncate)")
 }
 
 // Text cells.

@@ -1,7 +1,6 @@
 package app
 
 import (
-	"cmp"
 	"context"
 	"fmt"
 	"path/filepath"
@@ -50,16 +49,9 @@ type UsageOptions struct {
 	// Sort orders the rows: keys of SortKeyValues, "-" prefix descending,
 	// repeated for tie-breaks (--sort).
 	Sort []string
-	// TZ is the IANA zone reset days are read in (--tz); "" = local.
-	TZ string
-	// TimeFormat is how reset times read (--time-format): one of
-	// config.TimeFormatValues; "" = config usage.time_format, else
-	// relative.
-	TimeFormat string
-	// DateFormat is how the clock and date parts of reset times read
-	// (--date-format, datefmt tokens or a preset); "" = config
-	// usage.date_format, else the top-level date_format, else "long".
-	DateFormat string
+	// TimeOptions are --tz, --time-format, --date-format and
+	// --duration-format: how reset times read.
+	TimeOptions
 }
 
 // RowKind says what a usage row measures. Closed set.
@@ -248,6 +240,9 @@ type UsageReport struct {
 	// absolute, both, RESETS ON): --date-format, else config
 	// usage.date_format, else date_format, else the long preset.
 	DateFormat datefmt.Format
+	// DurationFormat is how relative times of a day or more read:
+	// --duration-format, else usage.duration_format, else truncate.
+	DurationFormat string
 	// Now is the clock the relative times are measured from (the Host
 	// clock, fixed in tests).
 	Now time.Time
@@ -272,32 +267,21 @@ func (a *App) Usage(ctx context.Context, o UsageOptions) (UsageReport, error) {
 	if err != nil {
 		return rep, err
 	}
-	if rep.Loc, err = ParseTZ(o.TZ); err != nil {
+	if err := checkTimeOptions(o.TimeOptions); err != nil {
 		return rep, err
 	}
 	if err := checkUsageFlags(o); err != nil {
 		return rep, err
 	}
-	if o.TimeFormat != "" && !slices.Contains(config.TimeFormatValues(), o.TimeFormat) {
-		return rep, apperr.Usage(fmt.Sprintf("--time-format %q: use one of %s", o.TimeFormat, strings.Join(config.TimeFormatValues(), ", ")))
-	}
-	if o.DateFormat != "" {
-		if _, err := datefmt.Parse(o.DateFormat); err != nil {
-			return rep, apperr.Usage(fmt.Sprintf("--date-format %q: %s", o.DateFormat, err))
-		}
-	}
 	cfg, err := a.Config()
 	if err != nil {
 		return rep, err
 	}
-	rep.Now = a.Now()
-	rep.TimeFormat = cmp.Or(o.TimeFormat, cfg.Config.Usage.TimeFormat, config.TimeRelative)
-	// The flag was checked above and every configured value when the
-	// config loaded (config.CrossCheck); the error stays handled anyway.
-	spec := cmp.Or(o.DateFormat, cfg.Config.Usage.DateFormat, cfg.Config.DateFormat, datefmt.PresetLong)
-	if rep.DateFormat, err = datefmt.Parse(spec); err != nil {
-		return rep, apperr.Usage(fmt.Sprintf("date format %q: %s", spec, err))
+	tv, err := a.timeView(cfg.Config, o.TimeOptions)
+	if err != nil {
+		return rep, err
 	}
+	rep.Loc, rep.Now, rep.TimeFormat, rep.DateFormat, rep.DurationFormat = tv.Loc, tv.Now, tv.TimeFormat, tv.DateFormat, tv.DurationFormat
 	reg, _ := a.Registry()
 	ags, err := scopeAgents(reg.All(), cfg.Config, o)
 	if err != nil {

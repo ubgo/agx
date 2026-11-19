@@ -15,7 +15,7 @@ go test -count=1 ./internal/docscheck/ -run 'TestExamples/acct-usage-times$'
 | File | What it is |
 |---|---|
 | [`config.jsonc`](config.jsonc) | One Claude profile, `personal`, on `~/.claude`. |
-| [`session.txt`](session.txt) | Regions: `relative`, `both`, `day-absolute`, `formats`, `config`, `refusals`. |
+| [`session.txt`](session.txt) | Regions: `relative`, `both`, `day-absolute`, `duration` (`--duration-format truncate`, `round`, `minutes` and a refusal), `formats`, `config`, `refusals`. |
 | [`home/.claude.json`](home/.claude.json) | The home's account file with a reading taken 30 minutes before the fixed clock (fake): the session window resets at 15:10 today, the weekly window on Friday, the Sonnet weekly window in seven days. |
 
 ## Related

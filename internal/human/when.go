@@ -23,14 +23,40 @@ const Now = "now"
 // JustNow is what Ago prints for under a minute ago.
 const JustNow = "just now"
 
+// DurationMode is how Until writes a duration of a day or more; under a
+// day every mode reads "4 hr 38 min" / "12 min".
+type DurationMode uint8
+
+// Duration modes (usage.duration_format, --duration-format).
+const (
+	// DurationTruncate drops the minutes: "1 d 2 hr" for 1 d 2 hr 52 min, as agx
+	// v0.3 and claude.ai print it (the default).
+	DurationTruncate DurationMode = iota
+	// DurationRound rounds to the nearest hour: "1 d 3 hr" for 1 d 2 hr 52 min,
+	// so a reset at 13:30 seen at 10:37 the day before does not read as
+	// 12:30.
+	DurationRound
+	// DurationMinutes keeps the minutes: "1 d 2 hr 52 min".
+	DurationMinutes
+)
+
 // Until renders a duration the way claude.ai does: "4 hr 38 min",
 // "5 d 3 hr", "12 min"; zero or negative reads "now". Truncated to the
 // minute, so it never claims more time than is left.
-func Until(d time.Duration) string {
+func Until(d time.Duration) string { return UntilAs(d, DurationTruncate) }
+
+// UntilAs is Until with the mode for a day or more. Every mode first
+// truncates to the minute, so under a day all three read the same.
+func UntilAs(d time.Duration, mode DurationMode) string {
 	d = d.Truncate(time.Minute)
 	switch {
 	case d <= 0:
 		return Now
+	case d >= day && mode == DurationMinutes:
+		return fmt.Sprintf("%d d %d hr %d min", d/day, (d%day)/time.Hour, (d%time.Hour)/time.Minute)
+	case d >= day && mode == DurationRound:
+		d = d.Round(time.Hour)
+		return fmt.Sprintf("%d d %d hr", d/day, (d%day)/time.Hour)
 	case d >= day:
 		return fmt.Sprintf("%d d %d hr", d/day, (d%day)/time.Hour)
 	case d >= time.Hour:

@@ -2,6 +2,12 @@
 
 All notable changes to agx are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and agx uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `agx usage --duration-format truncate|round|minutes` and the config key `usage.duration_format`: how a reset a day or more away reads. `truncate` is the default and unchanged ("1 d 2 hr"); `round` rounds to the nearest hour ("1 d 3 hr" for 1 d 2 hr 52 min); `minutes` keeps the minutes ("1 d 2 hr 52 min"). Another value is refused (exit 2) with the list.
+
 ## [0.4.7] - 2026-11-19
 
 ### Added

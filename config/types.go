@@ -73,6 +73,23 @@ type UsageConfig struct {
 	// times (datefmt tokens or a preset); "" = the top-level date_format,
 	// else "long". --date-format overrides it for one run.
 	DateFormat string `json:"date_format,omitempty"`
+	// DurationFormat is how a relative time of a day or more reads:
+	// "truncate" (the default, "1 d 2 hr"), "round" (nearest hour, "1 d 3
+	// hr") or "minutes" ("1 d 2 hr 52 min"). --duration-format overrides
+	// it for one run.
+	DurationFormat string `json:"duration_format,omitempty" enum:"truncate,round,minutes"`
+}
+
+// duration_format values (usage.duration_format, --duration-format).
+const (
+	DurationTruncate = "truncate"
+	DurationRound    = "round"
+	DurationMinutes  = "minutes"
+)
+
+// DurationFormatValues is the canonical list, default first.
+func DurationFormatValues() []string {
+	return []string{DurationTruncate, DurationRound, DurationMinutes}
 }
 
 // time_format values (usage.time_format, --time-format).

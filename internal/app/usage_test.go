@@ -230,7 +230,7 @@ func rowNamed(t *testing.T, rows []UsageRow, name string) UsageRow {
 // name, pi's "usage not modelled" row, and the --json data shape.
 func TestUsageLiveSharedHomeOnceGolden(t *testing.T) {
 	m, fv := sharedMachine(t, map[string]account{tokPersonal: {session: 34, weekly: 12}, tokWork: {session: 5, weekly: 40}})
-	rep, err := m.app(t).Usage(context.Background(), UsageOptions{TZ: "UTC"})
+	rep, err := m.app(t).Usage(context.Background(), UsageOptions{TimeOptions: TimeOptions{TZ: "UTC"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -408,7 +408,7 @@ func TestUsageFlagRefusals(t *testing.T) {
 		"login+all":          {Logins: []string{"carol"}, AllLogins: true},
 		"profile+all":        {Profiles: []string{"work"}, AllLogins: true},
 		"sort":               {Sort: []string{"lefty"}},
-		"tz":                 {TZ: "Mars/Olympus"},
+		"tz":                 {TimeOptions: TimeOptions{TZ: "Mars/Olympus"}},
 		"profile+agent":      {Profiles: []string{"work"}, Agent: "pi"},
 		"picker without tty": {LoginPicker: true},
 	} {
@@ -471,7 +471,7 @@ func TestUsageReportClockAndTimeFormat(t *testing.T) {
 	if !rep.Now.Equal(agenttest.FixedNow()) || rep.TimeFormat != config.TimeDay {
 		t.Errorf("now %v format %q", rep.Now, rep.TimeFormat)
 	}
-	if rep, _ = m.app(t).Usage(context.Background(), UsageOptions{TimeFormat: config.TimeAbsolute}); rep.TimeFormat != config.TimeAbsolute {
+	if rep, _ = m.app(t).Usage(context.Background(), UsageOptions{TimeOptions: TimeOptions{TimeFormat: config.TimeAbsolute}}); rep.TimeFormat != config.TimeAbsolute {
 		t.Errorf("flag over config: %q", rep.TimeFormat)
 	}
 	m2 := newMachine(t, `{"version":1,"profiles":{"api":{"agent":"claude","home":"~/.claude-api","billing":"api"}}}`)
@@ -479,7 +479,7 @@ func TestUsageReportClockAndTimeFormat(t *testing.T) {
 	if rep, _ = m2.app(t).Usage(context.Background(), UsageOptions{}); rep.TimeFormat != config.TimeRelative {
 		t.Errorf("default: %q", rep.TimeFormat)
 	}
-	if _, err := m2.app(t).Usage(context.Background(), UsageOptions{TimeFormat: "weekly"}); err == nil || apperr.As(err).Class != apperr.ClassUsage {
+	if _, err := m2.app(t).Usage(context.Background(), UsageOptions{TimeOptions: TimeOptions{TimeFormat: "weekly"}}); err == nil || apperr.As(err).Class != apperr.ClassUsage {
 		t.Errorf("unknown format: %v", err)
 	}
 }
@@ -500,7 +500,7 @@ func TestUsageReportDateFormat(t *testing.T) {
 	} {
 		m := newMachine(t, c.cfg)
 		m.f.HomeDir(".claude-api")
-		rep, err := m.app(t).Usage(context.Background(), UsageOptions{DateFormat: c.flag})
+		rep, err := m.app(t).Usage(context.Background(), UsageOptions{TimeOptions: TimeOptions{DateFormat: c.flag}})
 		if err != nil {
 			t.Fatalf("%s: %v", c.name, err)
 		}
@@ -510,7 +510,7 @@ func TestUsageReportDateFormat(t *testing.T) {
 	}
 	m := newMachine(t, `{"version":1,`+profiles+`}`)
 	m.f.HomeDir(".claude-api")
-	_, err := m.app(t).Usage(context.Background(), UsageOptions{DateFormat: "YYYY-Q"})
+	_, err := m.app(t).Usage(context.Background(), UsageOptions{TimeOptions: TimeOptions{DateFormat: "YYYY-Q"}})
 	if e := apperr.As(err); err == nil || e.Class != apperr.ClassUsage || !strings.Contains(e.Message, `--date-format "YYYY-Q": unknown token "Q"; tokens: YYYY`) {
 		t.Errorf("bad flag: %v", err)
 	}
@@ -529,5 +529,32 @@ func TestClassifyUsageErrStripsLibraryPrefix(t *testing.T) {
 	status, reason := classifyUsageErr(err)
 	if status != StatusExpired || reason != "login expired at 2026-11-17T09:00:00Z: run claude once in this home to refresh it" {
 		t.Errorf("status %s reason %q", status, reason)
+	}
+}
+
+// TestUsageReportDurationFormat: --duration-format beats config
+// usage.duration_format beats truncate; another value is exit 2 naming
+// the values, and the config schema refuses one at load.
+func TestUsageReportDurationFormat(t *testing.T) {
+	m := newMachine(t, `{"version":1,"usage":{"duration_format":"round"},"profiles":{"api":{"agent":"claude","home":"~/.claude-api","billing":"api"}}}`)
+	m.f.HomeDir(".claude-api")
+	if rep, err := m.app(t).Usage(context.Background(), UsageOptions{}); err != nil || rep.DurationFormat != config.DurationRound {
+		t.Fatalf("config: %q %v", rep.DurationFormat, err)
+	}
+	if rep, _ := m.app(t).Usage(context.Background(), UsageOptions{TimeOptions: TimeOptions{DurationFormat: config.DurationMinutes}}); rep.DurationFormat != config.DurationMinutes {
+		t.Errorf("flag over config: %q", rep.DurationFormat)
+	}
+	m2 := newMachine(t, `{"version":1,"profiles":{"api":{"agent":"claude","home":"~/.claude-api","billing":"api"}}}`)
+	m2.f.HomeDir(".claude-api")
+	if rep, _ := m2.app(t).Usage(context.Background(), UsageOptions{}); rep.DurationFormat != config.DurationTruncate {
+		t.Errorf("default: %q", rep.DurationFormat)
+	}
+	_, err := m2.app(t).Usage(context.Background(), UsageOptions{TimeOptions: TimeOptions{DurationFormat: "hours"}})
+	if err == nil || apperr.As(err).Class != apperr.ClassUsage || !strings.Contains(err.Error(), "truncate, round, minutes") {
+		t.Errorf("unknown: %v", err)
+	}
+	m3 := newMachine(t, `{"version":1,"usage":{"duration_format":"hours"}}`)
+	if _, err := m3.app(t).Usage(context.Background(), UsageOptions{}); err == nil || apperr.As(err).Code != apperr.CodeConfig {
+		t.Errorf("bad config value: %v", err)
 	}
 }
