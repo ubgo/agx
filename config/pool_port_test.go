@@ -52,3 +52,63 @@ func problemMessages(err error) []string {
 	}
 	return out
 }
+
+// TestPortStrictConfig is the selector's describe("no silent surprises:
+// bad config is an error, never ignored"), on the pool block: each case
+// is refused at load (schema or cross-check), never ignored.
+func TestPortStrictConfig(t *testing.T) {
+	pool := func(body string) string {
+		return `"auto": { "agents": ["claude"], "kind": "pool", "pool": { "own": ["alice"], "shared": ["carol"]` + body + ` } }`
+	}
+	refused := func(t *testing.T, body string, want ...string) {
+		t.Helper()
+		_, err := parsePool(t, pool(body))
+		if err == nil {
+			t.Fatalf("accepted: %s", body)
+		}
+		all := err.Error() + "\n" + strings.Join(problemMessages(err), "\n")
+		for _, w := range want {
+			if !strings.Contains(all, w) {
+				t.Errorf("%s: %v\nmissing %q", body, all, w)
+			}
+		}
+	}
+	t.Run("unknown top-level setting (typo) is an error", func(t *testing.T) {
+		refused(t, `, "shared_borrow_window_hour": "24h"`, "shared_borrow_window_hour")
+		refused(t, `, "Force": "alice"`, "Force")
+	})
+	t.Run("unknown key inside accounts or defaults is an error", func(t *testing.T) {
+		refused(t, `, "accounts": { "alice": { "weekly": 70 } }`, "weekly")
+		refused(t, `, "accounts": { "alice": { "day": 10 } }`, "day")
+		refused(t, `, "defaults": { "enabled": false }`, "enabled")
+	})
+	t.Run("enabled must be a real boolean", func(t *testing.T) {
+		refused(t, `, "accounts": { "alice": { "enabled": "false" } }`, "enabled")
+		refused(t, `, "accounts": { "alice": { "enabled": 0 } }`, "enabled")
+		refused(t, `, "accounts": { "alice": { "enabled": null } }`, "enabled is null")
+	})
+	t.Run("caps must be numbers from 0 to 100", func(t *testing.T) {
+		for _, v := range []string{`"50"`, `"abc"`, `null`, `-1`, `101`, `1e400`} {
+			refused(t, `, "accounts": { "alice": { "week": `+v+` } }`, "week")
+			refused(t, `, "defaults": { "short": `+v+` }`, "short")
+		}
+	})
+	t.Run("other settings are type-checked", func(t *testing.T) {
+		refused(t, `, "short_unavailable_at_percent": 120`, "short_unavailable_at_percent")
+		refused(t, `, "short_unavailable_at_percent": "99"`, "short_unavailable_at_percent")
+		refused(t, `, "short_unavailable_at_percent": null`, "short_unavailable_at_percent is null")
+		refused(t, `, "shared_borrow_window": 48`, "shared_borrow_window")
+		refused(t, `, "force": ""`, "force is empty")
+		refused(t, `, "accounts": []`, "accounts")
+		refused(t, `, "accounts": { "alice": 70 }`, "alice")
+		refused(t, `, "defaults": []`, "defaults")
+		if _, err := parsePool(t, `"auto": { "agents": [""], "kind": "pool", "pool": { "own": ["alice"] } }`); err == nil {
+			t.Error(`agents [""] accepted`)
+		}
+	})
+	t.Run("a valid full config passes", func(t *testing.T) {
+		if _, err := parsePool(t, pool(`, "force": null, "accounts": { "alice": { "short": 0, "week": 100, "enabled": true } }, "defaults": { "short": 50, "week": 70 }, "shared_borrow_window": "48h", "short_unavailable_at_percent": 99, "usage_max_age": "60s", "key_ttl": "60s", "picker": { "command": "true", "timeout": "5s" }, "log": "~/p.log"`)); err != nil {
+			t.Fatal(err)
+		}
+	})
+}

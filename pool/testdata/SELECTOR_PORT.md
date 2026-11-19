@@ -1,10 +1,10 @@
 # Selector test port
 
-The login pool ports a stand-alone account selector (Node, `agx-pick`) whose test suite had 119 cases in five files. Every case is listed here with the Go test that covers it, or why it does not apply to agx. Names in the selector's snapshot tests are replaced by the fake names of `snapshot-2026-11-18-anon.json` (same numbers, statuses and resets).
+The login pool ports a stand-alone account selector (Node, `agx-pick`), matched at its commit `f7e17c6` ("Make account picking strict and prove it with randomised and mutation tests"). Its suite has 144 cases in six files: `selector.test.mjs` (68), `index.test.mjs` (26), `tokens.test.mjs` (19), `cli.test.mjs` (13), `flow.test.mjs` (12) and `property.test.mjs` (6), plus a mutation check (41 breaks). Every case is listed here with the Go test that covers it, or why it does not apply to agx. Names in the selector's snapshot tests are replaced by the fake names of `snapshot-2026-11-18-anon.json` (same numbers, statuses and resets).
 
 Paths are relative to the repository root. `TestPortX/name` is a subtest whose name is the selector test's name.
 
-## selector.test.mjs (49): the rules
+## selector.test.mjs (68): the rules
 
 | # | Selector test | Go test |
 |---|---|---|
@@ -57,6 +57,43 @@ Paths are relative to the repository root. `TestPortX/name` is a subtest whose n
 | 47 | picks grace, then ivan, carol, alice (names anonymised) | `TestPortSnapshot/picks_grace,_then_ivan,_carol,_alice` |
 | 48 | with no borrow window, own accounts come first by reset | `TestPortSnapshot/with_no_borrow_window…` |
 | 49 | after grace and ivan are disabled, carol is next (names anonymised) | `TestPortSnapshot/after_grace_and_ivan_are_disabled,_carol_is_next` |
+
+### Added at f7e17c6: strict config, odd data, defaults (19)
+
+| # | Selector test | Go test |
+|---|---|---|
+| 50 | unknown top-level setting (typo) is an error | `config/pool_port_test.go` `TestPortStrictConfig/unknown_top-level_setting…` (schema strict keys, at the line) |
+| 51 | unknown key inside accounts or defaults is an error | `TestPortStrictConfig/unknown_key_inside_accounts_or_defaults…` |
+| 52 | enabled must be a real boolean | `TestPortStrictConfig/enabled_must_be_a_real_boolean` (`"false"`, `0`, `null`) |
+| 53 | caps must be numbers from 0 to 100 | `TestPortStrictConfig/caps_must_be_numbers_from_0_to_100` (`"50"`, `"abc"`, `null`, −1, 101, an overflowing number; JSON has no NaN or Infinity, and `pool.Config.Validate` refuses both: `pool/pool_test.go` `TestValidate/NaN_cap`, `…/infinite_cutoff`) |
+| 54 | other settings are type-checked | `TestPortStrictConfig/other_settings_are_type-checked` (cutoff 120, `"99"`, `null`; window `48`; `force ""`; `accounts []`, `{"alice": 70}`; `defaults []`; agent `""`) |
+| 55 | a valid full config passes | `TestPortStrictConfig/a_valid_full_config_passes` |
+| 56 | cap 0 always blocks; cap 100 blocks only at 100 | `pool/selector_port_test.go` `TestPortOddData/cap_0_always_blocks…` |
+| 57 | usage that isn't a number blocks the account instead of skipping the cap | `TestPortOddData/usage_that_isn't_a_number…` (NaN, ±Inf; reason `week usage is unreadable`, agx's wording without "in agx result") |
+| 58 | windows missing or not a list: account usable, reset unknown, sorted last | `TestPortOddData/windows_missing_or_not_a_list…` (a reading without windows; "not a list" cannot occur in a typed reading) |
+| 59 | unreadable reset time: noted, treated as unknown, sorted last | `TestPortOddData/unreadable_reset_time…` (a zero time); in the cache file an unreadable time makes the whole cache unreadable: it is ignored with a warning and rewritten (`login/usagecache_test.go` `TestUsageCacheBrokenOrForeign`) |
+| 60 | both resets unknown: config order | `TestPortOddData/both_resets_unknown…` |
+| 61 | duplicate login record: first one used, with a warning | `TestPortOddData/duplicate_login_record…`: does not apply as written; readings are a map keyed by login name and the cache and config are JSON objects, so one reading per name holds by type |
+| 62 | record order from agx never changes the pick | `TestPortOddData/record_order_from_agx_never_changes_the_pick` (200 runs over Go's randomised map order) |
+| 63 | forced name that exists only for another agent is an error | `TestPortOddData/forced_name_that_exists_only_for_another_agent…` (`ErrForcedMissing`); at load, `config/pool_test.go` `TestPoolProblems/other_agent's_member` and the force check |
+| 64 | bad now is an error, not a silent wrong order | `TestPortOddData/bad_now…` (`ErrBadNow` for a zero `Options.Now`); CLI `--now yesterday`: `TestLoginPickFlags` |
+| 65 | other statuses all block | `TestPortOddData/other_statuses_all_block` |
+| 66 | 5h safety cutoff defaults to 99% | `TestPortDefaults/5h_safety_cutoff_defaults_to_99%` |
+| 67 | borrow window defaults to 48h | `TestPortDefaults/borrow_window_defaults_to_48h` |
+| 68 | caps default to 5h 50% and week 70% | `TestPortDefaults/caps_default_to_5h_50%_and_week_70%` |
+
+## property.test.mjs (6): randomised, against an independent implementation
+
+`pool/property_port_test.go` `TestPortRandomised`: seeded (`SEED=n` replays one, `CASES=n` runs more; 4000 by default, 50 000 also run), with a reference implementation written separately in the test. Generated readings include missing ones, no windows, usage that is not a number, stale and unreadable resets and bad statuses; the selector's records of other agents and kinds have no agx equivalent (one reading per member).
+
+| # | Selector test | Go test |
+|---|---|---|
+| 1 | generated configs are valid (the generator itself is sound) | `TestPortRandomised/generated_configs_are_valid…` |
+| 2 | pick and full pick order match the independent reference | `TestPortRandomised/pick_and_full_pick_order_match…` |
+| 3 | invariants hold for every case | `TestPortRandomised/invariants_hold_for_every_case`, plus `pool/boundary_test.go` `TestPropertyPickIsAlwaysRight` and `FuzzPickIsAlwaysRight` |
+| 4 | agx record order never changes the result (unique records) | `TestPortRandomised/agx_record_order_never_changes…` |
+| 5 | force always returns the forced account, whatever its state | `TestPortRandomised/force_always_returns_the_forced_account…` |
+| 6 | selection is pure: same input, same output, inputs untouched | `TestPortRandomised/selection_is_pure…` |
 
 ## index.test.mjs (26): the library and usage source
 
@@ -136,6 +173,10 @@ Paths are relative to the repository root. `TestPortX/name` is a subtest whose n
 | # | Selector test | Go test |
 |---|---|---|
 | 1–12 | the twelve steps, from "first call: no cache" to "the log records every call and never contains a token" | `internal/app/pool_flow_test.go` `TestPortFlow/1._…` to `TestPortFlow/12._…`, same names and order, through `agx credential` on a pool run with a moving clock and an httptest usage server. Step 10 asserts agx's exit 1 for "nothing usable" (the selector's 2). |
+
+## Mutation check (scripts/mutation-check.mjs, 41 breaks)
+
+`pool/mutation_test.go` (build tag `mutation`, run with `task mutation`, not in `task check`) copies the repository to a temporary folder, applies one break at a time to `pool/pool.go` or to the pool validation in `config/`, runs the pool and config tests, and expects them to fail. It has 46 breaks: the selector's 41 kinds adapted to the Go code, and the agx-only checks. The selector's breaks of JSON type checks (enabled, cap types, unknown cap keys) are one break here, dropping the schema's strict keys, since agx's schema types every key. Its "duplicates: last record wins", "other agents not filtered" and "non-login records not filtered" have no agx code to break (one reading per member, read with the pool's agent); in their place: room ignores the cap, an unreadable reset counted as a deadline, NaN caps allowed, an accounts entry for an unlisted name allowed, unknown member, member of another agent, a `null` cap allowed. Every break must be caught; the last run caught all of them.
 
 ## Beyond the port
 

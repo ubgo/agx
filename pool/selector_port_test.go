@@ -3,6 +3,7 @@ package pool_test
 import (
 	"encoding/json"
 	"errors"
+	"math"
 	"os"
 	"reflect"
 	"slices"
@@ -498,4 +499,150 @@ func pickPort2(t *testing.T, readings map[string]pool.Reading, c pool.Config) po
 		t.Fatal(err)
 	}
 	return r
+}
+
+// TestPortOddData is describe("no silent surprises: odd agx data").
+func TestPortOddData(t *testing.T) {
+	t.Run("cap 0 always blocks; cap 100 blocks only at 100", func(t *testing.T) {
+		c := portConfig(func(c *pool.Config) {
+			c.Accounts = map[string]pool.Account{"o1": {Week: p(0)}, "o2": {Short: p(99), Week: p(100)}}
+		})
+		r := pickPort(t, usage(map[string]rd{"o1": {week: p(0), resetH: p(1)}, "o2": {week: p(99.9), resetH: p(2)}}), c, "")
+		if selected(r) != "o2" {
+			t.Errorf("selected %s", selected(r))
+		}
+		if r := pickPort(t, usage(map[string]rd{"o2": {week: p(100), resetH: p(2)}}), c, ""); r.Selected != nil {
+			t.Errorf("100 picked")
+		}
+	})
+	t.Run("usage that isn't a number blocks the account instead of skipping the cap", func(t *testing.T) {
+		c := portConfig(func(c *pool.Config) { c.Own, c.Accounts = nil, nil })
+		for _, v := range []float64{math.NaN(), math.Inf(1), math.Inf(-1)} {
+			r := pickPort(t, map[string]pool.Reading{"s1": {Status: pool.StatusOK, Week: &pool.Window{Percent: v, ResetsAt: at(5)}}}, c, "")
+			s1 := cand(t, r, "s1")
+			if r.Selected != nil || !slices.Contains(s1.Reasons, "week usage is unreadable") || s1.Week != nil || s1.Room != nil {
+				t.Errorf("%v: selected %s %+v", v, selected(r), s1)
+			}
+		}
+		r := pickPort(t, map[string]pool.Reading{"s1": {Status: pool.StatusOK, Short: &pool.Window{Percent: math.NaN()}, Week: &pool.Window{Percent: 1, ResetsAt: at(5)}}}, c, "")
+		if !slices.Contains(cand(t, r, "s1").Reasons, "5h usage is unreadable") || cand(t, r, "s1").Short != nil {
+			t.Errorf("short %+v", cand(t, r, "s1"))
+		}
+	})
+	t.Run("windows missing or not a list: account usable, reset unknown, sorted last", func(t *testing.T) {
+		r := pickPort(t, map[string]pool.Reading{
+			"o1": {Status: pool.StatusOK}, "o2": {Status: pool.StatusOK},
+			"s1": rd{week: p(1), resetH: p(200)}.reading(),
+		}, portConfig(), "")
+		if got := names(r, pool.StateReady); !slices.Equal(got, []string{"o1", "o2"}) || cand(t, r, "o1").UntilReset != nil {
+			t.Errorf("ready %v", got)
+		}
+	})
+	t.Run("unreadable reset time: noted, treated as unknown, sorted last", func(t *testing.T) {
+		zero := time.Time{}
+		r := pickPort(t, map[string]pool.Reading{
+			"o1": {Status: pool.StatusOK, Week: &pool.Window{Percent: 10, ResetsAt: &zero}},
+			"o2": rd{week: p(10), resetH: p(150)}.reading(),
+		}, portConfig(), "")
+		if selected(r) != "o2" || !strings.Contains(strings.Join(cand(t, r, "o1").Notes, ","), "unreadable") {
+			t.Errorf("selected %s notes %v", selected(r), cand(t, r, "o1").Notes)
+		}
+	})
+	t.Run("both resets unknown: config order", func(t *testing.T) {
+		if s := selected(pickPort(t, usage(map[string]rd{"o2": {week: p(10)}, "o1": {week: p(10)}}), portConfig(), "")); s != "o1" {
+			t.Errorf("selected %s", s)
+		}
+	})
+	t.Run("duplicate login record: first one used, with a warning", func(t *testing.T) {
+		// Not a case agx can meet: readings are a map keyed by login
+		// name, and the cache and config are JSON objects with one entry
+		// per name (SELECTOR_PORT.md). What it guards, one reading per
+		// name decides, holds by type.
+		data := usage(map[string]rd{"o1": {week: p(10), resetH: p(1)}, "o2": {week: p(10), resetH: p(100)}})
+		if s := selected(pickPort(t, data, portConfig(), "")); s != "o1" {
+			t.Errorf("selected %s", s)
+		}
+	})
+	t.Run("record order from agx never changes the pick", func(t *testing.T) {
+		data := usage(map[string]rd{
+			"o1": {week: p(10), resetH: p(100)}, "o2": {week: p(50), resetH: p(30)},
+			"s1": {short: p(5), week: p(10), resetH: p(20)}, "s2": {short: p(5), week: p(10), resetH: p(20)},
+		})
+		base := pickPort(t, data, portConfig(), "")
+		// Go randomises map iteration on every range: many runs cover
+		// many orders.
+		for range 200 {
+			r := pickPort(t, data, portConfig(), "")
+			if selected(r) != selected(base) || !slices.Equal(names(r, ""), names(base, "")) {
+				t.Fatalf("order changed: %v vs %v", names(r, ""), names(base, ""))
+			}
+		}
+	})
+	t.Run("forced name that exists only for another agent is an error", func(t *testing.T) {
+		// agx reads only the pool's agent; a login of another agent has no
+		// reading here, so forcing it is ErrForcedMissing (and config
+		// refuses such a force at load, config TestPoolProblems).
+		if _, err := pool.Select(portConfig(func(c *pool.Config) { c.Force = "x" }), usage(map[string]rd{"o1": {week: p(1), resetH: p(1)}}), pool.Options{Now: portNow}); !errors.Is(err, pool.ErrForcedMissing) {
+			t.Errorf("err %v", err)
+		}
+	})
+	t.Run("bad now is an error, not a silent wrong order", func(t *testing.T) {
+		if _, err := pool.Select(portConfig(), usage(map[string]rd{"o1": {week: p(1), resetH: p(1)}}), pool.Options{}); !errors.Is(err, pool.ErrBadNow) {
+			t.Errorf("err %v", err)
+		}
+	})
+	t.Run("other statuses all block", func(t *testing.T) {
+		for _, st := range []string{"limit-reached", "error", "unknown", " ", "missing"} {
+			r := pool.Reading{Status: st, Week: &pool.Window{Percent: 1, ResetsAt: at(1)}}
+			if res := pickPort(t, map[string]pool.Reading{"o1": r}, portConfig(), ""); res.Selected != nil {
+				t.Errorf("status %q picked", st)
+			}
+		}
+		// An empty status is not "ok" either.
+		empty := pool.Reading{Status: "", Week: &pool.Window{Percent: 1, ResetsAt: at(1)}}
+		if res, _ := pool.Select(portConfig(), map[string]pool.Reading{"o1": empty}, pool.Options{Now: portNow}); res.Selected != nil {
+			t.Errorf("empty status picked")
+		}
+	})
+}
+
+// TestPortDefaults is describe("built-in defaults when a setting is left
+// out"): New gives the documented defaults.
+func TestPortDefaults(t *testing.T) {
+	minimal := func(own []string) pool.Config {
+		c := pool.New(own, []string{"s1"})
+		c.Accounts = map[string]pool.Account{"o1": {Short: p(100), Week: p(100)}}
+		return c
+	}
+	t.Run("5h safety cutoff defaults to 99%", func(t *testing.T) {
+		if s := selected(pickPort(t, usage(map[string]rd{"o1": {short: p(98.9), week: p(1), resetH: p(1)}}), minimal([]string{"o1"}), "")); s != "o1" {
+			t.Errorf("98.9: %s", s)
+		}
+		r := pickPort(t, usage(map[string]rd{"o1": {short: p(99), week: p(1), resetH: p(1)}}), minimal([]string{"o1"}), "")
+		if r.Selected != nil || r.ShortUnavailableAt != 99 {
+			t.Errorf("99: %s %v", selected(r), r.ShortUnavailableAt)
+		}
+	})
+	t.Run("borrow window defaults to 48h", func(t *testing.T) {
+		own := rd{week: p(1), resetH: p(200)}
+		if s := selected(pickPort(t, usage(map[string]rd{"o1": own, "s1": {short: p(0), week: p(1), resetH: p(48)}}), minimal([]string{"o1"}), "")); s != "s1" {
+			t.Errorf("48h: %s", s)
+		}
+		r := pickPort(t, usage(map[string]rd{"o1": own, "s1": {short: p(0), week: p(1), resetH: p(48.5)}}), minimal([]string{"o1"}), "")
+		if selected(r) != "o1" || r.BorrowWindow != 48*time.Hour {
+			t.Errorf("48.5h: %s %s", selected(r), r.BorrowWindow)
+		}
+	})
+	t.Run("caps default to 5h 50% and week 70%", func(t *testing.T) {
+		c := minimal(nil)
+		if s := selected(pickPort(t, usage(map[string]rd{"s1": {short: p(49.9), week: p(69.9), resetH: p(1)}}), c, "")); s != "s1" {
+			t.Errorf("under: %s", s)
+		}
+		if r := pickPort(t, usage(map[string]rd{"s1": {short: p(50), week: p(1), resetH: p(1)}}), c, ""); r.Selected != nil {
+			t.Error("short 50 picked")
+		}
+		if r := pickPort(t, usage(map[string]rd{"s1": {short: p(1), week: p(70), resetH: p(1)}}), c, ""); r.Selected != nil {
+			t.Error("week 70 picked")
+		}
+	})
 }

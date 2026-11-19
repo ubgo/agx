@@ -2,6 +2,7 @@ package pool_test
 
 import (
 	"errors"
+	"math"
 	"slices"
 	"strings"
 	"testing"
@@ -362,6 +363,9 @@ func TestValidate(t *testing.T) {
 		{"default under 0", func(c *pool.Config) { c.Defaults.Short = -1 }, "defaults.short -1 is outside 0..100"},
 		{"cutoff", func(c *pool.Config) { c.ShortUnavailableAt = 120 }, "short_unavailable_at_percent 120"},
 		{"negative window", func(c *pool.Config) { c.BorrowWindow = -time.Hour }, "borrow window is negative"},
+		{"NaN cap", func(c *pool.Config) { c.Defaults.Week = math.NaN() }, "defaults.week NaN is outside 0..100"},
+		{"NaN account cap", func(c *pool.Config) { c.Accounts["bob"] = pool.Account{Short: f(math.NaN())} }, "accounts.bob.short NaN is outside 0..100"},
+		{"infinite cutoff", func(c *pool.Config) { c.ShortUnavailableAt = math.Inf(1) }, "short_unavailable_at_percent +Inf is outside 0..100"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -64,6 +64,11 @@ tasks:
     cmds:
       - go test -count=1 ./internal/docscheck/ -run TestExamples
 
+  mutation:
+    desc: Mutation check (opt-in, not in check) - break the pool rules on purpose; the tests must catch every break
+    cmds:
+      - go test -tags mutation -count=1 -timeout 30m -run TestMutation -v ./pool/
+
   schema:
     desc: Regenerate schema/config.schema.json from the config types (internal/docscheck)
     cmds:
