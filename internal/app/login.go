@@ -10,6 +10,7 @@ import (
 
 	"github.com/ubgo/agx/config"
 	"github.com/ubgo/agx/internal/apperr"
+	"github.com/ubgo/agx/internal/report"
 	"github.com/ubgo/agx/login"
 )
 
@@ -25,14 +26,18 @@ const (
 	UserAgentDefault LoginUserType = "agent-default"
 	// UserBinding is projects.<dir>.<agent>.login.
 	UserBinding LoginUserType = "binding"
+	// UserPool is a login pool listing the login as a member (own,
+	// shared, or its force).
+	UserPool LoginUserType = "pool"
 )
 
 // LoginUserTypeValues is the canonical list.
 func LoginUserTypeValues() []LoginUserType {
-	return []LoginUserType{UserProfile, UserAgentDefault, UserBinding}
+	return []LoginUserType{UserProfile, UserAgentDefault, UserBinding, UserPool}
 }
 
-// LoginUser is one config entry that names a login.
+// LoginUser is one config entry that names a login (Name is the pool's
+// login name for UserPool).
 type LoginUser struct {
 	// Type is where the entry lives.
 	Type LoginUserType `json:"type"`
@@ -141,10 +146,28 @@ func (a *App) LoginShow(o LoginShowOptions) (LoginInfo, error) {
 // command's stderr is never repeated. No hint is added: the caller is a
 // script or an agent, which reads one line (the CLI drops any hint).
 func (a *App) LoginToken(ctx context.Context, id string) (agentio.Token, error) {
+	tok, _, err := a.LoginTokenWarn(ctx, id)
+	return tok, err
+}
+
+// LoginTokenWarn is LoginToken plus its warnings for stderr: a pool login
+// picks a member by usage first (cost Q when the cache is old) and prints
+// that member's token; a forced pick or a cache fallback is a warning.
+func (a *App) LoginTokenWarn(ctx context.Context, id string) (agentio.Token, []report.Warning, error) {
 	_, l, err := a.namedLogin(id)
 	if err != nil {
-		return agentio.Token{}, err
+		return agentio.Token{}, nil, err
 	}
+	if l.Kind == config.KindPool {
+		_, tok, warnings, err := a.poolMemberToken(ctx, id, l, poolModeToken)
+		return tok, warnings, err
+	}
+	tok, err := a.loginToken(ctx, id, l)
+	return tok, nil, err
+}
+
+// loginToken resolves a token login's value (LoginToken's rules).
+func (a *App) loginToken(ctx context.Context, id string, l config.Login) (agentio.Token, error) {
 	if l.Kind == config.KindAPIKeyHelper {
 		return agentio.Token{}, apperr.Unsupported(fmt.Sprintf("login %s is an api-key-helper: it has no token to print; the agent runs its helper command itself", id))
 	}
@@ -236,6 +259,15 @@ func loginUsers(c config.Config, name string) []LoginUser {
 			if c.Projects[dir][id].Login == name {
 				out = append(out, LoginUser{Type: UserBinding, Name: dir, Agent: id})
 			}
+		}
+	}
+	for _, p := range loginSortedKeys(c.Logins) {
+		pl := c.Logins[p]
+		if pl.Pool == nil || len(pl.Agents) == 0 {
+			continue
+		}
+		if slices.Contains(pl.Pool.Members(), name) || (pl.Pool.Force != nil && *pl.Pool.Force == name) {
+			out = append(out, LoginUser{Type: UserPool, Name: p, Agent: pl.Agents[0]})
 		}
 	}
 	return out

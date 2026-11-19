@@ -32,8 +32,11 @@ func CheckStatusValues() []CheckStatus { return []CheckStatus{CheckOK, CheckFail
 
 // Skip and success details of login check.
 const (
-	detailHelper   = "the agent runs the helper itself; agx never does"
-	detailNoProbe  = "--no-probe"
+	detailHelper  = "the agent runs the helper itself; agx never does"
+	detailNoProbe = "--no-probe"
+	// detailPool: a pool holds no token; its members are checked as
+	// logins of their own, and agx login pick reads their usage.
+	detailPool     = "a pool: its members are checked as logins; agx login pick shows their usage"
 	detailPerToken = "billed per token: no plan windows"
 )
 
@@ -111,6 +114,10 @@ func (a *App) checkOne(ctx context.Context, name string, l config.Login, noProbe
 	row := LoginCheckRow{Name: name, Kind: l.Kind, Source: a.loginInfo(config.Config{}, name, l).Source, Windows: []CheckWindow{}}
 	if l.Kind == config.KindAPIKeyHelper {
 		row.Resolve, row.Probe, row.Detail = CheckSkipped, CheckSkipped, detailHelper
+		return row
+	}
+	if l.Kind == config.KindPool {
+		row.Resolve, row.Probe, row.Detail = CheckSkipped, CheckSkipped, detailPool
 		return row
 	}
 	cred, err := login.Credential(ctx, a.exp, a.paths, name, l)

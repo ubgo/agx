@@ -160,17 +160,17 @@ func (c *cliCtx) credentialCmd() *cobra.Command {
 		func(cmd *cobra.Command, args []string) (render.Output, error) {
 			cr, err := c.App().Credential(cmd.Context())
 			if err != nil {
-				return render.Output{}, err
+				return render.Output{Warnings: cr.Warnings}, err
 			}
 			data, err := render.Encode(cr)
 			if err != nil {
 				return render.Output{}, err
 			}
-			return render.Output{Data: data, Text: func(w io.Writer) error {
+			return render.Output{Data: data, Warnings: cr.Warnings, Text: func(w io.Writer) error {
 				_, err := io.WriteString(w, cr.Token.Reveal()+"\n")
 				return err
 			}}, nil
-		}), "data.run_id", "data.login")
+		}), "data.run_id", "data.login", "data.pool")
 }
 
 // liveColumns are agx live list's table columns.

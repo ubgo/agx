@@ -220,20 +220,27 @@ const (
 	KindOAuthToken   = "oauth-token"
 	KindAPIKey       = "api-key"
 	KindAPIKeyHelper = "api-key-helper"
+	// KindPool is a login pool: no value of its own; each time the agent
+	// asks for a key, agx picks one of its member logins by usage
+	// (package pool) and hands out that member's token.
+	KindPool = "pool"
 )
 
 // KindValues is the canonical list.
-func KindValues() []string { return []string{KindOAuthToken, KindAPIKey, KindAPIKeyHelper} }
+func KindValues() []string { return []string{KindOAuthToken, KindAPIKey, KindAPIKeyHelper, KindPool} }
+
+// TokenKindValues are the kinds that carry a value (every kind but pool).
+func TokenKindValues() []string { return []string{KindOAuthToken, KindAPIKey, KindAPIKeyHelper} }
 
 // Login is one logins.<name> entry.
 type Login struct {
 	// Agents are the agent ids this login serves; at least one.
 	Agents []agentio.ID `json:"agents"`
 	// Kind is the token kind.
-	Kind string `json:"kind" enum:"oauth-token,api-key,api-key-helper"`
+	Kind string `json:"kind" enum:"oauth-token,api-key,api-key-helper,pool"`
 	// Token is a reference (${gopass:…}, $(…), ${VAR}) or a plain value.
 	// Exactly one of Token, Stored or Command is set (Command only for
-	// api-key-helper).
+	// api-key-helper); a pool sets none of them and has Pool instead.
 	Token string `json:"token,omitempty"`
 	// Stored means the value lives in tokens.jsonc under the login name.
 	Stored bool `json:"stored,omitempty"`
@@ -244,7 +251,64 @@ type Login struct {
 	// Provider names the model provider for agents whose token variable
 	// depends on it (pi: "anthropic", "openai"); "" otherwise.
 	Provider string `json:"provider,omitempty"`
+	// Pool is the pool of a kind "pool" login; nil for every other kind.
+	Pool *Pool `json:"pool,omitempty"`
 }
+
+// Pool is logins.<name>.pool: the member logins and the numbers of the
+// selection rules (package pool). Durations are Go duration strings
+// ("48h", "60s"); an omitted value takes the documented default.
+type Pool struct {
+	// Own are your member logins, used up almost fully.
+	Own []string `json:"own,omitempty"`
+	// Shared are teammates' member logins, borrowed up to their caps.
+	Shared []string `json:"shared,omitempty"`
+	// Force is a login to always pick, overriding every rule; null or
+	// omitted = off.
+	Force *string `json:"force,omitempty"`
+	// SharedBorrowWindow: a shared login goes before a usable own login
+	// only when its weekly reset is within it (default "48h"; "0s" =
+	// never).
+	SharedBorrowWindow string `json:"shared_borrow_window,omitempty"`
+	// ShortUnavailableAtPercent is the 5-hour safety cutoff for every
+	// member (default 99).
+	ShortUnavailableAtPercent *float64 `json:"short_unavailable_at_percent,omitempty"`
+	// Defaults are the caps of members without their own entry (default
+	// short 50, week 70).
+	Defaults PoolCaps `json:"defaults,omitzero"`
+	// Accounts are per-member caps and enabled false, keyed by member.
+	Accounts map[string]PoolAccount `json:"accounts,omitempty"`
+	// UsageMaxAge is how old the shared usage cache may be before the
+	// members are probed again (default "60s").
+	UsageMaxAge string `json:"usage_max_age,omitempty"`
+	// KeyTTL is how long the agent keeps a key before it asks again
+	// (default "60s"; Claude Code's CLAUDE_CODE_API_KEY_HELPER_TTL_MS).
+	KeyTTL string `json:"key_ttl,omitempty"`
+	// Log is a file that gets one line per key request (time, pick,
+	// source; never a token); "" = no log. "~" and ${VAR} are expanded.
+	Log string `json:"log,omitempty"`
+}
+
+// PoolCaps are window caps in percent: usage below a cap is usable.
+type PoolCaps struct {
+	// Short is the 5-hour window cap.
+	Short *float64 `json:"short,omitempty"`
+	// Week is the weekly window cap.
+	Week *float64 `json:"week,omitempty"`
+}
+
+// PoolAccount is one member's entry: its own caps, or enabled false.
+type PoolAccount struct {
+	// Short is the member's 5-hour window cap.
+	Short *float64 `json:"short,omitempty"`
+	// Week is the member's weekly window cap.
+	Week *float64 `json:"week,omitempty"`
+	// Enabled false leaves the member out; omitted = true.
+	Enabled *bool `json:"enabled,omitempty"`
+}
+
+// Members are the pool's own then shared logins, in config order.
+func (p Pool) Members() []string { return append(append([]string{}, p.Own...), p.Shared...) }
 
 // Serves reports whether the login serves agent id.
 func (l Login) Serves(id agentio.ID) bool {

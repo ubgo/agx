@@ -19,7 +19,7 @@ type AliasChecker func(args string) error
 // known is what config validation checks against: the built-in agents,
 // their typed block schemas and the alias check (as at load).
 func (a *App) known() config.Known {
-	return config.Known{Agents: agents.BuiltinIDs(), Blocks: agents.BlockSchemas(), Alias: a.checkAlias}
+	return config.Known{Agents: agents.BuiltinIDs(), Blocks: agents.BlockSchemas(), Alias: a.checkAlias, PoolAgent: agents.PoolReason}
 }
 
 // checkAlias validates one alias value: the charset always, the command

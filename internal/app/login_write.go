@@ -130,6 +130,9 @@ type LoginAddOptions struct {
 	Provider string
 	// Source is the value.
 	Source LoginSource
+	// PoolOwn and PoolShared are the members of a kind pool login.
+	PoolOwn    []string
+	PoolShared []string
 }
 
 // LoginAdd adds a login to config.jsonc (and a pasted value to
@@ -154,6 +157,9 @@ func (a *App) LoginAdd(ctx context.Context, o LoginAddOptions) (LoginChange, err
 	}
 	if _, ok := cfg.Config.Logins[o.Name]; ok {
 		return ch, apperr.Conflict("login " + o.Name + " exists").WithHint("agx login edit --id " + o.Name)
+	}
+	if o.Kind == config.KindPool || len(o.PoolOwn)+len(o.PoolShared) > 0 {
+		return a.addPool(ctx, o)
 	}
 	agents, err := a.tokenAgents(o.Agents)
 	if err != nil {
@@ -417,6 +423,11 @@ type LoginEditOptions struct {
 	Provider *string
 	// Source rotates the value (at most one source).
 	Source LoginSource
+	// PoolOwn and PoolShared replace a pool's member lists when non-nil.
+	PoolOwn    []string
+	PoolShared []string
+	// PoolForce sets a pool's force; "" clears it (null).
+	PoolForce *string
 }
 
 // LoginEdit rotates or changes a login, keeping config comments and
@@ -429,6 +440,9 @@ func (a *App) LoginEdit(ctx context.Context, o LoginEditOptions) (LoginChange, e
 	cfg, cur, err := a.namedLogin(o.ID)
 	if err != nil {
 		return ch, err
+	}
+	if cur.Kind == config.KindPool || o.Kind == config.KindPool || o.poolGiven() {
+		return a.editPool(ctx, o, cur)
 	}
 	next := cur
 	if len(o.Agents) > 0 {
@@ -532,6 +546,12 @@ const (
 	keyLogin     = "login"
 	keyHomeLogin = "home_login"
 	keyDefaults  = "defaults"
+	keyPool      = "pool"
+	// Keys inside logins.<name>.pool.
+	keyPoolOwn      = "own"
+	keyPoolShared   = "shared"
+	keyPoolForce    = "force"
+	keyPoolAccounts = "accounts"
 )
 
 // editLoginDoc writes only the changed keys of login name, so comments on
@@ -625,7 +645,7 @@ func (a *App) LoginRemove(ctx context.Context, o LoginRemoveOptions) (LoginRemov
 	}
 	err = config.EditConfig(ctx, a.paths, func(d *jsonc.Doc) error {
 		for _, u := range users {
-			if err := clearUser(d, u); err != nil {
+			if err := clearUser(d, cfg.Config, o.ID, u); err != nil {
 				return err
 			}
 		}
@@ -646,9 +666,12 @@ func (a *App) LoginRemove(ctx context.Context, o LoginRemoveOptions) (LoginRemov
 }
 
 // clearUser deletes the login key of one user; a binding left with no
-// keys is deleted, and a folder left with no bindings too.
-func clearUser(d *jsonc.Doc, u LoginUser) error {
+// keys is deleted, and a folder left with no bindings too. A pool drops
+// the login from its lists, its accounts and its force.
+func clearUser(d *jsonc.Doc, c config.Config, name string, u LoginUser) error {
 	switch u.Type {
+	case UserPool:
+		return clearPoolMember(d, c.Logins[u.Name].Pool, u.Name, name)
 	case UserProfile:
 		return d.Delete(config.Pointer("profiles", u.Name, keyLogin))
 	case UserAgentDefault:
@@ -668,6 +691,33 @@ func clearUser(d *jsonc.Doc, u LoginUser) error {
 		return err
 	}
 	return deleteIfEmpty(d, config.Pointer("projects", u.Name))
+}
+
+// clearPoolMember removes member from pool p of login poolName.
+func clearPoolMember(d *jsonc.Doc, p *config.Pool, poolName, member string) error {
+	ptr := func(keys ...string) string {
+		return config.Pointer(append([]string{"logins", poolName, keyPool}, keys...)...)
+	}
+	notMember := func(list []string) []string {
+		return slices.DeleteFunc(slices.Clone(list), func(n string) bool { return n == member })
+	}
+	for _, g := range []struct {
+		key  string
+		list []string
+	}{{keyPoolOwn, p.Own}, {keyPoolShared, p.Shared}} {
+		if slices.Contains(g.list, member) {
+			if err := d.Set(ptr(g.key), notMember(g.list)); err != nil {
+				return err
+			}
+		}
+	}
+	if err := deleteIfPresent(d, ptr(keyPoolAccounts, member)); err != nil {
+		return err
+	}
+	if p.Force != nil && *p.Force == member {
+		return d.Set(ptr(keyPoolForce), nil)
+	}
+	return nil
 }
 
 // deleteIfEmpty deletes the object at ptr when it has no keys.

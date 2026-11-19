@@ -30,7 +30,7 @@ var (
 func (c *cliCtx) loginCmd() *cobra.Command {
 	return group("login", "Logins: what a launch authenticates with",
 		c.loginListCmd(), c.loginShowCmd(), c.loginAddCmd(), c.loginEditCmd(),
-		c.loginRemoveCmd(), c.loginUseCmd(), c.loginCheckCmd(), c.loginTokenCmd(),
+		c.loginRemoveCmd(), c.loginUseCmd(), c.loginCheckCmd(), c.loginTokenCmd(), c.loginPickCmd(),
 	)
 }
 
@@ -128,13 +128,16 @@ func (c *cliCtx) loginAddCmd() *cobra.Command {
 	})
 	cmd.Example = "  agx login add --name personal --agent claude --kind oauth-token --token-ref '${gopass:personal/claude-token}'\n" +
 		"  pbpaste | agx login add --name pasted --agent claude --kind oauth-token --stdin\n" +
-		"  agx login add --name carol --agent claude --kind oauth-token --login-setup"
+		"  agx login add --name carol --agent claude --kind oauth-token --login-setup\n" +
+		"  agx login add --name auto --agent claude --kind pool --pool-own alice --pool-own bob --pool-shared carol"
 	f := cmd.Flags()
 	f.StringVar(&o.Name, "name", "", "the new login's name")
 	f.StringArrayVar(&agents, "agent", nil, "an agent it serves (repeat)")
-	f.StringVar(&o.Kind, "kind", "", "oauth-token, api-key or api-key-helper (default: the first agent's default kind)")
+	f.StringVar(&o.Kind, "kind", "", "oauth-token, api-key, api-key-helper or pool (default: the first agent's default kind)")
 	f.StringVar(&o.Account, "account", "", "a display label, such as the account email")
 	f.StringVar(&o.Provider, "provider", "", "the model provider, for agents with a key per provider (pi)")
+	f.StringArrayVar(&o.PoolOwn, "pool-own", nil, "a pool member that is your own account, used up almost fully (repeat; --kind pool)")
+	f.StringArrayVar(&o.PoolShared, "pool-shared", nil, "a pool member that is a teammate's account, borrowed up to its caps (repeat; --kind pool)")
 	addSourceFlags(cmd, &o.Source)
 	return fields(cmd, loginInfoFields...)
 }
@@ -142,9 +145,9 @@ func (c *cliCtx) loginAddCmd() *cobra.Command {
 // loginEditCmd is agx login edit.
 func (c *cliCtx) loginEditCmd() *cobra.Command {
 	var (
-		o                 app.LoginEditOptions
-		agents            []string
-		account, provider string
+		o                      app.LoginEditOptions
+		agents, own, shared    []string
+		account, provider, frc string
 	)
 	cmd := c.newCmd("edit", "Rotate or change a login", CostWrite, func(cmd *cobra.Command, _ []string) (render.Output, error) {
 		o.Agents = agentIDs(agents)
@@ -154,17 +157,29 @@ func (c *cliCtx) loginEditCmd() *cobra.Command {
 		if cmd.Flags().Changed("provider") {
 			o.Provider = &provider
 		}
+		if cmd.Flags().Changed("pool-own") {
+			o.PoolOwn = append([]string{}, own...)
+		}
+		if cmd.Flags().Changed("pool-shared") {
+			o.PoolShared = append([]string{}, shared...)
+		}
+		if cmd.Flags().Changed("pool-force") {
+			o.PoolForce = &frc
+		}
 		o.Source.RunSetup = c.setupRunner()
 		ch, err := c.App().LoginEdit(cmd.Context(), o)
 		return loginChangeOutput("changed", ch, err)
 	})
-	cmd.Example = "  pbpaste | agx login edit --id pasted --stdin\n  agx login edit --id personal --account me@example.com"
+	cmd.Example = "  pbpaste | agx login edit --id pasted --stdin\n  agx login edit --id personal --account me@example.com\n  agx login edit --id auto --pool-force alice\n  agx login edit --id auto --pool-force ''"
 	f := cmd.Flags()
 	f.StringVar(&o.ID, "id", "", "the login to change")
 	f.StringArrayVar(&agents, "agent", nil, "replace the agents it serves (repeat)")
 	f.StringVar(&o.Kind, "kind", "", "change the kind")
 	f.StringVar(&account, "account", "", "set the display label (empty clears it)")
 	f.StringVar(&provider, "provider", "", "set the model provider (empty clears it)")
+	f.StringArrayVar(&own, "pool-own", nil, "replace a pool's own members (repeat)")
+	f.StringArrayVar(&shared, "pool-shared", nil, "replace a pool's shared members (repeat)")
+	f.StringVar(&frc, "pool-force", "", "make a pool always pick this member (empty clears it)")
 	addSourceFlags(cmd, &o.Source)
 	return fields(cmd, loginInfoFields...)
 }
@@ -342,11 +357,11 @@ func (c *cliCtx) loginToken(cmd *cobra.Command, id string, reveal bool) (render.
 	if c.env.StdoutTTY && !reveal {
 		return render.Output{}, apperr.Usage(loginTokenTerminal)
 	}
-	tok, err := c.App().LoginToken(cmd.Context(), id)
+	tok, warnings, err := c.App().LoginTokenWarn(cmd.Context(), id)
 	if err != nil {
-		return render.Output{}, err
+		return render.Output{Warnings: warnings}, err
 	}
-	return render.Output{Text: func(w io.Writer) error {
+	return render.Output{Warnings: warnings, Text: func(w io.Writer) error {
 		_, err := io.WriteString(w, tok.Reveal()+"\n")
 		return err
 	}}, nil

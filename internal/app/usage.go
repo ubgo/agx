@@ -486,6 +486,10 @@ func (a *App) chosenLogins(ctx context.Context, l *config.Loaded, ags []agentio.
 				return nil, apperr.New(apperr.CodeWrongAgent, apperr.ClassUsage,
 					fmt.Sprintf("login %s serves %s; --agent is %s", name, joinAgentIDs(l.Agents), o.Agent))
 			}
+			if l.Kind == config.KindPool {
+				return nil, apperr.Usage(fmt.Sprintf("login %s is a pool: it has no token to probe; its members do", name)).
+					WithHint("agx login pick --id " + name)
+			}
 		}
 		// Shown in config order, each once, as agx v0.3's table was.
 		var out []string
@@ -498,7 +502,8 @@ func (a *App) chosenLogins(ctx context.Context, l *config.Loaded, ags []agentio.
 	}
 	var all []string
 	for _, name := range l.LoginOrder() {
-		if inScope(c.Logins[name]) {
+		// A pool has no token of its own; its members are rows already.
+		if inScope(c.Logins[name]) && c.Logins[name].Kind != config.KindPool {
 			all = append(all, name)
 		}
 	}

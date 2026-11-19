@@ -1,6 +1,7 @@
 package login
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -31,11 +32,14 @@ const (
 	// SourceHelper is an api-key-helper command the agent runs itself; the
 	// key never passes through agx.
 	SourceHelper SourceType = "helper"
+	// SourcePool is a login pool: no value; each key comes from one of
+	// its member logins, picked by usage.
+	SourcePool SourceType = "pool"
 )
 
 // SourceTypeValues is the canonical list.
 func SourceTypeValues() []SourceType {
-	return []SourceType{SourceReference, SourceCommand, SourceEnv, SourcePlain, SourceStored, SourceHelper}
+	return []SourceType{SourceReference, SourceCommand, SourceEnv, SourcePlain, SourceStored, SourceHelper, SourcePool}
 }
 
 // Source describes a login's value without revealing it.
@@ -94,6 +98,8 @@ const (
 // with ReadStored and StoredStateOf; ignored for other sources).
 func Describe(l config.Login, stored StoredState) Source {
 	switch {
+	case l.Kind == config.KindPool && l.Pool != nil:
+		return Source{Type: SourcePool, Detail: fmt.Sprintf("%d own, %d shared", len(l.Pool.Own), len(l.Pool.Shared))}
 	case l.Kind == config.KindAPIKeyHelper:
 		return Source{Type: SourceHelper, Detail: program(l.Command)}
 	case l.Stored:

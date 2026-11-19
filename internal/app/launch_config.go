@@ -1,6 +1,7 @@
 package app
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -151,7 +152,7 @@ func (a *App) launchConfig(ctx context.Context, o LaunchOptions, res resolve.Res
 		return apperr.Unsupported(fmt.Sprintf("%s has no --option or --setting (%s); pass its flags after --", ag.ID(), reason))
 	}
 
-	live, err := a.livePlan(o, res, p)
+	live, err := a.livePlan(ctx, o, res, p)
 	if err != nil {
 		return err
 	}
@@ -184,7 +185,7 @@ func (a *App) launchConfig(ctx context.Context, o LaunchOptions, res resolve.Res
 	if live != nil {
 		for _, r := range raws {
 			if shared := sharedTopKeys(r.obj, live.Settings); len(shared) > 0 {
-				return apperr.Conflict(fmt.Sprintf("%s %s and %s both set the %s; pick one", r.flagLabel, strings.Join(shared, ", "), srcLiveLogin, agentio.ConcernCredential))
+				return apperr.Conflict(fmt.Sprintf("%s %s and %s both set the %s; pick one", r.flagLabel, strings.Join(shared, ", "), cmp.Or(p.liveSrc, srcLiveLogin), agentio.ConcernCredential))
 			}
 		}
 	}
@@ -235,7 +236,7 @@ func (a *App) launchConfig(ctx context.Context, o LaunchOptions, res resolve.Res
 			return apperr.Conflict(fmt.Sprintf("--live-login and the run's settings both set %s; pick one", strings.Join(sharedTopKeys(st.settings, live.Settings), ", ")))
 		}
 		if !isEmptyRaw(live.Settings) {
-			st.notes = append(st.notes, report.Decision{Name: resolve.DecSetting, Value: strings.Join(leafPaths(live.Settings), ", "), Source: srcLiveLogin})
+			st.notes = append(st.notes, report.Decision{Name: resolve.DecSetting, Value: strings.Join(leafPaths(live.Settings), ", "), Source: cmp.Or(p.liveSrc, srcLiveLogin)})
 		}
 		st.settings = merged
 		applyLive(live, t, req, p)

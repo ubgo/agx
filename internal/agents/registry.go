@@ -99,3 +99,36 @@ func (r *Registry) IsCustom(id agentio.ID) bool {
 func BlockSchemas() config.BlockSchemas {
 	return blockSchemas()
 }
+
+// reasonConfigAgent is why a config-defined agent cannot use a pool: a
+// spec models no live credential and no token probe.
+const reasonConfigAgent = "a config-defined agent has no live credential and no token probe"
+
+// PoolReason says why agent id cannot use a login pool ("" = it can): a
+// pool needs the live-credential capability (the agent re-runs a helper
+// for its key while it runs, so each key can come from another member)
+// and the token prober (agx reads each member's usage). The reason is
+// agentio's typed one for the first capability missing. Pure.
+func PoolReason(id agentio.ID) string {
+	set, err := builtin.New(agentio.Host{})
+	if err != nil {
+		return err.Error()
+	}
+	for _, a := range set.All() {
+		if a.ID() != id {
+			continue
+		}
+		have := agentio.Supported(a)
+		for _, c := range []agentio.Capability{agentio.CapLiveCredential, agentio.CapTokenProber} {
+			if slices.Contains(have, c) {
+				continue
+			}
+			if reason, ok := agentio.Unsupported(a, c); ok && reason != "" {
+				return reason
+			}
+			return "no " + c.String()
+		}
+		return ""
+	}
+	return reasonConfigAgent
+}

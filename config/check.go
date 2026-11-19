@@ -123,6 +123,10 @@ func (l *Loaded) CrossCheck(known Known) []Problem {
 				sources++
 			}
 		}
+		if lg.Kind == KindPool || lg.Pool != nil {
+			out = append(out, l.checkPool(name, lg, sources, known)...)
+			continue
+		}
 		switch {
 		case lg.Kind == KindAPIKeyHelper && lg.Command == "":
 			add(l.Where("logins", name), path, "an api-key-helper login needs command")
@@ -180,6 +184,94 @@ func (l *Loaded) CrossCheck(known Known) []Problem {
 		}
 	}
 	return out
+}
+
+// checkPool checks a kind "pool" login (and a pool block on any other
+// kind): it holds no value, serves exactly one agent that can run a pool,
+// and its members are other token logins of that agent, each named once;
+// the numbers parse and are in range. Every problem is reported.
+func (l *Loaded) checkPool(name string, lg Login, sources int, known Known) []Problem {
+	var out []Problem
+	path := "logins." + name
+	add := func(keys []string, msg string) {
+		out = append(out, Problem{Where: l.Where(append([]string{"logins", name}, keys...)...), Path: strings.Join(append([]string{path}, keys...), "."), Message: msg})
+	}
+	switch {
+	case lg.Kind != KindPool:
+		add([]string{"pool"}, "pool is only for kind pool logins")
+		return out
+	case lg.Pool == nil:
+		add(nil, "a pool login needs pool (own and shared member logins)")
+		return out
+	}
+	if sources > 0 {
+		add(nil, "a pool login holds no token, stored value or command; its members do")
+	}
+	if lg.Provider != "" {
+		add([]string{"provider"}, "a pool login takes no provider; its members do")
+	}
+	if len(lg.Agents) != 1 {
+		add([]string{"agents"}, "a pool login serves exactly one agent")
+	}
+	for _, id := range lg.Agents {
+		if known.PoolAgent == nil {
+			continue
+		}
+		if reason := known.PoolAgent(id); reason != "" {
+			add([]string{"agents"}, fmt.Sprintf("%s cannot use a login pool (%s)", id, reason))
+		}
+	}
+	p := lg.Pool
+	if len(p.Members()) == 0 {
+		add([]string{"pool"}, "the pool has no members; list logins in own or shared")
+	}
+	seen := map[string]bool{}
+	for _, g := range []struct {
+		key   string
+		names []string
+	}{{"own", p.Own}, {"shared", p.Shared}} {
+		for _, m := range g.names {
+			keys := []string{"pool", g.key}
+			if seen[m] {
+				add(keys, fmt.Sprintf("member %s is listed more than once in own/shared", m))
+				continue
+			}
+			seen[m] = true
+			if msg := l.memberProblem(m, lg.Agents); msg != "" {
+				add(keys, msg)
+			}
+		}
+	}
+	if p.Force != nil && *p.Force != "" {
+		if msg := l.memberProblem(*p.Force, lg.Agents); msg != "" {
+			add([]string{"pool", "force"}, "force: "+msg)
+		}
+	}
+	if _, err := p.Rules(); err != nil {
+		add([]string{"pool"}, err.Error())
+	}
+	return out
+}
+
+// memberProblem says why login m cannot be a pool member for agents ("" =
+// it can): it must exist, serve the pool's agent and carry a token (not
+// a pool, not an api-key-helper, whose key agx cannot fetch).
+func (l *Loaded) memberProblem(m string, agents []agentio.ID) string {
+	ml, ok := l.Config.Logins[m]
+	switch {
+	case !ok:
+		return "unknown login " + m
+	case ml.Kind == KindPool:
+		return fmt.Sprintf("member %s is a pool; a member must be a token login", m)
+	case ml.Kind == KindAPIKeyHelper:
+		return fmt.Sprintf("member %s is an api-key-helper; agx cannot fetch its key", m)
+	}
+	for _, id := range agents {
+		if !ml.Serves(id) {
+			return fmt.Sprintf("member %s serves %s, not %s", m, joinIDs(ml.Agents), id)
+		}
+	}
+	return ""
 }
 
 // checkLoginRef checks that a login named at keys exists and serves id.

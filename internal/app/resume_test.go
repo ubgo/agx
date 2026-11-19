@@ -196,7 +196,7 @@ func TestLivePlanAndStart(t *testing.T) {
 		t.Fatal(err)
 	}
 	p := &LaunchPlan{RunID: "20261114-101500-k3x9", RunDir: t.TempDir(), Agent: res.Agent.ID()}
-	plan, err := a.livePlan(LaunchOptions{LiveLogin: true}, res, p)
+	plan, err := a.livePlan(context.Background(), LaunchOptions{LiveLogin: true}, res, p)
 	if err != nil || plan == nil {
 		t.Fatalf("%v %v", err, plan)
 	}
@@ -211,7 +211,7 @@ func TestLivePlanAndStart(t *testing.T) {
 	if err != nil || st.StartLogin != "carol" || st.Want() != "carol" || st.Helper != wantHelper {
 		t.Fatalf("%v %+v", err, st)
 	}
-	none, err := a.livePlan(LaunchOptions{}, res, &LaunchPlan{})
+	none, err := a.livePlan(context.Background(), LaunchOptions{}, res, &LaunchPlan{})
 	if none != nil || err != nil {
 		t.Fatalf("not live: %v %v", none, err)
 	}

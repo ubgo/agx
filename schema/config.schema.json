@@ -863,7 +863,8 @@
             "enum": [
               "oauth-token",
               "api-key",
-              "api-key-helper"
+              "api-key-helper",
+              "pool"
             ]
           },
           "token": {
@@ -880,6 +881,106 @@
           },
           "provider": {
             "type": "string"
+          },
+          "pool": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "own": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "shared": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "force": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "shared_borrow_window": {
+                    "type": "string"
+                  },
+                  "short_unavailable_at_percent": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "defaults": {
+                    "type": "object",
+                    "properties": {
+                      "short": {
+                        "type": [
+                          "number",
+                          "null"
+                        ]
+                      },
+                      "week": {
+                        "type": [
+                          "number",
+                          "null"
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "accounts": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "object",
+                      "properties": {
+                        "short": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "week": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "enabled": {
+                          "type": [
+                            "boolean",
+                            "null"
+                          ]
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "usage_max_age": {
+                    "type": "string"
+                  },
+                  "key_ttl": {
+                    "type": "string"
+                  },
+                  "log": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false

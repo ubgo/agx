@@ -521,11 +521,13 @@ func conflictMessage(in Inputs) string {
 	return strings.Join(names[:len(names)-1], ", ") + " and " + names[len(names)-1] + " both choose the login; pick one"
 }
 
-// LoginsServing lists the login names that serve id, sorted.
+// LoginsServing lists the token login names that serve id, sorted: the
+// --auto-login candidates. A pool is left out: it has no token to probe,
+// and it picks among its own members by its own rules.
 func LoginsServing(c config.Config, id agentio.ID) []string {
 	var out []string
 	for name, l := range c.Logins {
-		if l.Serves(id) {
+		if l.Serves(id) && l.Kind != config.KindPool {
 			out = append(out, name)
 		}
 	}

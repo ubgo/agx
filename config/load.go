@@ -28,6 +28,10 @@ type Known struct {
 	Blocks BlockSchemas
 	// Alias checks one alias value ("run --profile work"); nil = unchecked.
 	Alias func(args string) error
+	// PoolAgent says why agent id cannot use a login pool ("" = it can):
+	// a pool needs an agent that re-asks for its key while it runs and
+	// whose logins can be probed. nil = every agent can (tests).
+	PoolAgent func(id agentio.ID) string
 }
 
 // BlockSchemas gives, per agent id, the JSON Schema of that agent's typed

@@ -320,6 +320,11 @@ func (a *App) credential(ctx context.Context, o LaunchOptions, res resolve.Resul
 	default:
 		p.Login, p.LoginKind = l.Name, LoginKindNamed
 	}
+	if l.Kind == resolve.LoginNamed && l.Login.Kind == config.KindPool {
+		// A pool has no token of its own: the launch is live (livePlan),
+		// and agx credential picks a member each time the agent asks.
+		return nil, nil
+	}
 	if _, ok := agentio.TokenLoginOf(res.Agent); !ok {
 		reason, _ := agentio.Unsupported(res.Agent, agentio.CapTokenLogin)
 		if reason == "" {

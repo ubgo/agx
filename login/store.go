@@ -99,6 +99,9 @@ func KindOf(kind string) (agentio.TokenKind, bool) {
 // it). This is cost X when the reference runs a command or a plugin.
 func Credential(ctx context.Context, e *Expander, paths config.Paths, name string, l config.Login) (agentio.TokenCredential, error) {
 	label := "login " + name
+	if l.Kind == config.KindPool {
+		return agentio.TokenCredential{}, apperr.Unsupported(label + " is a pool: it has no token of its own; agx picks one of its members each time a key is asked for")
+	}
 	kind, ok := KindOf(l.Kind)
 	if !ok {
 		return agentio.TokenCredential{}, apperr.Failure(apperr.CodeConfig, fmt.Sprintf("%s: unknown kind %q", label, l.Kind))

@@ -127,6 +127,9 @@ type LaunchPlan struct {
 	// finish completes the command once the run folder exists (settings
 	// file path, live helper); set by the launch-config step.
 	finish func(p *LaunchPlan) error
+	// liveSrc is the source of the settings a pool's live plan adds
+	// ("login auto (pool)"); "" = "--live-login".
+	liveSrc string
 	// rawSettings are the raw settings flags taken out of the raw args
 	// (request), merged into Settings by the launch-config step.
 	rawSettings []rawSettingsArg

@@ -18,6 +18,12 @@ const (
 	SessionsDirName = "sessions"
 	// DefaultDirName is the config dir under the user home.
 	DefaultDirName = ".agx"
+	// CacheDirName holds files agx can rebuild at any time.
+	CacheDirName = "cache"
+	// LoginUsageFileName is the login-usage cache inside CacheDirName:
+	// the last probe of each login-pool member (it holds account labels,
+	// so it is written 0600).
+	LoginUsageFileName = "login-usage.jsonc"
 )
 
 // Environment variables that choose the config dir, first match wins
@@ -48,6 +54,11 @@ type Paths struct {
 	Tokens string
 	// Runs is the run-folder root.
 	Runs string
+}
+
+// LoginUsage is the login-usage cache file of this config dir.
+func (p Paths) LoginUsage() string {
+	return filepath.Join(p.Dir, CacheDirName, LoginUsageFileName)
 }
 
 // Lookup reads one environment variable; injected so nothing here reads

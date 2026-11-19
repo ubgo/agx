@@ -105,7 +105,7 @@ func (a *App) Now() time.Time {
 // load reads the config once and builds the agent registry from it.
 func (a *App) load() {
 	a.once.Do(func() {
-		known := config.Known{Agents: agents.BuiltinIDs(), Blocks: agents.BlockSchemas(), Alias: a.d.AliasCheck}
+		known := config.Known{Agents: agents.BuiltinIDs(), Blocks: agents.BlockSchemas(), Alias: a.d.AliasCheck, PoolAgent: agents.PoolReason}
 		a.cfg, a.cfgErr = config.Load(a.paths, known)
 		if a.cfgErr != nil {
 			return

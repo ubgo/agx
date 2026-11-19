@@ -11,6 +11,7 @@ import (
 
 	"github.com/ubgo/agx/config"
 	"github.com/ubgo/agx/internal/apperr"
+	"github.com/ubgo/agx/internal/report"
 	"github.com/ubgo/agx/internal/run"
 	"github.com/ubgo/agx/live"
 	"github.com/ubgo/agx/login"
@@ -52,9 +53,13 @@ type LiveUseOptions struct {
 // alone on stdout by the CLI and nowhere else. Token never encodes
 // (agentio.Token redacts in JSON and every fmt verb).
 type Credential struct {
-	RunID string        `json:"run_id"`
-	Login string        `json:"login"`
+	RunID string `json:"run_id"`
+	Login string `json:"login"`
+	// Pool is the pool login the member was picked from; "" otherwise.
+	Pool  string        `json:"pool,omitempty"`
 	Token agentio.Token `json:"-"`
+	// Warnings go to stderr (never stdout, which the agent reads).
+	Warnings []report.Warning `json:"-"`
 }
 
 // LiveList returns the running live-login runs, oldest first; agent ""
@@ -148,7 +153,7 @@ func (a *App) LiveUse(ctx context.Context, o LiveUseOptions) (LiveRun, error) {
 func (a *App) Credential(ctx context.Context) (Credential, error) {
 	c, err := a.liveCredential(ctx)
 	if err != nil {
-		return Credential{}, oneLine(err)
+		return Credential{Warnings: c.Warnings}, oneLine(err)
 	}
 	return c, nil
 }
@@ -172,18 +177,37 @@ func (a *App) liveCredential(ctx context.Context) (Credential, error) {
 	if err != nil {
 		return Credential{}, err
 	}
-	cred, err := login.Credential(ctx, a.exp.Brief(), a.paths, name, lg)
-	if err != nil {
-		return Credential{}, withCheckHint(err, name)
+	inUse, pool := name, ""
+	var (
+		tok      agentio.Token
+		warnings []report.Warning
+	)
+	if lg.Kind == config.KindPool {
+		// A pool run: pick a member now, by usage, each time the agent
+		// asks (spec: login pools). The pick is what is in use.
+		pool = name
+		inUse, tok, warnings, err = a.poolMemberToken(ctx, name, lg, poolModeCredential)
+		if err != nil {
+			if inUse != "" {
+				return Credential{Warnings: warnings}, withCheckHint(err, inUse)
+			}
+			return Credential{Warnings: warnings}, err
+		}
+	} else {
+		cred, err := login.Credential(ctx, a.exp.Brief(), a.paths, name, lg)
+		if err != nil {
+			return Credential{}, withCheckHint(err, name)
+		}
+		tok = cred.Token
 	}
 	if _, err := live.Update(ctx, f.Dir, func(s *live.State) error {
-		s.InUse = name
+		s.InUse = inUse
 		s.InUseAt = a.Now()
 		return nil
 	}); err != nil {
-		return Credential{}, liveErr(err)
+		return Credential{Warnings: warnings}, liveErr(err)
 	}
-	return Credential{RunID: f.ID, Login: name, Token: cred.Token}, nil
+	return Credential{RunID: f.ID, Login: inUse, Pool: pool, Token: tok, Warnings: warnings}, nil
 }
 
 // hintPrefix introduces the next step inside a one-line error.

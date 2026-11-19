@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/ubgo/agentio"
 
@@ -45,12 +46,17 @@ const envSettingPrefix = "env."
 //   - a variable set by the profile, --env or --setting env.* that
 //     outranks the helper (plan.Scrub), so a kimi-style profile with its
 //     own ANTHROPIC_AUTH_TOKEN cannot be live.
-func (a *App) livePlan(o LaunchOptions, res resolve.Result, p *LaunchPlan) (*agentio.LiveCredentialPlan, error) {
-	if !o.LiveLogin && !res.Profile.LiveLogin {
+func (a *App) livePlan(ctx context.Context, o LaunchOptions, res resolve.Result, p *LaunchPlan) (*agentio.LiveCredentialPlan, error) {
+	isPool := res.Login.Kind == resolve.LoginNamed && res.Login.Login.Kind == config.KindPool
+	if !o.LiveLogin && !res.Profile.LiveLogin && !isPool {
 		return nil, nil
 	}
 	src := "--live-login"
-	if !o.LiveLogin {
+	switch {
+	case isPool:
+		// A pool is always live: its key changes while the agent runs.
+		src = "login " + res.Login.Name + " (pool)"
+	case !o.LiveLogin:
 		src = "profile " + res.ProfileName + " (live_login)"
 	}
 	id := res.Agent.ID()
@@ -74,7 +80,15 @@ func (a *App) livePlan(o LaunchOptions, res resolve.Result, p *LaunchPlan) (*age
 		return nil, apperr.Unsupported(fmt.Sprintf("login %s is an api-key-helper; %s needs a token login", res.Login.Name, src))
 	}
 	helper := a.liveHelper()
-	plan, err := lc.LiveCredential(helper, 0)
+	var refresh time.Duration
+	if isPool && res.Login.Login.Pool != nil {
+		ttl, err := res.Login.Login.Pool.TTL()
+		if err != nil {
+			return nil, apperr.Usage("login " + res.Login.Name + ": " + err.Error())
+		}
+		refresh = ttl
+	}
+	plan, err := lc.LiveCredential(helper, refresh)
 	if err != nil {
 		return nil, apperr.Wrap(err, apperr.CodeUnsupported, apperr.ClassUnsupported, string(id)+": "+err.Error())
 	}
@@ -82,12 +96,47 @@ func (a *App) livePlan(o LaunchOptions, res resolve.Result, p *LaunchPlan) (*age
 		return nil, err
 	}
 	p.Live = &LiveStart{StartLogin: res.Login.Name, Helper: helper}
+	if isPool {
+		// The settings line names the pool; other live runs keep their
+		// documented "--live-login" source.
+		p.liveSrc = src
+		for _, n := range a.poolPlanNotes(ctx, o, res) {
+			p.Decisions = append(p.Decisions, report.Decision{Name: resolve.DecNote, Value: n, Source: src})
+		}
+	}
 	p.Decisions = append(p.Decisions, report.Decision{
 		Name:   resolve.DecNote,
 		Value:  fmt.Sprintf("live login: switch with agx live use --id %s --login NAME (refresh %s)", p.RunID, plan.Refresh),
 		Source: src,
 	})
 	return &plan, nil
+}
+
+// poolPlanNotes are the lines of a pool launch: the members, then (in a
+// dry run) the member the pool would hand out now. A dry run probes
+// nothing (cost R): that pick comes from the login-usage cache, of any
+// age, and says so; without a usable cached reading the member is picked
+// when the agent first asks for its key.
+func (a *App) poolPlanNotes(ctx context.Context, o LaunchOptions, res resolve.Result) []string {
+	lg := res.Login.Login
+	notes := []string{fmt.Sprintf("login pool %s: own %s; shared %s; picks a member each time %s asks for a key",
+		res.Login.Name, dashIfEmpty(strings.Join(lg.Pool.Own, ", ")), dashIfEmpty(strings.Join(lg.Pool.Shared, ", ")), res.Agent.ID())}
+	if !o.DryRun {
+		return notes
+	}
+	rep, err := a.poolPick(ctx, res.Login.Name, lg, PoolPickOptions{Cached: true})
+	if err != nil || rep.Selected == nil {
+		return append(notes, "pick now: none from the cache; picks when "+string(res.Agent.ID())+" first asks for its key")
+	}
+	return append(notes, fmt.Sprintf("pick now: %s, from the %s; agx login pick --id %s probes", rep.Selected.Name, rep.Source, res.Login.Name))
+}
+
+// dashIfEmpty is "-" for an empty list.
+func dashIfEmpty(s string) string {
+	if s == "" {
+		return "-"
+	}
+	return s
 }
 
 // outranksHelper refuses a launch input that sets a variable the live

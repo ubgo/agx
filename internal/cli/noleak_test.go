@@ -38,7 +38,8 @@ const leakConfig = `{
     "plain": { "agents": ["claude"], "kind": "oauth-token", "token": "` + leakPlain + `" },
     "ref": { "agents": ["claude"], "kind": "oauth-token", "token": "${LEAK_REF}" },
     "stored": { "agents": ["claude"], "kind": "oauth-token", "stored": true },
-    "gp": { "agents": ["claude"], "kind": "api-key", "token": "${gopass:x/y}" }
+    "gp": { "agents": ["claude"], "kind": "api-key", "token": "${gopass:x/y}" },
+    "pl": { "agents": ["claude"], "kind": "pool", "pool": { "own": ["plain", "ref"], "shared": ["stored"] } }
   },
   "projects": {},
   "aliases": { "w": "run --profile work" }
@@ -100,6 +101,8 @@ var noLeakExtra = [][]string{
 	{"doctor"}, {"doctor", "--resolved-secrets"},
 	{"usage", "--cached"}, {"whoami"}, {"shell-init", "--shell", "bash"},
 	{"login", "use", "--id", "ref", "--terminal"},
+	{"login", "pick", "--id", "pl", "--cached"}, {"login", "show", "--id", "pl"}, {"login", "check", "--no-probe", "--id", "pl"},
+	{"run", "--dry-run", "--resolved-secrets", "--login", "pl"},
 }
 
 // noLeakExempt are the only commands that print a token by design, so
