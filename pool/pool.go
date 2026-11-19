@@ -54,6 +54,15 @@ const (
 	DefaultBorrowWindow = 48 * time.Hour
 )
 
+// The range of every cap and of the safety cutoff, in percent of a
+// window. config publishes it in the editor schema, and agx config set
+// and the pool flags name it in their messages, so the bound lives here
+// once.
+const (
+	MinPercent = 0.0
+	MaxPercent = 100.0
+)
+
 // StatusOK is the only reading status that leaves an account usable;
 // any other status ("limit-reached", "rejected", "network") blocks it.
 const StatusOK = "ok"
@@ -194,7 +203,7 @@ func (c Config) Validate() error {
 }
 
 // validPercent is a finite value in 0..100.
-func validPercent(v float64) bool { return v >= 0 && v <= 100 && !math.IsNaN(v) }
+func validPercent(v float64) bool { return v >= MinPercent && v <= MaxPercent && !math.IsNaN(v) }
 
 // CapsFor is one account's caps: the defaults, then its own entry.
 func (c Config) CapsFor(name string) Caps {

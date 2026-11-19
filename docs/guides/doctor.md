@@ -253,12 +253,12 @@ agx: --key profiles.work.live_login takes true or false, not "yes"
 [exit 2]
 
 $ agx config set --key profiles --value work
-agx: --key profiles is an object, not a scalar; use its own command (profile edit, project use, alias add) or edit config.jsonc
+agx: --key profiles is an object, not a scalar; use its own command (profile edit, project use, alias add, login edit) or edit config.jsonc
 [exit 2]
 
 $ agx config set --key profiles.work.modle --value opus
 agx: --key profiles.work.modle: unknown key profiles.work.modle
-  keys: agent, home, default, billing, login, home_login, args, inherit_defaults, model, autonomy, env, env_refs, env_file, env_file_commands, before_run, before_run_from, before_run_env, settings_delivery, live_login
+  keys: agent, home, default, billing, login, home_login, args, inherit_defaults, model, autonomy, env, env_refs, env_file, env_file_commands, before_run, before_run_from, before_run_env, settings_delivery, live_login, claude, codex
 [exit 2]
 
 $ agx config set --key profiles.work.home --value ''

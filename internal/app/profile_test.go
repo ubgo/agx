@@ -141,29 +141,6 @@ func TestStoreSetupTokenWritesLoginAndProfile(t *testing.T) {
 	}
 }
 
-// TestScalarKey covers config set's key typing.
-func TestScalarKey(t *testing.T) {
-	for _, tc := range []struct {
-		key, value, typ, raw string
-	}{
-		{"default_agent", "claude", typeString, `"claude"`},
-		{"profiles.work.live_login", "true", typeBoolean, "true"},
-		{"profiles.work.inherit_defaults", "false", typeBoolean, "false"},
-		{"version", "1", typeInteger, "1"},
-		{"projects.dir.claude.home_login", "true", typeBoolean, "true"},
-	} {
-		_, typ, raw, err := scalarKey(tc.key, tc.value)
-		if err != nil || typ != tc.typ || string(raw) != tc.raw {
-			t.Errorf("%s=%s: %s %s %v", tc.key, tc.value, typ, raw, err)
-		}
-	}
-	for _, key := range []string{"", "profiles", "profiles.x.env", "aliases", "nope", "profiles..home", "default_agent.x"} {
-		if _, _, _, err := scalarKey(key, "v"); err == nil {
-			t.Errorf("%q accepted", key)
-		}
-	}
-}
-
 // TestUniqueName covers profile import's naming.
 func TestUniqueName(t *testing.T) {
 	a, home := fixtureApp(t, "", nil, nil)

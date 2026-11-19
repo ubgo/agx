@@ -1,6 +1,6 @@
 # Config set, path and init
 
-Change one key with `agx config set` (comments and layout kept), see the result with `agx config show`, the refusals for a wrong value, a non-scalar key, an unknown key and a value that would make the file invalid, which file agx reads (`--config`, `AGX_CONFIG_DIR`, `AGX_HOME`, `~/.agx`), and `agx config init --dry-run`.
+Change one key with `agx config set` (comments and layout kept), see the result with `agx config show`, values typed by the config schema (a boolean, `null` where the key takes it, digits that stay a string), the refusals for a wrong value, a non-scalar key, an unknown key and a value that would make the file invalid, which file agx reads (`--config`, `AGX_CONFIG_DIR`, `AGX_HOME`, `~/.agx`), and `agx config init --dry-run`.
 
 Run it:
 
@@ -13,6 +13,6 @@ go test -count=1 ./internal/docscheck/ -run 'TestExamples/cfg-config-set$'
 | File | What it is |
 |---|---|
 | [`config.jsonc`](config.jsonc) | Two Claude profiles, with comments and a `$schema` line. |
-| [`session.txt`](session.txt) | Regions: `set` (four keys), `show-file` (each value with its line and column), `set-refused` (exit 2 each), `where` (`config path` under each rule), `init` (`config init --dry-run` into a fresh folder). |
+| [`session.txt`](session.txt) | Regions: `set` (four keys), `show-file` (each value with its line and column), `set-refused` (exit 2 each), `set-typed` (a boolean, `null`, digits on a string key, an enum, a typed agent block key, and the type refusals), `where` (`config path` under each rule), `init` (`config init --dry-run` into a fresh folder). |
 
 Guide: [Check your setup](../../docs/guides/doctor.md#step-5-change-one-key). Reference: [`agx config set`](../../docs/commands/setup.md#agx-config-set), [`agx config path`](../../docs/commands/setup.md#agx-config-path).

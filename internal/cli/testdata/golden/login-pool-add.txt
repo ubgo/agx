@@ -1,0 +1,5 @@
+added login team (pool, pool 1 own, 1 shared)
+  pool.own                   —  ->  alice
+  pool.shared                —  ->  carol
+  pool.accounts.alice.short  —  ->  95
+  pool.accounts.alice.week   —  ->  98

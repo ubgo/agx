@@ -331,12 +331,20 @@ Pitfalls: a syntax error, unknown key or wrong type exits 1; a cross-check probl
 
 ## agx config set
 
-Set one scalar key, keeping comments and layout. The whole file is validated before anything is written. Cost W.
+Set one scalar key, keeping comments and layout. The whole file is validated (the schema, then the cross-checks and the pool rules) before anything is written. Cost W.
 
 | Flag | Meaning |
 |---|---|
-| `--key` | a dotted scalar key, such as `default_agent`, `sessions.root` or `profiles.NAME.model` |
-| `--value` | the value: `true`/`false` for switches, digits for numbers |
+| `--key` | a dotted scalar key, such as `default_agent`, `sessions.root`, `profiles.NAME.model` or `logins.POOL.pool.accounts.MEMBER.short` |
+| `--value` | the value, typed by the config schema at that key: a string, a number, an integer, `true`/`false`, or `null` where the key takes it |
+
+The key's type comes from the config schema (the same one `agx config check` and your editor use), never from the value already in the file, so a key that is not in the file yet works as well: `--key logins.auto.pool.accounts.bob.short --value 95` writes the number 95 on a member entry that did not exist. A number key checks the schema's range (a pool cap takes a number from 0 to 100; `NaN` and `Inf` are refused), digits on a string key stay a string (`--value 4` on `profiles.NAME.model` writes `"4"`), a key with a fixed set of values takes only those, and `null` is written only where the key takes it (`logins.POOL.pool.force` does; a cap does not). On a key that takes both a string and `null`, quote the word to write it as a string: `--value '"null"'`. Objects and lists have their own commands (`profile edit`, `project use`, `alias add`, `login edit`).
+
+```sh
+agx config set --key logins.auto.pool.accounts.alice.short --value 95
+agx config set --key logins.auto.pool.defaults.week --value 80
+agx config set --key profiles.work.inherit_defaults --value false
+```
 
 ```sh
 agx config set --key sessions.root --value ~/sessions
@@ -357,17 +365,45 @@ agx: --key profiles.work.live_login takes true or false, not "yes"
 [exit 2]
 
 $ agx config set --key profiles --value work
-agx: --key profiles is an object, not a scalar; use its own command (profile edit, project use, alias add) or edit config.jsonc
+agx: --key profiles is an object, not a scalar; use its own command (profile edit, project use, alias add, login edit) or edit config.jsonc
 [exit 2]
 
 $ agx config set --key profiles.work.modle --value opus
 agx: --key profiles.work.modle: unknown key profiles.work.modle
-  keys: agent, home, default, billing, login, home_login, args, inherit_defaults, model, autonomy, env, env_refs, env_file, env_file_commands, before_run, before_run_from, before_run_env, settings_delivery, live_login
+  keys: agent, home, default, billing, login, home_login, args, inherit_defaults, model, autonomy, env, env_refs, env_file, env_file_commands, before_run, before_run_from, before_run_env, settings_delivery, live_login, claude, codex
 [exit 2]
 
 $ agx config set --key profiles.work.home --value ''
 agx: refused: the change would make config.jsonc invalid: home is empty
   home is empty
+[exit 2]
+```
+
+Typed by the schema:
+
+<!-- snippet: examples/cfg-config-set/session.txt#set-typed -->
+```sh
+$ agx config set --key profiles.work.inherit_defaults --value false
+profiles.work.inherit_defaults = false
+
+$ agx config set --key profiles.work.inherit_defaults --value null
+profiles.work.inherit_defaults = null
+
+$ agx config set --key profiles.work.model --value 4
+profiles.work.model = 4
+
+$ agx config set --key profiles.work.billing --value api
+profiles.work.billing = api
+
+$ agx config set --key profiles.work.claude.effort --value high
+profiles.work.claude.effort = high
+
+$ agx config set --key profiles.work.billing --value free
+agx: --key profiles.work.billing takes one of: plan, api, not "free"
+[exit 2]
+
+$ agx config set --key version --value 1.5
+agx: --key version takes an integer, not "1.5"
 [exit 2]
 ```
 

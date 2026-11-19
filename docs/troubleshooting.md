@@ -110,9 +110,9 @@ Two agx processes tried to write the same file. The second waits 5 seconds for t
 
 `agx config init` never overwrites a config (exit 1); the message names it in the `~` form (`agx: ~/.agx/config.jsonc already exists`), while `--json` keeps the absolute path in `data.file`. Edit the file, or change one key with `agx config set`.
 
-### `config set`: "takes true or false", "is an object, not a scalar", "unknown key", "the change would make config.jsonc invalid"
+### `config set`: "takes true or false", "takes a number from 0 to 100", "is an object, not a scalar", "unknown key", "the change would make config.jsonc invalid"
 
-`agx config set` changes one scalar key, checks the value against the schema and validates the whole file before writing. Each refusal exits 2 and writes nothing:
+`agx config set` changes one scalar key, types the value by the config schema at that key (a string, a number, an integer, `true`/`false`, or `null` where the key takes it) and validates the whole file before writing. Each refusal exits 2, names what the key takes, and writes nothing. A pool cap takes a number from 0 to 100, also on a member entry that is not in the file yet (`agx config set --key logins.auto.pool.accounts.bob.short --value 95`); agx before 0.4.10 refused every number with `is a float64, not a scalar`. For several pool numbers at once, use the pool flags of `agx login edit` (`--pool-cap-short NAME=N`, `--pool-cap-week NAME=N`, …):
 
 <!-- snippet: examples/cfg-config-set/session.txt#set-refused -->
 ```sh
@@ -121,12 +121,12 @@ agx: --key profiles.work.live_login takes true or false, not "yes"
 [exit 2]
 
 $ agx config set --key profiles --value work
-agx: --key profiles is an object, not a scalar; use its own command (profile edit, project use, alias add) or edit config.jsonc
+agx: --key profiles is an object, not a scalar; use its own command (profile edit, project use, alias add, login edit) or edit config.jsonc
 [exit 2]
 
 $ agx config set --key profiles.work.modle --value opus
 agx: --key profiles.work.modle: unknown key profiles.work.modle
-  keys: agent, home, default, billing, login, home_login, args, inherit_defaults, model, autonomy, env, env_refs, env_file, env_file_commands, before_run, before_run_from, before_run_env, settings_delivery, live_login
+  keys: agent, home, default, billing, login, home_login, args, inherit_defaults, model, autonomy, env, env_refs, env_file, env_file_commands, before_run, before_run_from, before_run_env, settings_delivery, live_login, claude, codex
 [exit 2]
 
 $ agx config set --key profiles.work.home --value ''
@@ -233,7 +233,7 @@ Run `! agx whoami` inside Claude (the `!` runs it in the session's shell, which 
 
 ### "pool auto: no member is usable: …"
 
-Every member of the login pool is skipped, and the line lists each with its reasons (`status is limit-reached`, `week is 70% (cap 70%)`, `disabled in config`). `agx login pick --id auto` shows the same as a report; `agx login token` and the key helper of a running session exit 1 with it, so Claude's request fails. Wait for a reset, raise a cap, add a member, or force one: `agx login edit --id auto --pool-force NAME` (clear it later with `--pool-force ''`). See [the rules](guides/login-pool.md#the-rules).
+Every member of the login pool is skipped, and the line lists each with its reasons (`status is limit-reached`, `week is 70% (cap 70%)`, `disabled in config`). `agx login pick --id auto` shows the same as a report; `agx login token` and the key helper of a running session exit 1 with it, so Claude's request fails. Wait for a reset, raise a cap (`agx login edit --id auto --pool-cap-week NAME=N`), take a disabled member back (`--pool-enable NAME`), add a member, or force one: `agx login edit --id auto --pool-force NAME` (clear it later with `--pool-force ''`). See [the rules](guides/login-pool.md#the-rules).
 
 ### "codex cannot use a login pool (…)"
 
@@ -242,6 +242,10 @@ A pool needs an agent that asks for its key again while it runs and whose logins
 ### "member NAME is an api-key-helper; agx cannot fetch its key", "unknown login NAME" in a pool
 
 Every pool member must be a token login (`oauth-token` or `api-key`) of the pool's agent, listed once across `own` and `shared`. Add the member as a login first (`agx login add`), or take it out of the pool.
+
+### "--pool-cap-short NAME=N: N is not a number from 0 to 100", "NAME is not a member of pool auto"
+
+The pool flags of `agx login add` and `agx login edit` check each value before anything is written (exit 2): a cap or cutoff is a number from 0 to 100, a member flag takes `NAME=N` and must name a login in the pool's `own` or `shared` (after this command's `--pool-own` and `--pool-shared`), and a duration is a Go duration such as `48h` (`--pool-key-ttl` at least `1s`). `agx login show --id auto` lists the members. Add `--dry-run` to see the changes before writing them.
 
 ### "login NAME is used by pool auto"
 

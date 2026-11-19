@@ -38,11 +38,77 @@ The example ([`examples/acct-login-pool`](../../examples/acct-login-pool/README.
 
 ## Step 1: make the pool
 
-With flags, then the numbers in `config.jsonc`:
+With flags: the members, then any number (each flag is in the [login reference](../commands/login.md#agx-login-add); `--dry-run` shows the keys first and writes nothing):
 
 ```sh
-agx login add --name auto --agent claude --kind pool --pool-own alice --pool-own bob --pool-shared carol --pool-shared derek --pool-shared erin
+agx login add --name auto --agent claude --kind pool --pool-own alice --pool-own bob --pool-shared carol --pool-shared derek --pool-shared erin \
+  --pool-cap-short alice=95 --pool-cap-week alice=98 --pool-cap-short bob=95 --pool-cap-week bob=98
 ```
+
+Change any number later the same way, with `agx login edit --id auto` and the same flags. Each change prints its before and after; values that are already set report `no change` and write nothing:
+
+<!-- snippet: examples/acct-login-pool/session.txt#caps -->
+```sh
+$ agx login edit --id team --pool-cap-short alice=95 --pool-cap-week alice=98 --pool-cap-short erin=60 --pool-disable derek --dry-run
+would change login team (--dry-run)
+  pool.accounts.alice.short    —     ->  95
+  pool.accounts.alice.week     —     ->  98
+  pool.accounts.erin.short     —     ->  60
+  pool.accounts.derek.enabled  true  ->  false
+
+$ agx login edit --id team --pool-cap-short alice=95 --pool-cap-week alice=98 --pool-cap-short erin=60 --pool-disable derek
+changed login team (pool, pool 1 own, 2 shared)
+  pool.accounts.alice.short    —     ->  95
+  pool.accounts.alice.week     —     ->  98
+  pool.accounts.erin.short     —     ->  60
+  pool.accounts.derek.enabled  true  ->  false
+
+$ agx login edit --id team --pool-cap-short alice=95 --pool-cap-week alice=98
+login team: no change (every value given is already set)
+
+$ agx config set --key logins.team.pool.defaults.week --value 80
+logins.team.pool.defaults.week = 80
+
+$ agx login pick --id team
+Pool: team (claude)
+Use: erin (shared)
+shared account resets within 48h, before any usable own account; using its room before it is lost
+Source: cache (20s old)
+
+Candidates (ready accounts in pick order):
+- erin [shared] #1 READY (5h 55%, week 43%, resets in 3 hr 0 min, room 37%)
+- alice [own] #2 READY (5h 3%, week 29%, resets in 6 d 0 hr, room 69%)
+- derek [shared] skip: disabled in config; no usage reading (no windows, reset unknown)
+
+$ agx login edit --id team --pool-enable derek --pool-cap-short erin= --pool-key-ttl 30s
+changed login team (pool, pool 1 own, 2 shared)
+  pool.accounts.erin.short     60     ->  —
+  pool.accounts.derek.enabled  false  ->  true
+  pool.key_ttl                 —      ->  30s
+```
+
+A bad value is refused before anything is written (exit 2), and so is a member the pool does not list:
+
+<!-- snippet: examples/acct-login-pool/session.txt#cap-refusals -->
+```sh
+$ agx login edit --id team --pool-cap-week erin=101
+agx: --pool-cap-week erin=101: 101 is not a number from 0 to 100
+[exit 2]
+
+$ agx login edit --id team --pool-disable carol
+agx: --pool-disable carol: carol is not a member of pool team (members: alice, derek, erin)
+[exit 2]
+
+$ agx config set --key logins.team.pool.accounts.erin.week --value 101
+agx: --key logins.team.pool.accounts.erin.week takes a number from 0 to 100, not "101"
+[exit 2]
+
+$ agx config set --key logins.team.pool.accounts.erin.week --value high
+agx: --key logins.team.pool.accounts.erin.week takes a number from 0 to 100, not "high"
+[exit 2]
+```
+
+`agx config set` also sets one number (`agx config set --key logins.auto.pool.accounts.alice.short --value 95`), typed by the config schema, so a cap takes a number from 0 to 100 even on a member entry that is not in the file yet.
 
 Or write the whole login by hand. Every key but `own` or `shared` may be left out; the values shown are the defaults, except the 95/98 caps of your own accounts:
 
@@ -111,7 +177,7 @@ Compare with a fixed account, `agx run --login carol`, which stays on carol unti
 6. after key_ttl, on its next request, Claude runs the helper again and may get another member
 ```
 
-The whole connection is the pool login in `~/.agx/config.jsonc`; `agx login show --id auto` shows it, and `agx config set` or an edit of the file changes it from the next key request.
+The whole connection is the pool login in `~/.agx/config.jsonc`; `agx login show --id auto` shows it, and `agx login edit --id auto` (or `agx config set`, or an edit of the file) changes it from the next key request.
 
 A dry run probes nothing: it shows the members and the member the pool would pick now from the cache, of any age, or that it picks when Claude first asks:
 
@@ -159,8 +225,8 @@ agx reads `config.jsonc` on every key request, so a change applies from the next
 
 - Force one member for every session: `agx login edit --id auto --pool-force alice` (back with `--pool-force ''`). Every rule is ignored, even a member at its limit; the rules it breaks are warnings.
 - Force one member for one run only: `agx live use --id RUN --login alice` (back to the pool with `agx live use --id RUN --start-login`).
-- Leave a member out: `"accounts": { "derek": { "enabled": false } }`. It is not probed any more.
-- Any cap, list or window change.
+- Leave a member out: `agx login edit --id auto --pool-disable derek` (back with `--pool-enable derek`). It is not probed any more.
+- Any cap, list or window change: `agx login edit --id auto --pool-cap-short NAME=N`, `--pool-cap-week NAME=N`, `--pool-default-short N`, `--pool-default-week N`, `--pool-short-cutoff N`, `--pool-borrow-window 24h`, `--pool-usage-max-age 30s`, `--pool-key-ttl 30s`, `--pool-own`/`--pool-shared` (an empty value puts a key back to its default). Add `--dry-run` to see the change first.
 
 `agx login pick --id auto --pool-force alice` shows what a force would do without changing anything.
 
@@ -312,7 +378,7 @@ To make this rare, give your own members caps a little under 100 (95 and 98), so
 | Unreadable reset time | note `weekly reset time is unreadable; treated as unknown` | no deadline can be read, so the member sorts after those with one | check `agx login check --id NAME` |
 | A broken cache file | `warning: login-usage cache: …`, then fresh probes | a cache agx cannot read is ignored and rewritten, never half-used | nothing; it heals on the next write |
 | A typo in config | `unknown key "weekly"` at its line | every key is checked; unknown ones are errors so they cannot be ignored silently | fix the name |
-| Wrong value type | `logins.auto.pool.accounts.alice.week: must be number or null, got string`, `force is empty; name a login or write null`, `….week is null; give a value or leave the key out` | `"70"`, `"false"`, `""` or a `null` cap would otherwise behave unexpectedly | plain numbers and `true`/`false`; `null` only for `force` |
+| Wrong value type | `logins.auto.pool.accounts.alice.week: must be number, got string`, `….week: must be number, got null`, `….week: must be <= 100`, `force is empty; name a login or write null` | `"70"`, `"false"`, `""` or a `null` cap would otherwise behave unexpectedly | set numbers with the pool flags or `agx config set`, which check them first; `null` only for `force` |
 
 ## Testing
 
@@ -320,7 +386,7 @@ Picking cannot silently go wrong because three layers check the rules (package `
 
 1. **Example tests**: every case of the stand-alone selector's suite ported one to one (the mapping, case by case, is in [`pool/testdata/SELECTOR_PORT.md`](../../pool/testdata/SELECTOR_PORT.md)), every config mistake and the built-in defaults, plus boundary tables for every cap, window and cutoff.
 2. **Randomised tests**: thousands of seeded pools and readings, odd ones included (missing windows, usage that is not a number, stale or unreadable resets, caps at their edges). For each, the pick and the whole pick order must equal a second implementation of the rules written separately inside the test, and invariants must hold: the pick is never blocked, disabled, at or over a cap or the 5-hour cutoff; a teammate's account goes before a usable own one only inside the window and only when it resets sooner; nothing in the pool resets sooner than the pick; reading order never changes the result; a force always wins; the same input always gives the same output. A failure names its seed: `SEED=1234 go test -run TestPortRandomised ./pool/` replays it, `CASES=50000` runs more.
-3. **Mutation check** (`task mutation`, opt-in, a few minutes): breaks the rules on purpose 46 ways (a `>=` turned into `>`, a rule skipped, an order reversed, a default changed, a config check removed) on a temporary copy of the repository and confirms the tests fail every time. Last run: 46/46 caught. Run it after any change to the rules; if a break survives, add a test for it. The key-helper flow runs end to end through `agx credential` with a moving clock and a fake usage server: first call, cache reuse, a change while fresh, re-probe after max age, caps, limits, probe failure, disabled, force, nothing usable, six helpers at once, and a log that never holds a token.
+3. **Mutation check** (`task mutation`, opt-in, a few minutes): breaks the rules on purpose 47 ways (a `>=` turned into `>`, a rule skipped, an order reversed, a default changed, a config check removed) on a temporary copy of the repository and confirms the tests fail every time. Last run: 47/47 caught. Run it after any change to the rules; if a break survives, add a test for it. The key-helper flow runs end to end through `agx credential` with a moving clock and a fake usage server: first call, cache reuse, a change while fresh, re-probe after max age, caps, limits, probe failure, disabled, force, nothing usable, six helpers at once, and a log that never holds a token.
 
 Live, opt-in (run them yourself; they print no token value, only its length):
 

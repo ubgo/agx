@@ -305,6 +305,9 @@ func ConfigSchema(blocks BlockSchemas) (*schema.Schema, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := tightenPoolSchema(s); err != nil {
+		return nil, err
+	}
 	prof := profileSchema(s)
 	if prof == nil {
 		return nil, errors.New("profile definition missing from the generated schema")

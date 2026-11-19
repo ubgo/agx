@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
@@ -24,6 +25,7 @@ var (
 	loginCheckFields  = []string{"data.*.name", "data.*.kind", "data.*.source", "data.*.resolve", "data.*.probe", "data.*.agent", "data.*.detail", "data.*.windows"}
 	loginUseFields    = []string{"data.login", "data.home_login", "data.target", "data.name", "data.line"}
 	loginRemoveFields = []string{"data.name", "data.cleared"}
+	loginChangeFields = append(append([]string{}, loginInfoFields...), "data.changes", "data.changes.*.key", "data.changes.*.from", "data.changes.*.to", "data.written")
 )
 
 // loginCmd is agx login (spec 13.5).
@@ -119,17 +121,20 @@ func (c *cliCtx) loginAddCmd() *cobra.Command {
 	var (
 		o      app.LoginAddOptions
 		agents []string
+		ps     = &poolSettingFlags{}
 	)
 	cmd := c.newCmd("add", "Add a login", CostWrite, func(cmd *cobra.Command, _ []string) (render.Output, error) {
 		o.Agents = agentIDs(agents)
+		o.Pool = ps.settings(cmd)
 		o.Source.RunSetup = c.setupRunner()
 		ch, err := c.App().LoginAdd(cmd.Context(), o)
-		return loginChangeOutput("added", ch, err)
+		return loginChangeOutput("add", "added", ch, err)
 	})
 	cmd.Example = "  agx login add --name personal --agent claude --kind oauth-token --token-ref '${gopass:personal/claude-token}'\n" +
 		"  pbpaste | agx login add --name pasted --agent claude --kind oauth-token --stdin\n" +
 		"  agx login add --name carol --agent claude --kind oauth-token --login-setup\n" +
-		"  agx login add --name auto --agent claude --kind pool --pool-own alice --pool-own bob --pool-shared carol"
+		"  agx login add --name auto --agent claude --kind pool --pool-own alice --pool-own bob --pool-shared carol\n" +
+		"  agx login add --name auto --agent claude --kind pool --pool-own alice --pool-shared carol --pool-cap-short alice=95 --pool-cap-week alice=98 --dry-run"
 	f := cmd.Flags()
 	f.StringVar(&o.Name, "name", "", "the new login's name")
 	f.StringArrayVar(&agents, "agent", nil, "an agent it serves (repeat)")
@@ -138,8 +143,10 @@ func (c *cliCtx) loginAddCmd() *cobra.Command {
 	f.StringVar(&o.Provider, "provider", "", "the model provider, for agents with a key per provider (pi)")
 	f.StringArrayVar(&o.PoolOwn, "pool-own", nil, "a pool member that is your own account, used up almost fully (repeat; --kind pool)")
 	f.StringArrayVar(&o.PoolShared, "pool-shared", nil, "a pool member that is a teammate's account, borrowed up to its caps (repeat; --kind pool)")
+	addPoolSettingFlags(cmd, ps)
+	f.BoolVar(&o.DryRun, "dry-run", false, "show the pool's keys; write nothing (--kind pool)")
 	addSourceFlags(cmd, &o.Source)
-	return fields(cmd, loginInfoFields...)
+	return fields(cmd, loginChangeFields...)
 }
 
 // loginEditCmd is agx login edit.
@@ -148,6 +155,7 @@ func (c *cliCtx) loginEditCmd() *cobra.Command {
 		o                      app.LoginEditOptions
 		agents, own, shared    []string
 		account, provider, frc string
+		ps                     = &poolSettingFlags{}
 	)
 	cmd := c.newCmd("edit", "Rotate or change a login", CostWrite, func(cmd *cobra.Command, _ []string) (render.Output, error) {
 		o.Agents = agentIDs(agents)
@@ -166,11 +174,12 @@ func (c *cliCtx) loginEditCmd() *cobra.Command {
 		if cmd.Flags().Changed("pool-force") {
 			o.PoolForce = &frc
 		}
+		o.Pool = ps.settings(cmd)
 		o.Source.RunSetup = c.setupRunner()
 		ch, err := c.App().LoginEdit(cmd.Context(), o)
-		return loginChangeOutput("changed", ch, err)
+		return loginChangeOutput("change", "changed", ch, err)
 	})
-	cmd.Example = "  pbpaste | agx login edit --id pasted --stdin\n  agx login edit --id personal --account me@example.com\n  agx login edit --id auto --pool-force alice\n  agx login edit --id auto --pool-force ''"
+	cmd.Example = "  pbpaste | agx login edit --id pasted --stdin\n  agx login edit --id personal --account me@example.com\n  agx login edit --id auto --pool-force alice\n  agx login edit --id auto --pool-force ''\n  agx login edit --id auto --pool-cap-short alice=95 --pool-cap-week alice=98 --pool-disable carol --dry-run"
 	f := cmd.Flags()
 	f.StringVar(&o.ID, "id", "", "the login to change")
 	f.StringArrayVar(&agents, "agent", nil, "replace the agents it serves (repeat)")
@@ -180,8 +189,59 @@ func (c *cliCtx) loginEditCmd() *cobra.Command {
 	f.StringArrayVar(&own, "pool-own", nil, "replace a pool's own members (repeat)")
 	f.StringArrayVar(&shared, "pool-shared", nil, "replace a pool's shared members (repeat)")
 	f.StringVar(&frc, "pool-force", "", "make a pool always pick this member (empty clears it)")
+	addPoolSettingFlags(cmd, ps)
+	f.BoolVar(&o.DryRun, "dry-run", false, "show a pool's changes; write nothing")
 	addSourceFlags(cmd, &o.Source)
-	return fields(cmd, loginInfoFields...)
+	return fields(cmd, loginChangeFields...)
+}
+
+// poolSettingFlags hold the pool setting flags of login add and edit
+// until the command runs (a flag that was not given stays nil).
+type poolSettingFlags struct {
+	capShort, capWeek, disable, enable                        []string
+	defShort, defWeek, cutoff, borrow, maxAge, keyTTL, picker string
+}
+
+// addPoolSettingFlags declares the pool setting flags add and edit share.
+func addPoolSettingFlags(cmd *cobra.Command, ps *poolSettingFlags) {
+	f := cmd.Flags()
+	f.StringArrayVar(&ps.capShort, "pool-cap-short", nil, "a member's own 5-hour cap: NAME=PERCENT; NAME= removes it (repeat)")
+	f.StringArrayVar(&ps.capWeek, "pool-cap-week", nil, "a member's own weekly cap: NAME=PERCENT; NAME= removes it (repeat)")
+	f.StringArrayVar(&ps.disable, "pool-disable", nil, "leave a member out of the pool: enabled false (repeat)")
+	f.StringArrayVar(&ps.enable, "pool-enable", nil, "take a disabled member back (repeat)")
+	f.StringVar(&ps.defShort, "pool-default-short", "", "the 5-hour cap of members without their own, in percent (empty: default 50)")
+	f.StringVar(&ps.defWeek, "pool-default-week", "", "the weekly cap of members without their own, in percent (empty: default 70)")
+	f.StringVar(&ps.cutoff, "pool-short-cutoff", "", "the 5-hour safety cutoff for every member, in percent (empty: default 99)")
+	f.StringVar(&ps.borrow, "pool-borrow-window", "", "a shared member goes first when its weekly reset is this close, like 48h (empty: default 48h)")
+	f.StringVar(&ps.maxAge, "pool-usage-max-age", "", "how old the usage cache may be before members are probed again, like 60s (empty: default 60s)")
+	f.StringVar(&ps.keyTTL, "pool-key-ttl", "", "how long the agent keeps a key before it asks again, like 60s (empty: default 60s)")
+	f.StringVar(&ps.picker, "pool-picker", "", "a shell command that picks the member instead of the built-in rules (empty removes it)")
+}
+
+// settings returns the flags that were given; an empty value is kept
+// (it removes the key).
+func (ps *poolSettingFlags) settings(cmd *cobra.Command) app.PoolSettings {
+	var s app.PoolSettings
+	given := cmd.Flags().Changed
+	list := func(name string, v []string) []string {
+		if given(name) {
+			return append([]string{}, v...)
+		}
+		return nil
+	}
+	one := func(name string, v string) *string {
+		if given(name) {
+			return &v
+		}
+		return nil
+	}
+	s.CapShort, s.CapWeek = list("pool-cap-short", ps.capShort), list("pool-cap-week", ps.capWeek)
+	s.Disable, s.Enable = list("pool-disable", ps.disable), list("pool-enable", ps.enable)
+	s.DefaultShort, s.DefaultWeek = one("pool-default-short", ps.defShort), one("pool-default-week", ps.defWeek)
+	s.ShortCutoff, s.BorrowWindow = one("pool-short-cutoff", ps.cutoff), one("pool-borrow-window", ps.borrow)
+	s.UsageMaxAge, s.KeyTTL = one("pool-usage-max-age", ps.maxAge), one("pool-key-ttl", ps.keyTTL)
+	s.Picker = one("pool-picker", ps.picker)
+	return s
 }
 
 // agentIDs converts flag values to agent ids.
@@ -193,18 +253,40 @@ func agentIDs(in []string) []agentio.ID {
 	return out
 }
 
-// loginChangeOutput renders add and edit.
-func loginChangeOutput(verb string, ch app.LoginChange, err error) (render.Output, error) {
+// loginChangeData is login add and edit's JSON: the login, plus the
+// keys a pool command changed and whether the file was written.
+type loginChangeData struct {
+	app.LoginInfo
+	Changes []app.Change `json:"changes,omitempty"`
+	Written bool         `json:"written"`
+}
+
+// loginChangeOutput renders add and edit: one summary line, then a
+// before/after line per changed pool key (as profile edit does). verb is
+// the plain verb ("add") for --dry-run, done its past form ("added").
+func loginChangeOutput(verb, done string, ch app.LoginChange, err error) (render.Output, error) {
 	out := render.Output{Decisions: ch.Decisions, Warnings: ch.Warnings}
 	if err != nil {
 		return out, err
 	}
-	data, err := render.Encode(ch.Info)
+	data, err := render.Encode(loginChangeData{LoginInfo: ch.Info, Changes: ch.Changes, Written: ch.Written})
 	out.Data = data
 	out.Text = func(w io.Writer) error {
-		ew := textout.New(w)
-		ew.Line(fmt.Sprintf("%s login %s (%s, %s)", verb, ch.Info.Name, ch.Info.Kind, ch.Info.Source))
-		return ew.Err()
+		tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+		ew := textout.New(tw)
+		switch {
+		case !ch.Written && len(ch.Changes) == 0:
+			ew.Line(fmt.Sprintf("login %s: no change (every value given is already set)", ch.Info.Name))
+		case ch.DryRun:
+			ew.Line(fmt.Sprintf("would %s login %s (--dry-run)", verb, ch.Info.Name))
+		default:
+			ew.Line(fmt.Sprintf("%s login %s (%s, %s)", done, ch.Info.Name, ch.Info.Kind, ch.Info.Source))
+		}
+		changeRows(ew, ch.Changes)
+		if ew.Err() != nil {
+			return ew.Err()
+		}
+		return tw.Flush()
 	}
 	return out, err
 }

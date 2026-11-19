@@ -377,6 +377,16 @@ func changesText(w io.Writer, what string, changes []app.Change, written bool) e
 		verb = "would change (--dry-run)"
 	}
 	ew.Line(what + ": " + verb + "\t\t\t")
+	changeRows(ew, changes)
+	if ew.Err() != nil {
+		return ew.Err()
+	}
+	return tw.Flush()
+}
+
+// changeRows writes one tab-separated "key  from  ->  to" line per change
+// (a dash for an unset value), for a tabwriter to align.
+func changeRows(ew *textout.Writer, changes []app.Change) {
 	for _, ch := range changes {
 		from, to := ch.From, ch.To
 		if from == "" {
@@ -387,10 +397,6 @@ func changesText(w io.Writer, what string, changes []app.Change, written bool) e
 		}
 		ew.Line("  " + ch.Key + "\t" + from + "\t->\t" + to)
 	}
-	if ew.Err() != nil {
-		return ew.Err()
-	}
-	return tw.Flush()
 }
 
 // profileRemoveCmd is agx profile remove.

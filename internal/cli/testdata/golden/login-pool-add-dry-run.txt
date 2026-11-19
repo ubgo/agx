@@ -1,0 +1,5 @@
+would add login team (--dry-run)
+  pool.own                   —  ->  alice
+  pool.shared                —  ->  carol
+  pool.accounts.alice.short  —  ->  95
+  pool.accounts.alice.week   —  ->  98

@@ -92,7 +92,7 @@ func TestPoolProblems(t *testing.T) {
 		{"block on token login", `"auto": { "agents": ["claude"], "kind": "oauth-token", "token": "x", "pool": { "own": ["alice"] } }`, "pool is only for kind pool logins"},
 		{"bad window", `"auto": { "agents": ["claude"], "kind": "pool", "pool": { "own": ["alice"], "shared_borrow_window": "2 days" } }`, `shared_borrow_window "2 days" is not a duration`},
 		{"short ttl", `"auto": { "agents": ["claude"], "kind": "pool", "pool": { "own": ["alice"], "key_ttl": "10ms" } }`, "key_ttl 10ms is below 1s"},
-		{"cap", `"auto": { "agents": ["claude"], "kind": "pool", "pool": { "own": ["alice"], "defaults": { "short": 150 } } }`, "defaults.short 150 is outside 0..100"},
+		{"cap", `"auto": { "agents": ["claude"], "kind": "pool", "pool": { "own": ["alice"], "defaults": { "short": 150 } } }`, "logins.auto.pool.defaults.short: must be <= 100"},
 		{"unlisted account", `"auto": { "agents": ["claude"], "kind": "pool", "pool": { "own": ["alice"], "accounts": { "bob": {} } } }`, "accounts.bob is not listed in own or shared"},
 		{"unknown force", `"auto": { "agents": ["claude"], "kind": "pool", "pool": { "own": ["alice"], "force": "zoe" } }`, "force: unknown login zoe"},
 		{"old selector key", `"auto": { "agents": ["claude"], "kind": "pool", "pool": { "own": ["alice"], "burnToFullest": ["alice"] } }`, "burnToFullest"},

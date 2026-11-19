@@ -1,0 +1,11 @@
+changed login auto (pool, pool 2 own, 1 shared)
+  pool.accounts.bob.short            90         ->  —
+  pool.accounts.bob.week             97.5       ->  —
+  pool.accounts.carol.enabled        false      ->  true
+  pool.defaults.short                60         ->  —
+  pool.defaults.week                 80         ->  —
+  pool.short_unavailable_at_percent  98         ->  —
+  pool.shared_borrow_window          24h        ->  —
+  pool.usage_max_age                 2m         ->  —
+  pool.key_ttl                       30s        ->  —
+  pool.picker.command                my-picker  ->  —

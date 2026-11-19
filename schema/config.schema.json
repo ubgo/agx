@@ -915,25 +915,22 @@
                     "type": "string"
                   },
                   "short_unavailable_at_percent": {
-                    "type": [
-                      "number",
-                      "null"
-                    ]
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
                   },
                   "defaults": {
                     "type": "object",
                     "properties": {
                       "short": {
-                        "type": [
-                          "number",
-                          "null"
-                        ]
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100
                       },
                       "week": {
-                        "type": [
-                          "number",
-                          "null"
-                        ]
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100
                       }
                     },
                     "additionalProperties": false
@@ -944,22 +941,17 @@
                       "type": "object",
                       "properties": {
                         "short": {
-                          "type": [
-                            "number",
-                            "null"
-                          ]
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 100
                         },
                         "week": {
-                          "type": [
-                            "number",
-                            "null"
-                          ]
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 100
                         },
                         "enabled": {
-                          "type": [
-                            "boolean",
-                            "null"
-                          ]
+                          "type": "boolean"
                         }
                       },
                       "additionalProperties": false

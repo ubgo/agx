@@ -55,17 +55,31 @@ Add a login. Cost W (X with `--login-setup`). Guide: [Adding a login](../logins.
 | `--provider` | the model provider, for agents with one key per provider (pi: `anthropic`, `openai`, …) |
 | `--pool-own` | with `--kind pool`: a member login that is your own account, used up almost fully (repeat) |
 | `--pool-shared` | with `--kind pool`: a member login that is a teammate's account, borrowed up to its caps (repeat) |
+| `--pool-cap-short` | with `--kind pool`: a member's own 5-hour cap, `NAME=PERCENT` (0 to 100); `NAME=` removes it so the default applies (repeat) |
+| `--pool-cap-week` | a member's own weekly cap, `NAME=PERCENT`; `NAME=` removes it (repeat) |
+| `--pool-disable` | leave a member out of the pool (`enabled: false`; repeat) |
+| `--pool-enable` | take a disabled member back (repeat) |
+| `--pool-default-short` | the 5-hour cap of members without their own, in percent; empty removes it (default 50) |
+| `--pool-default-week` | the weekly cap of members without their own; empty removes it (default 70) |
+| `--pool-short-cutoff` | the 5-hour safety cutoff for every member, in percent; empty removes it (default 99) |
+| `--pool-borrow-window` | a shared member goes first when its weekly reset is this close, a Go duration such as `48h` (`0s` never); empty removes it (default 48h) |
+| `--pool-usage-max-age` | how old the usage cache may be before members are probed again, such as `60s`; empty removes it (default 60s) |
+| `--pool-key-ttl` | how long Claude keeps a key before it asks again, at least `1s`; empty removes it (default 60s) |
+| `--pool-picker` | a shell command that picks the member instead of the built-in rules; empty removes the picker |
+| `--dry-run` | with `--kind pool`: show the keys it would write; write nothing |
 | `--token-ref` | the token as a reference (`${gopass:…}`, `$(…)`, `${VAR}`) or a plain value, kept in config |
 | `--stdin` | read the token from stdin into `tokens.jsonc` (0600) |
 | `--login-setup` | run the agent's own token setup (`claude setup-token`), then store the pasted result (needs a terminal) |
 | `--helper-command` | for `api-key-helper`: the command the agent runs |
 
-Give one source. With none at a terminal, agx asks with a hidden prompt. A `pool` login takes no source: it names member logins with `--pool-own` and `--pool-shared`, serves exactly one agent (Claude Code), and its caps, windows and timings are keys in `config.jsonc` (see [Share a pool of Claude accounts](../guides/login-pool.md)):
+Give one source. With none at a terminal, agx asks with a hidden prompt. A `pool` login takes no source: it names member logins with `--pool-own` and `--pool-shared` and serves exactly one agent (Claude Code). Its caps, windows and timings take the `--pool-*` flags above (a member flag must name a member of the pool), and `--dry-run` shows every key it would write. See [Share a pool of Claude accounts](../guides/login-pool.md):
 
 <!-- snippet: examples/acct-login-pool/session.txt#add -->
 ```sh
 $ agx login add --name team --agent claude --kind pool --pool-own alice --pool-shared derek --pool-shared erin
 added login team (pool, pool 1 own, 2 shared)
+  pool.own     —  ->  alice
+  pool.shared  —  ->  derek erin
 
 $ agx login show --id team
 name     team
@@ -149,8 +163,81 @@ Rotate or change a login. Every profile, default and binding that uses it keeps 
 | `--pool-own` | a pool's own members, replacing the list (repeat) |
 | `--pool-shared` | a pool's shared members, replacing the list (repeat) |
 | `--pool-force` | make a pool always pick this member, over every rule; empty clears it |
+| `--pool-cap-short` | a member's own 5-hour cap, `NAME=PERCENT` (0 to 100); `NAME=` removes it so the default applies (repeat) |
+| `--pool-cap-week` | a member's own weekly cap, `NAME=PERCENT`; `NAME=` removes it (repeat) |
+| `--pool-disable` | leave a member out of the pool (`enabled: false`; repeat) |
+| `--pool-enable` | take a disabled member back (repeat) |
+| `--pool-default-short` | the 5-hour cap of members without their own, in percent; empty removes it (default 50) |
+| `--pool-default-week` | the weekly cap of members without their own; empty removes it (default 70) |
+| `--pool-short-cutoff` | the 5-hour safety cutoff for every member, in percent; empty removes it (default 99) |
+| `--pool-borrow-window` | a shared member goes first when its weekly reset is this close, a Go duration such as `48h` (`0s` never); empty removes it (default 48h) |
+| `--pool-usage-max-age` | how old the usage cache may be before members are probed again, such as `60s`; empty removes it (default 60s) |
+| `--pool-key-ttl` | how long Claude keeps a key before it asks again, at least `1s`; empty removes it (default 60s) |
+| `--pool-picker` | a shell command that picks the member instead of the built-in rules; empty removes the picker |
+| `--dry-run` | on a pool: show the changes; write nothing |
 
-A pool changes only its members, its force and its account label here; its other keys are edited in `config.jsonc`. A login never becomes a pool in place, or the reverse: add a new one.
+On a pool, every key changes here: the members, the force, each member's caps and `enabled`, the defaults, the windows, the picker and the account label. Each changed key prints a line with its value before and after (`—` for a key that is not set); `--dry-run` prints the same lines and writes nothing, and flags that match the file print `no change` and write nothing. An empty value removes a key, so its documented default applies again. `--dry-run` is for pools only: a token login's value is read once (stdin, a setup command) and written as given. A login never becomes a pool in place, or the reverse: add a new one.
+
+<!-- snippet: examples/acct-login-pool/session.txt#caps -->
+```sh
+$ agx login edit --id team --pool-cap-short alice=95 --pool-cap-week alice=98 --pool-cap-short erin=60 --pool-disable derek --dry-run
+would change login team (--dry-run)
+  pool.accounts.alice.short    —     ->  95
+  pool.accounts.alice.week     —     ->  98
+  pool.accounts.erin.short     —     ->  60
+  pool.accounts.derek.enabled  true  ->  false
+
+$ agx login edit --id team --pool-cap-short alice=95 --pool-cap-week alice=98 --pool-cap-short erin=60 --pool-disable derek
+changed login team (pool, pool 1 own, 2 shared)
+  pool.accounts.alice.short    —     ->  95
+  pool.accounts.alice.week     —     ->  98
+  pool.accounts.erin.short     —     ->  60
+  pool.accounts.derek.enabled  true  ->  false
+
+$ agx login edit --id team --pool-cap-short alice=95 --pool-cap-week alice=98
+login team: no change (every value given is already set)
+
+$ agx config set --key logins.team.pool.defaults.week --value 80
+logins.team.pool.defaults.week = 80
+
+$ agx login pick --id team
+Pool: team (claude)
+Use: erin (shared)
+shared account resets within 48h, before any usable own account; using its room before it is lost
+Source: cache (20s old)
+
+Candidates (ready accounts in pick order):
+- erin [shared] #1 READY (5h 55%, week 43%, resets in 3 hr 0 min, room 37%)
+- alice [own] #2 READY (5h 3%, week 29%, resets in 6 d 0 hr, room 69%)
+- derek [shared] skip: disabled in config; no usage reading (no windows, reset unknown)
+
+$ agx login edit --id team --pool-enable derek --pool-cap-short erin= --pool-key-ttl 30s
+changed login team (pool, pool 1 own, 2 shared)
+  pool.accounts.erin.short     60     ->  —
+  pool.accounts.derek.enabled  false  ->  true
+  pool.key_ttl                 —      ->  30s
+```
+
+Refused, each exit 2 with nothing written: a cap outside 0 to 100 (`NaN` included), a value that is not `NAME=N`, a member the pool does not list, `--pool-disable` and `--pool-enable` for the same member, a duration that is not a Go duration or is negative, a `--pool-key-ttl` under `1s`, and a blank `--pool-picker`:
+
+<!-- snippet: examples/acct-login-pool/session.txt#cap-refusals -->
+```sh
+$ agx login edit --id team --pool-cap-week erin=101
+agx: --pool-cap-week erin=101: 101 is not a number from 0 to 100
+[exit 2]
+
+$ agx login edit --id team --pool-disable carol
+agx: --pool-disable carol: carol is not a member of pool team (members: alice, derek, erin)
+[exit 2]
+
+$ agx config set --key logins.team.pool.accounts.erin.week --value 101
+agx: --key logins.team.pool.accounts.erin.week takes a number from 0 to 100, not "101"
+[exit 2]
+
+$ agx config set --key logins.team.pool.accounts.erin.week --value high
+agx: --key logins.team.pool.accounts.erin.week takes a number from 0 to 100, not "high"
+[exit 2]
+```
 
 Try it:
 

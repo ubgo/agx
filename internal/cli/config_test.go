@@ -104,7 +104,7 @@ func TestConfigSetValidatesAndKeepsComments(t *testing.T) {
 	}
 	before := f.ReadFile(cfgPath)
 	wantErr(t, f.Run("config", "set", "--key", "default_agent", "--value", "nope", "--json"), 2, "config", "unknown agent nope")
-	wantErr(t, f.Run("config", "set", "--key", "profiles.work.billing", "--value", "free", "--json"), 2, "config", "billing")
+	wantErr(t, f.Run("config", "set", "--key", "profiles.work.billing", "--value", "free", "--json"), 2, "usage", `--key profiles.work.billing takes one of: plan, api, not "free"`)
 	wantErr(t, f.Run("config", "set", "--key", "profiles", "--value", "x", "--json"), 2, "usage", "--key profiles is an object, not a scalar")
 	wantErr(t, f.Run("config", "set", "--key", "profiles.work.args", "--value", "x", "--json"), 2, "usage", "--key profiles.work.args is a list, not a scalar")
 	wantErr(t, f.Run("config", "set", "--key", "defualt_agent", "--value", "x", "--json"), 2, "usage", "unknown key defualt_agent")

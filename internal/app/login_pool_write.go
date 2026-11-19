@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/ubgo/agentio"
 	"github.com/ubgo/textdata/jsonc"
@@ -23,18 +24,25 @@ const (
 
 // poolGiven reports a pool flag on login edit.
 func (o LoginEditOptions) poolGiven() bool {
-	return o.PoolOwn != nil || o.PoolShared != nil || o.PoolForce != nil
+	return o.PoolOwn != nil || o.PoolShared != nil || o.PoolForce != nil || o.Pool.given()
 }
 
-// addPool is login add --kind pool: a login with members and no value.
-// The members, the agent and every number are checked like a load before
-// the file is written (editConfig), so a member that does not exist or
-// serves another agent is refused with the config's own message.
-func (a *App) addPool(ctx context.Context, o LoginAddOptions) (LoginChange, error) {
+// poolFlagsText names the pool flags in "nothing to change" and kind
+// messages.
+const poolFlagsText = flagPoolOwn + ", " + flagPoolShared + ", " + flagPoolForce + ", " + flagPoolCapShort + ", " + flagPoolCapWeek + ", " +
+	flagPoolDisable + ", " + flagPoolEnable + ", " + flagPoolDefaultShort + ", " + flagPoolDefaultWeek + ", " + flagPoolShortCutoff + ", " +
+	flagPoolBorrowWindow + ", " + flagPoolUsageMaxAge + ", " + flagPoolKeyTTL + ", " + flagPoolPicker
+
+// addPool is login add --kind pool: a login with members and no value,
+// plus any pool setting flags. The members, the agent and every number
+// are checked like a load before the file is written (editConfig), so a
+// member that does not exist or serves another agent is refused with the
+// config's own message. --dry-run shows the keys it would write.
+func (a *App) addPool(ctx context.Context, o LoginAddOptions, cfg *config.Loaded) (LoginChange, error) {
 	var ch LoginChange
 	switch {
 	case o.Kind != config.KindPool:
-		return ch, apperr.Usage(fmt.Sprintf("%s and %s are for --kind %s logins", flagPoolOwn, flagPoolShared, config.KindPool))
+		return ch, apperr.Usage(fmt.Sprintf("the pool flags (%s, %s, …) are for --kind %s logins", flagPoolOwn, flagPoolShared, config.KindPool))
 	case len(o.Source.given()) > 0:
 		return ch, apperr.Usage(fmt.Sprintf("a %s login holds no value; its members do (drop %s)", config.KindPool, o.Source.given()[0]))
 	case o.Provider != "":
@@ -47,9 +55,26 @@ func (a *App) addPool(ctx context.Context, o LoginAddOptions) (LoginChange, erro
 	if err := a.poolAgent(o.Agents[0]); err != nil {
 		return ch, err
 	}
+	plan := poolPlan{login: o.Name}
+	plan.change(keyPoolOwn, absent, strings.Join(o.PoolOwn, " "))
+	plan.change(keyPoolShared, absent, strings.Join(o.PoolShared, " "))
+	if err := plan.planSettings(config.Pool{}, slices.Concat(o.PoolOwn, o.PoolShared), o.Pool); err != nil {
+		return ch, err
+	}
 	ch.Decisions = append(ch.Decisions, report.Decision{Name: decLoginKind, Value: config.KindPool, Source: "--kind"})
+	ch.Changes = plan.changes
 	l := config.Login{Agents: o.Agents, Kind: config.KindPool, Account: o.Account, Pool: &config.Pool{Own: o.PoolOwn, Shared: o.PoolShared}}
-	if err := a.editConfig(ctx, func(d *jsonc.Doc) error { return d.Set(config.Pointer("logins", o.Name), l) }); err != nil {
+	if o.DryRun {
+		ch.Info, ch.DryRun = a.loginInfo(cfg.Config, o.Name, l), true
+		return ch, nil
+	}
+	err := a.editConfig(ctx, func(d *jsonc.Doc) error {
+		if err := d.Set(config.Pointer("logins", o.Name), l); err != nil {
+			return err
+		}
+		return applyEdits(d, plan.edits)
+	})
+	if err != nil {
 		return ch, err
 	}
 	return a.changed(ch, o.Name)
@@ -67,70 +92,56 @@ func (a *App) poolAgent(id agentio.ID) error {
 	return nil
 }
 
-// editPool is login edit on a pool: the member lists, the force and the
-// account label change; a pool's kind, agent and value do not (a pool
-// has no value, and a token login never becomes a pool in place).
-func (a *App) editPool(ctx context.Context, o LoginEditOptions, cur config.Login) (LoginChange, error) {
+// editPool is login edit on a pool: the member lists, the force, every
+// pool setting and the account label change; a pool's kind, agent and
+// value do not (a pool has no value, and a token login never becomes a
+// pool in place). Each changed key gets a before/after line; --dry-run
+// stops there, and flags that match the file change nothing (no write).
+func (a *App) editPool(ctx context.Context, o LoginEditOptions, cfg *config.Loaded, cur config.Login) (LoginChange, error) {
 	var ch LoginChange
 	switch {
 	case cur.Kind != config.KindPool && o.Kind == config.KindPool:
 		return ch, apperr.Usage(fmt.Sprintf("login %s is %s; a login cannot become a pool in place: add one with agx login add --kind pool", o.ID, cur.Kind))
 	case cur.Kind != config.KindPool:
-		return ch, apperr.Usage(fmt.Sprintf("%s, %s and %s are for pool logins; %s is %s", flagPoolOwn, flagPoolShared, flagPoolForce, o.ID, cur.Kind))
+		return ch, apperr.Usage(fmt.Sprintf("the pool flags (%s, %s, %s, …) are for pool logins; %s is %s", flagPoolOwn, flagPoolShared, flagPoolForce, o.ID, cur.Kind))
 	case o.Kind != "" && o.Kind != config.KindPool:
 		return ch, apperr.Usage(fmt.Sprintf("login %s is a pool; it cannot change kind: remove it and add a %s login", o.ID, o.Kind))
 	case len(o.Source.given()) > 0:
 		return ch, apperr.Usage(fmt.Sprintf("a pool login holds no value; its members do (drop %s)", o.Source.given()[0]))
 	case len(o.Agents) > 0 || (o.Provider != nil && *o.Provider != ""):
 		return ch, apperr.Usage("a pool login's agent and provider do not change; change its members with " + flagPoolOwn + " and " + flagPoolShared)
+	case !o.poolGiven() && o.Account == nil:
+		return ch, apperr.Usage("nothing to change: give " + poolFlagsText + " or --account")
 	}
 	p := config.Pool{}
 	if cur.Pool != nil {
 		p = *cur.Pool
 	}
-	changed := false
-	err := a.editConfig(ctx, func(d *jsonc.Doc) error {
-		ptr := func(k string) string { return config.Pointer("logins", o.ID, keyPool, k) }
-		for _, f := range []struct {
-			key       string
-			old, want []string
-		}{{keyPoolOwn, p.Own, o.PoolOwn}, {keyPoolShared, p.Shared, o.PoolShared}} {
-			if f.want == nil || slices.Equal(f.old, f.want) {
-				continue
-			}
-			changed = true
-			if err := d.Set(ptr(f.key), f.want); err != nil {
-				return err
-			}
-		}
-		if o.PoolForce != nil {
-			old := ""
-			if p.Force != nil {
-				old = *p.Force
-			}
-			if old != *o.PoolForce {
-				changed = true
-				var v *string
-				if *o.PoolForce != "" {
-					v = o.PoolForce
-				}
-				if err := d.Set(ptr(keyPoolForce), v); err != nil {
-					return err
-				}
-			}
-		}
-		if o.Account != nil && *o.Account != cur.Account {
-			changed = true
-			if err := setOrDelete(d, config.Pointer("logins", o.ID, keyAccount), true, *o.Account); err != nil {
-				return err
-			}
-		}
-		if !changed {
-			return apperr.Usage("nothing to change: give " + flagPoolOwn + ", " + flagPoolShared + ", " + flagPoolForce + " or --account")
-		}
-		return nil
-	})
-	if err != nil {
+	own, shared := p.Own, p.Shared
+	if o.PoolOwn != nil {
+		own = o.PoolOwn
+	}
+	if o.PoolShared != nil {
+		shared = o.PoolShared
+	}
+	plan := poolPlan{login: o.ID}
+	plan.planMembers(p, o.PoolOwn, o.PoolShared, o.PoolForce)
+	if err := plan.planSettings(p, slices.Concat(own, shared), o.Pool); err != nil {
+		return ch, err
+	}
+	if o.Account != nil && *o.Account != cur.Account {
+		plan.changes = append(plan.changes, Change{Key: keyAccount, From: cur.Account, To: *o.Account})
+		plan.edits = append(plan.edits, setOrDeleteEdit([]string{"logins", o.ID, keyAccount}, *o.Account))
+	}
+	ch.Changes = plan.changes
+	if ch.Changes == nil {
+		ch.Changes = []Change{}
+	}
+	if len(plan.changes) == 0 || o.DryRun {
+		ch.Info, ch.DryRun = a.loginInfo(cfg.Config, o.ID, cur), o.DryRun
+		return ch, nil
+	}
+	if err := a.editConfig(ctx, func(d *jsonc.Doc) error { return applyEdits(d, plan.edits) }); err != nil {
 		return ch, err
 	}
 	return a.changed(ch, o.ID)

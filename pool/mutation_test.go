@@ -67,8 +67,8 @@ var mutants = []mutant{
 	{"default 5h cap changed", "pool/pool.go", "DefaultShortCap = 50.0", "DefaultShortCap = 60.0"},
 	{"default safety cutoff changed", "pool/pool.go", "DefaultShortUnavailableAt = 99.0", "DefaultShortUnavailableAt = 100.0"},
 	{"default borrow window changed", "pool/pool.go", "DefaultBorrowWindow = 48 * time.Hour", "DefaultBorrowWindow = 24 * time.Hour"},
-	{"cap range not checked", "pool/pool.go", "return v >= 0 && v <= 100 && !math.IsNaN(v)", "return v >= 0 && v <= 1000 && !math.IsNaN(v)"},
-	{"NaN cap allowed", "pool/pool.go", "return v >= 0 && v <= 100 && !math.IsNaN(v)", "return !(v < 0) && !(v > 100)"},
+	{"cap range not checked", "pool/pool.go", "return v >= MinPercent && v <= MaxPercent && !math.IsNaN(v)", "return v >= MinPercent && v <= 10*MaxPercent && !math.IsNaN(v)"},
+	{"NaN cap allowed", "pool/pool.go", "return v >= MinPercent && v <= MaxPercent && !math.IsNaN(v)", "return !(v < MinPercent) && !(v > MaxPercent)"},
 	{"duplicate names allowed (pool)", "pool/pool.go", "if seen[name] {", "if false {"},
 	{"accounts entry for an unlisted name allowed", "pool/pool.go", "if !seen[name] {", "if false {"},
 	{"bad now allowed", "pool/pool.go", "if o.Now.IsZero() {", "if false {"},
@@ -78,7 +78,8 @@ var mutants = []mutant{
 	{"empty force allowed", "config/check.go", "if p.Force != nil && *p.Force == \"\" {", "if false {"},
 	{"unknown member allowed", "config/check.go", "\tcase !ok:\n\t\treturn \"unknown login \" + m", "\tcase !ok && false:\n\t\treturn \"unknown login \" + m"},
 	{"member of another agent allowed", "config/check.go", "if !ml.Serves(id) {", "if false {"},
-	{"null cap allowed", "config/check.go", "\t\tif isNull(keys...) {", "\t\tif false {"},
+	{"null cap allowed (schema)", "config/schema.go", "n.Types = []string{k.typ}", "n.Types = []string{k.typ, SchemaNull}"},
+	{"cap range left out of the schema", "config/schema.go", "n.Maximum = jsonNumber(pool.MaxPercent)", "n.Maximum = jsonNumber(10 * pool.MaxPercent)"},
 }
 
 // TestMutation runs every mutant and fails unless each is caught.

@@ -113,6 +113,15 @@ type LoginChange struct {
 	Decisions []report.Decision
 	// Warnings are non-fatal notes (a pasted value of another shape).
 	Warnings []report.Warning
+	// Changes are the keys a pool add or edit changed, with their values
+	// before and after (or would change, with DryRun); nil for a token
+	// login.
+	Changes []Change
+	// Written is true once the file was written: false for --dry-run and
+	// for a pool edit whose values were all already set.
+	Written bool
+	// DryRun is set for --dry-run.
+	DryRun bool
 }
 
 // LoginAddOptions are agx login add's flags.
@@ -133,6 +142,10 @@ type LoginAddOptions struct {
 	// PoolOwn and PoolShared are the members of a kind pool login.
 	PoolOwn    []string
 	PoolShared []string
+	// Pool are the pool's settings (caps, enabled, windows, picker).
+	Pool PoolSettings
+	// DryRun shows a new pool's keys and writes nothing (pool logins only).
+	DryRun bool
 }
 
 // LoginAdd adds a login to config.jsonc (and a pasted value to
@@ -158,8 +171,11 @@ func (a *App) LoginAdd(ctx context.Context, o LoginAddOptions) (LoginChange, err
 	if _, ok := cfg.Config.Logins[o.Name]; ok {
 		return ch, apperr.Conflict("login " + o.Name + " exists").WithHint("agx login edit --id " + o.Name)
 	}
-	if o.Kind == config.KindPool || len(o.PoolOwn)+len(o.PoolShared) > 0 {
-		return a.addPool(ctx, o)
+	if o.Kind == config.KindPool || len(o.PoolOwn)+len(o.PoolShared) > 0 || o.Pool.given() {
+		return a.addPool(ctx, o, cfg)
+	}
+	if o.DryRun {
+		return ch, errDryRunPool()
 	}
 	agents, err := a.tokenAgents(o.Agents)
 	if err != nil {
@@ -199,8 +215,16 @@ func (a *App) LoginAdd(ctx context.Context, o LoginAddOptions) (LoginChange, err
 	return a.changed(ch, o.Name)
 }
 
-// changed reloads the config and fills ch.Info for login name.
+// errDryRunPool refuses --dry-run on a token login: its value is read
+// from stdin or a setup command, which a dry run cannot undo.
+func errDryRunPool() error {
+	return apperr.Usage(flagDryRun + " is for pool logins; a token login's value is read once and written as given")
+}
+
+// changed reloads the config and fills ch.Info for login name, after a
+// write.
 func (a *App) changed(ch LoginChange, name string) (LoginChange, error) {
+	ch.Written = true
 	a.Reload()
 	cfg, err := a.Config()
 	if err != nil {
@@ -428,6 +452,10 @@ type LoginEditOptions struct {
 	PoolShared []string
 	// PoolForce sets a pool's force; "" clears it (null).
 	PoolForce *string
+	// Pool changes the pool's settings (caps, enabled, windows, picker).
+	Pool PoolSettings
+	// DryRun shows a pool's changes and writes nothing (pool logins only).
+	DryRun bool
 }
 
 // LoginEdit rotates or changes a login, keeping config comments and
@@ -442,7 +470,10 @@ func (a *App) LoginEdit(ctx context.Context, o LoginEditOptions) (LoginChange, e
 		return ch, err
 	}
 	if cur.Kind == config.KindPool || o.Kind == config.KindPool || o.poolGiven() {
-		return a.editPool(ctx, o, cur)
+		return a.editPool(ctx, o, cfg, cur)
+	}
+	if o.DryRun {
+		return ch, errDryRunPool()
 	}
 	next := cur
 	if len(o.Agents) > 0 {

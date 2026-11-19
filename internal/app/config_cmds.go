@@ -225,6 +225,10 @@ func (w *showWalker) walk(v reflect.Value, keys []string) {
 		}
 	case reflect.Int, reflect.Int64:
 		w.add(keys, strconv.FormatInt(v.Int(), 10))
+	case reflect.Float64:
+		// Pool caps and the cutoff; written the shortest exact way (95,
+		// 99.5), as in the file.
+		w.add(keys, strconv.FormatFloat(v.Float(), 'f', -1, 64))
 	}
 }
 

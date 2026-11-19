@@ -85,7 +85,7 @@ func TestPortStrictConfig(t *testing.T) {
 	t.Run("enabled must be a real boolean", func(t *testing.T) {
 		refused(t, `, "accounts": { "alice": { "enabled": "false" } }`, "enabled")
 		refused(t, `, "accounts": { "alice": { "enabled": 0 } }`, "enabled")
-		refused(t, `, "accounts": { "alice": { "enabled": null } }`, "enabled is null")
+		refused(t, `, "accounts": { "alice": { "enabled": null } }`, "accounts.alice.enabled: must be boolean, got null")
 	})
 	t.Run("caps must be numbers from 0 to 100", func(t *testing.T) {
 		for _, v := range []string{`"50"`, `"abc"`, `null`, `-1`, `101`, `1e400`} {
@@ -96,7 +96,7 @@ func TestPortStrictConfig(t *testing.T) {
 	t.Run("other settings are type-checked", func(t *testing.T) {
 		refused(t, `, "short_unavailable_at_percent": 120`, "short_unavailable_at_percent")
 		refused(t, `, "short_unavailable_at_percent": "99"`, "short_unavailable_at_percent")
-		refused(t, `, "short_unavailable_at_percent": null`, "short_unavailable_at_percent is null")
+		refused(t, `, "short_unavailable_at_percent": null`, "short_unavailable_at_percent: must be number, got null")
 		refused(t, `, "shared_borrow_window": 48`, "shared_borrow_window")
 		refused(t, `, "force": ""`, "force is empty")
 		refused(t, `, "accounts": []`, "accounts")

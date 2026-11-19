@@ -39,17 +39,43 @@ agx: --key profiles.work.live_login takes true or false, not "yes"
 [exit 2]
 
 $ agx config set --key profiles --value work
-agx: --key profiles is an object, not a scalar; use its own command (profile edit, project use, alias add) or edit config.jsonc
+agx: --key profiles is an object, not a scalar; use its own command (profile edit, project use, alias add, login edit) or edit config.jsonc
 [exit 2]
 
 $ agx config set --key profiles.work.modle --value opus
 agx: --key profiles.work.modle: unknown key profiles.work.modle
-  keys: agent, home, default, billing, login, home_login, args, inherit_defaults, model, autonomy, env, env_refs, env_file, env_file_commands, before_run, before_run_from, before_run_env, settings_delivery, live_login
+  keys: agent, home, default, billing, login, home_login, args, inherit_defaults, model, autonomy, env, env_refs, env_file, env_file_commands, before_run, before_run_from, before_run_env, settings_delivery, live_login, claude, codex
 [exit 2]
 
 $ agx config set --key profiles.work.home --value ''
 agx: refused: the change would make config.jsonc invalid: home is empty
   home is empty
+[exit 2]
+
+#endregion
+#: The value is typed by the schema at the key, whether the key is in the file yet or not: digits on a string key stay a string, and null is written only where the key takes it.
+#region set-typed
+$ agx config set --key profiles.work.inherit_defaults --value false
+profiles.work.inherit_defaults = false
+
+$ agx config set --key profiles.work.inherit_defaults --value null
+profiles.work.inherit_defaults = null
+
+$ agx config set --key profiles.work.model --value 4
+profiles.work.model = 4
+
+$ agx config set --key profiles.work.billing --value api
+profiles.work.billing = api
+
+$ agx config set --key profiles.work.claude.effort --value high
+profiles.work.claude.effort = high
+
+$ agx config set --key profiles.work.billing --value free
+agx: --key profiles.work.billing takes one of: plan, api, not "free"
+[exit 2]
+
+$ agx config set --key version --value 1.5
+agx: --key version takes an integer, not "1.5"
 [exit 2]
 
 #endregion

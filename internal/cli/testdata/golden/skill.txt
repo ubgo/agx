@@ -295,18 +295,31 @@ agx login add --name personal --agent claude --kind oauth-token --token-ref '${g
 pbpaste | agx login add --name pasted --agent claude --kind oauth-token --stdin
 agx login add --name carol --agent claude --kind oauth-token --login-setup
 agx login add --name auto --agent claude --kind pool --pool-own alice --pool-own bob --pool-shared carol
+agx login add --name auto --agent claude --kind pool --pool-own alice --pool-shared carol --pool-cap-short alice=95 --pool-cap-week alice=98 --dry-run
 ```
 
 | Flag | Meaning |
 |---|---|
 | `--account VALUE` | a display label, such as the account email |
 | `--agent VALUE` | an agent it serves (repeat) (repeatable) |
+| `--dry-run` | show the pool's keys; write nothing (--kind pool) |
 | `--helper-command VALUE` | an api-key-helper command the agent runs itself |
 | `--kind VALUE` | oauth-token, api-key, api-key-helper or pool (default: the first agent's default kind) |
 | `--login-setup` | run the first agent's token setup command (claude setup-token; cost X), then paste the token |
 | `--name VALUE` | the new login's name |
+| `--pool-borrow-window VALUE` | a shared member goes first when its weekly reset is this close, like 48h (empty: default 48h) |
+| `--pool-cap-short VALUE` | a member's own 5-hour cap: NAME=PERCENT; NAME= removes it (repeat) (repeatable) |
+| `--pool-cap-week VALUE` | a member's own weekly cap: NAME=PERCENT; NAME= removes it (repeat) (repeatable) |
+| `--pool-default-short VALUE` | the 5-hour cap of members without their own, in percent (empty: default 50) |
+| `--pool-default-week VALUE` | the weekly cap of members without their own, in percent (empty: default 70) |
+| `--pool-disable VALUE` | leave a member out of the pool: enabled false (repeat) (repeatable) |
+| `--pool-enable VALUE` | take a disabled member back (repeat) (repeatable) |
+| `--pool-key-ttl VALUE` | how long the agent keeps a key before it asks again, like 60s (empty: default 60s) |
 | `--pool-own VALUE` | a pool member that is your own account, used up almost fully (repeat; --kind pool) (repeatable) |
+| `--pool-picker VALUE` | a shell command that picks the member instead of the built-in rules (empty removes it) |
 | `--pool-shared VALUE` | a pool member that is a teammate's account, borrowed up to its caps (repeat; --kind pool) (repeatable) |
+| `--pool-short-cutoff VALUE` | the 5-hour safety cutoff for every member, in percent (empty: default 99) |
+| `--pool-usage-max-age VALUE` | how old the usage cache may be before members are probed again, like 60s (empty: default 60s) |
 | `--provider VALUE` | the model provider, for agents with a key per provider (pi) |
 | `--stdin` | read the value from stdin (stored in tokens.jsonc, 0600) |
 | `--token-ref VALUE` | a reference (${gopass:…}, $(…), ${VAR}) or a plain value, written to config |
@@ -329,19 +342,32 @@ pbpaste | agx login edit --id pasted --stdin
 agx login edit --id personal --account me@example.com
 agx login edit --id auto --pool-force alice
 agx login edit --id auto --pool-force ''
+agx login edit --id auto --pool-cap-short alice=95 --pool-cap-week alice=98 --pool-disable carol --dry-run
 ```
 
 | Flag | Meaning |
 |---|---|
 | `--account VALUE` | set the display label (empty clears it) |
 | `--agent VALUE` | replace the agents it serves (repeat) (repeatable) |
+| `--dry-run` | show a pool's changes; write nothing |
 | `--helper-command VALUE` | an api-key-helper command the agent runs itself |
 | `--id VALUE` | the login to change |
 | `--kind VALUE` | change the kind |
 | `--login-setup` | run the first agent's token setup command (claude setup-token; cost X), then paste the token |
+| `--pool-borrow-window VALUE` | a shared member goes first when its weekly reset is this close, like 48h (empty: default 48h) |
+| `--pool-cap-short VALUE` | a member's own 5-hour cap: NAME=PERCENT; NAME= removes it (repeat) (repeatable) |
+| `--pool-cap-week VALUE` | a member's own weekly cap: NAME=PERCENT; NAME= removes it (repeat) (repeatable) |
+| `--pool-default-short VALUE` | the 5-hour cap of members without their own, in percent (empty: default 50) |
+| `--pool-default-week VALUE` | the weekly cap of members without their own, in percent (empty: default 70) |
+| `--pool-disable VALUE` | leave a member out of the pool: enabled false (repeat) (repeatable) |
+| `--pool-enable VALUE` | take a disabled member back (repeat) (repeatable) |
 | `--pool-force VALUE` | make a pool always pick this member (empty clears it) |
+| `--pool-key-ttl VALUE` | how long the agent keeps a key before it asks again, like 60s (empty: default 60s) |
 | `--pool-own VALUE` | replace a pool's own members (repeat) (repeatable) |
+| `--pool-picker VALUE` | a shell command that picks the member instead of the built-in rules (empty removes it) |
 | `--pool-shared VALUE` | replace a pool's shared members (repeat) (repeatable) |
+| `--pool-short-cutoff VALUE` | the 5-hour safety cutoff for every member, in percent (empty: default 99) |
+| `--pool-usage-max-age VALUE` | how old the usage cache may be before members are probed again, like 60s (empty: default 60s) |
 | `--provider VALUE` | set the model provider (empty clears it) |
 | `--stdin` | read the value from stdin (stored in tokens.jsonc, 0600) |
 | `--token-ref VALUE` | a reference (${gopass:…}, $(…), ${VAR}) or a plain value, written to config |

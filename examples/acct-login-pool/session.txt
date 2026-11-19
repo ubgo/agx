@@ -51,6 +51,7 @@ Candidates (ready accounts in pick order):
 
 $ agx login edit --id auto --pool-force derek
 changed login auto (pool, pool 2 own, 3 shared)
+  pool.force  —  ->  derek
 
 $ agx login pick --id auto
 Pool: auto (claude)
@@ -67,6 +68,7 @@ Candidates (ready accounts in pick order):
 
 $ agx login edit --id auto --pool-force ''
 changed login auto (pool, pool 2 own, 3 shared)
+  pool.force  derek  ->  —
 
 #endregion
 #region token
@@ -160,6 +162,8 @@ note      installed Claude Code version unknown; flags not checked
 #region add
 $ agx login add --name team --agent claude --kind pool --pool-own alice --pool-shared derek --pool-shared erin
 added login team (pool, pool 1 own, 2 shared)
+  pool.own     —  ->  alice
+  pool.shared  —  ->  derek erin
 
 $ agx login show --id team
 name     team
@@ -204,6 +208,63 @@ agx: login auto is a pool: it has no token to probe; its members do
 $ agx login pick --id alice
 agx: login pick is for pool logins; login alice is oauth-token. Pools serve claude today
   agx login list
+[exit 2]
+
+#endregion
+#region caps
+$ agx login edit --id team --pool-cap-short alice=95 --pool-cap-week alice=98 --pool-cap-short erin=60 --pool-disable derek --dry-run
+would change login team (--dry-run)
+  pool.accounts.alice.short    —     ->  95
+  pool.accounts.alice.week     —     ->  98
+  pool.accounts.erin.short     —     ->  60
+  pool.accounts.derek.enabled  true  ->  false
+
+$ agx login edit --id team --pool-cap-short alice=95 --pool-cap-week alice=98 --pool-cap-short erin=60 --pool-disable derek
+changed login team (pool, pool 1 own, 2 shared)
+  pool.accounts.alice.short    —     ->  95
+  pool.accounts.alice.week     —     ->  98
+  pool.accounts.erin.short     —     ->  60
+  pool.accounts.derek.enabled  true  ->  false
+
+$ agx login edit --id team --pool-cap-short alice=95 --pool-cap-week alice=98
+login team: no change (every value given is already set)
+
+$ agx config set --key logins.team.pool.defaults.week --value 80
+logins.team.pool.defaults.week = 80
+
+$ agx login pick --id team
+Pool: team (claude)
+Use: erin (shared)
+shared account resets within 48h, before any usable own account; using its room before it is lost
+Source: cache (20s old)
+
+Candidates (ready accounts in pick order):
+- erin [shared] #1 READY (5h 55%, week 43%, resets in 3 hr 0 min, room 37%)
+- alice [own] #2 READY (5h 3%, week 29%, resets in 6 d 0 hr, room 69%)
+- derek [shared] skip: disabled in config; no usage reading (no windows, reset unknown)
+
+$ agx login edit --id team --pool-enable derek --pool-cap-short erin= --pool-key-ttl 30s
+changed login team (pool, pool 1 own, 2 shared)
+  pool.accounts.erin.short     60     ->  —
+  pool.accounts.derek.enabled  false  ->  true
+  pool.key_ttl                 —      ->  30s
+
+#endregion
+#region cap-refusals
+$ agx login edit --id team --pool-cap-week erin=101
+agx: --pool-cap-week erin=101: 101 is not a number from 0 to 100
+[exit 2]
+
+$ agx login edit --id team --pool-disable carol
+agx: --pool-disable carol: carol is not a member of pool team (members: alice, derek, erin)
+[exit 2]
+
+$ agx config set --key logins.team.pool.accounts.erin.week --value 101
+agx: --key logins.team.pool.accounts.erin.week takes a number from 0 to 100, not "101"
+[exit 2]
+
+$ agx config set --key logins.team.pool.accounts.erin.week --value high
+agx: --key logins.team.pool.accounts.erin.week takes a number from 0 to 100, not "high"
 [exit 2]
 
 #endregion
