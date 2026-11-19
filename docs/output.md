@@ -134,7 +134,7 @@ info    plain-token  profiles.service.env.MY_SERVICE_TOKEN looks like a secret w
 
 - **Width.** Human tables wrap their last column (doctor's `MESSAGE`, `config show`'s value) to the line width: the terminal's when stdout is one, else `COLUMNS`, else 120. Below 60 agx uses 60. `--json` never wraps.
 - **Colour.** The human output looks as agx v0.3's did: table headers and section titles bold, `#` indices, placeholders (`—`) and sources dim, and statuses coloured by what they mean: blue for fine (`ok`, a passed check, plenty left), amber for worth a look (`expired`, `stale`, under 20% left, a usage bar from 80%), red for blocked or failed (`limit reached`, `rejected`, a failed check, 0% left). On stderr the error line `agx: …` is red and each `agx: warning: …` line yellow. The decision is made per stream: `--color auto` (the default) colours a stream only when it is a terminal and `NO_COLOR` is unset or empty, so a pipe, a file or `$(agx …)` never sees an escape sequence; `--color always` colours even with `NO_COLOR` set (the flag you typed wins); `--color never` never does. The `--json` envelope is never coloured. Any other value is refused: `agx: --color "purple": use one of auto, always, never` (exit 2).
-- **Timeout.** `--timeout` bounds each network request: live `agx usage`, login probes (`agx login check`, `--login-probes`, `--login`, `--all-logins`, `--login-picker`) and `--auto-profile`/`--auto-login`. It takes a duration such as `5s` or `1m`; the default is `15s`, and `0` means the default. Secret commands keep their own 30 second limit, `before_run` 60 seconds.
+- **Timeout.** `--timeout` bounds each network request: live `agx usage`, login probes (`agx login check`, `--login-probes`, `--login`, `--all-logins`, `--login-picker`), `--auto-profile`/`--auto-login`, and each login-pool member probe. It takes a duration such as `5s` or `1m`; the default is `15s`, and `0` means the default. Secret commands keep their own 30 second limit, `before_run` 60 seconds.
 
 <!-- snippet: examples/out-scripting/session.txt#columns-env -->
 ```sh
@@ -218,7 +218,7 @@ Every command and costly flag has a cost class, shown in `agx help --json`:
 |---|---|---|---|
 | R | reads disk | `profile list`, `conversation list`, `usage --cached`, `agent list`, `doctor` | nothing |
 | N | network | live `usage` (one request per home) | the command is `usage` |
-| Q | spends quota | token probes | `--login-probes`, `--login`, `--all-logins` or `--login-picker` on usage, `login check`, `--auto-login` |
+| Q | spends quota | token probes | `--login-probes`, `--login`, `--all-logins` or `--login-picker` on usage, `login check`, `--auto-login`, `login pick` and `login token` on a pool (when its cached usage is old) |
 | X | runs the agent binary or a secret command | `run`, `new`, `resume`, `--login-setup`, `--resolved-secrets`, `--vendor-checks` | the command or the flag |
 | W | writes files | `profile add`, `profile import`, `conversation move`, `session clean`, `clean`, `config init`, `config set` | a plan, `--dry-run`, or `--yes` where it deletes |
 

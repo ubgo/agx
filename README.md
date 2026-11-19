@@ -62,10 +62,10 @@ Prebuilt binaries (macOS and Linux on amd64 and arm64, Windows on amd64) are on 
 
 ```sh
 # macOS on Apple Silicon: swap darwin_arm64 for darwin_amd64, linux_amd64 or linux_arm64
-curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.6/agx_v0.4.6_darwin_arm64.tar.gz
-curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.6/checksums.txt
+curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.7/agx_v0.4.7_darwin_arm64.tar.gz
+curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.7/checksums.txt
 shasum -a 256 -c checksums.txt --ignore-missing
-tar -xzf agx_v0.4.6_darwin_arm64.tar.gz agx && sudo mv agx /usr/local/bin/
+tar -xzf agx_v0.4.7_darwin_arm64.tar.gz agx && sudo mv agx /usr/local/bin/
 agx version
 ```
 
@@ -214,7 +214,7 @@ Every command takes named flags only; a bare `agx`, or a bare group such as `agx
 | [`agx session`](docs/commands/conversation.md#agx-session-list) | Session folders made by `agx new`: list, clean, promote |
 | [`agx live`](docs/commands/live.md) | Running sessions started with `--live-login`: list, show, switch the login |
 | [`agx profile`](docs/commands/profile.md) | Profiles, a name for one home plus launch defaults: list, show, add, import, edit, remove, use |
-| [`agx login`](docs/commands/login.md) | Logins, what a launch authenticates with: list, show, add, edit, remove, use, check |
+| [`agx login`](docs/commands/login.md) | Logins, what a launch authenticates with: list, show, add, edit, remove, use, check, token, pick |
 | [`agx project`](docs/commands/project.md) | Folder bindings per agent: list, show, use, remove |
 | [`agx agent`](docs/commands/setup.md#agx-agent-list) | Known agents and their capabilities: list, show |
 | [`agx doctor`](docs/commands/setup.md#agx-doctor) | Local checks: config, references, binaries, homes, run folders |
@@ -314,13 +314,17 @@ Not yet. Plan usage is read for Claude Code and Codex. Gemini CLI's quota comes 
 
 For Claude Code, yes: start it with `--live-login`, then `agx live use --id <run> --login <name>`; the agent picks up the new login at its next key refresh. The other agents have no setting that re-reads a login while they run, so `agx agent show` reports live switching as unsupported, with the reason.
 
+### Can agx move a running Claude session between accounts automatically?
+
+Yes, with a login pool: a login of kind `pool` lists your own Claude logins and your teammates' shared ones, and `agx run --login auto` starts Claude with agx as its key helper. Each time Claude asks for a key (every minute by default), agx reads the members' usage (one small probe each, cached and shared by every session) and hands out the token of the member whose weekly quota expires soonest, using your own accounts almost fully and teammates' only up to their caps. `agx login pick --id auto` shows the pick and why. It is Claude Code only. See [Share a pool of Claude accounts](docs/guides/login-pool.md).
+
 ### Does agx work on Windows?
 
 Windows builds are a preview until they are verified on a real Windows machine. Windows has no exec, so agx stays as the parent of the agent, forwards Ctrl-C and exits with the agent's exit code. See [Troubleshooting](docs/troubleshooting.md#windows).
 
 ### Does agx use the network or my quota?
 
-Launching makes no network request of its own, unless you ask for `--auto-profile` (reads usage) or `--auto-login` (probes each login, which spends a few tokens). `agx usage` makes one request per home; `agx usage --cached` reads the last readings from disk. Every command's cost class is in the [command reference](docs/commands/README.md).
+Launching makes no network request of its own, unless you ask for `--auto-profile` (reads usage) or `--auto-login` (probes each login, which spends a few tokens). A session on a login pool probes the pool's members about once a minute, when its cached usage is older than the pool's `usage_max_age`. `agx usage` makes one request per home; `agx usage --cached` reads the last readings from disk. Every command's cost class is in the [command reference](docs/commands/README.md).
 
 ### I used agx v0.3. Does my setup carry over?
 

@@ -23,6 +23,7 @@ agx never refreshes, prints or rewrites an agent's own stored OAuth credential. 
 | `oauth-token` | a plan token (from `claude setup-token`): a reference, a plain value, or stored | `CLAUDE_CODE_OAUTH_TOKEN` | claude |
 | `api-key` | a pay-per-token key | `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` or pi's provider variable | claude, gemini, pi, and a config-defined agent whose spec's `token_env` names the kind |
 | `api-key-helper` | a command the agent itself runs to get a key | `apiKeyHelper` in a settings file of the run; the key never passes through agx | claude |
+| `pool` | nothing: a list of member logins (your own and teammates') and the rules' numbers | `apiKeyHelper` running `agx credential`, which picks a member by usage each time the agent asks and prints its token; see [Share a pool of Claude accounts](guides/login-pool.md) | claude |
 
 When agx sets a token, it also removes every variable that would outrank it for that agent (for Claude, `ANTHROPIC_AUTH_TOKEN` and `ANTHROPIC_API_KEY` outrank `CLAUDE_CODE_OAUTH_TOKEN`), so the login you chose is the one used. `--dry-run` lists what it removed (values are always `[redacted]`):
 
@@ -230,6 +231,7 @@ users    —
 | use the home's own login for one run | `agx run --profile work --home-login` |
 | use a token that is not stored, for one run | `agx run --token-ref '${gopass:personal/claude/eve}' --token-kind oauth-token` |
 | use the stored login with the most headroom | `agx run --profile work --auto-login` (probes each login: spends a few tokens; see [Let agx pick by headroom](guides/auto-pick.md)) |
+| keep moving between accounts as quotas fill | `agx run --login auto` on a `pool` login (see [Share a pool of Claude accounts](guides/login-pool.md)) |
 | make it a profile's default | `agx login use --id carol --profile work` |
 | make it an agent's default | `agx login use --id carol --agent claude` |
 | go back to the home login for a profile | `agx login use --home-login --profile work` |
@@ -522,6 +524,8 @@ agx live use --id 20261114-101500-k3x9 --login alice      # applies at the agent
 agx live use --id 20261114-101500-k3x9 --start-login      # back to the login it started with
 ```
 
+A [login pool](guides/login-pool.md) does the switching for you: a run on a `pool` login is live, and each key request picks the member to use by usage (`agx login pick --id auto` shows the pick and why).
+
 ## Try it
 
 Every block on this page comes from four tested examples, each on a fake machine (no real account, binary or network):
@@ -586,6 +590,7 @@ agx: --token-ref and --login both choose the login; pick one
 - [A second account](guides/second-account.md): a new home for a new account.
 - [Let agx pick by headroom](guides/auto-pick.md): `--auto-login`.
 - [Live login](guides/live-login.md): switch a running session.
+- [Share a pool of Claude accounts](guides/login-pool.md): a `pool` login that switches by itself.
 - [Plan usage](guides/usage.md): the quota of each home and stored login.
 - Decision guides: [which login kind](choosing/login-kind.md), [where to set the profile and login](choosing/where-to-set.md), [continue on another account](choosing/continue-on-another-account.md).
 - [How agx decides](how-agx-decides.md#the-chain): the full order.

@@ -133,6 +133,15 @@ in use      alice
 liveness    unknown (process info unreadable: run.jsonc records no process id)
 ```
 
+## Let a pool switch for you
+
+A run on a [`pool` login](login-pool.md) is a live run that switches by itself: its start login is the pool, and each time Claude runs its key helper, `agx credential` picks a member by usage and hands out that member's token, with the pool's `key_ttl` (60 s by default) as the refresh interval instead of ten seconds. `agx live use --id RUN --login alice` pins one member for that run; `agx live use --id RUN --start-login` goes back to the pool.
+
+```sh
+agx run --login auto                 # live without --live-login
+agx login pick --id auto             # which member the next key comes from, and why
+```
+
 ## When a switch applies
 
 `agx live use` only records the choice. Claude Code picks it up the next time it runs its key helper, which happens:

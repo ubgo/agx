@@ -27,6 +27,7 @@ Every example, grouped by topic. The guide column names the page that explains i
 | [acct-usage-cached](acct-usage-cached/README.md) | `agx usage --cached` on Claude (stale, none), Codex and Gemini homes, `--plan`, `--table`, `--sort`. | [guides/usage.md](../docs/guides/usage.md) |
 | [acct-usage-times](acct-usage-times/README.md) | How reset times read: `--time-format relative`, `both`, `day`, `absolute`; `--date-format` presets and tokens; the config keys and the refusals. | [guides/usage.md](../docs/guides/usage.md#step-4-change-how-times-read) |
 | [acct-live-login](acct-live-login/README.md) | Start a Claude session switchable, list and show the live run, switch its login and go back. | [guides/live-login.md](../docs/guides/live-login.md) |
+| [acct-login-pool](acct-login-pool/README.md) | A `pool` login of five fake accounts: the pick and why, `--force`, the member's token, a live dry run, `login add --kind pool`, refusals. | [guides/login-pool.md](../docs/guides/login-pool.md) |
 
 ### Deciding: profiles, bindings and homes
 

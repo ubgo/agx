@@ -1,6 +1,6 @@
 # Logins
 
-Named logins: plan tokens, API keys and key helpers. [Logins](../logins.md) is the guide: the kinds, how each reaches the agent, and where a login can be set. No login command prints a token value, except [`agx login token`](#agx-login-token) when you ask for it. The examples below come from [`examples/acct-login-kinds`](../../examples/acct-login-kinds/README.md), [`examples/acct-login-manage`](../../examples/acct-login-manage/README.md), [`examples/acct-use-login`](../../examples/acct-use-login/README.md) and [`examples/acct-login-token`](../../examples/acct-login-token/README.md), which run in the test suite.
+Named logins: plan tokens, API keys, key helpers and login pools. [Logins](../logins.md) is the guide: the kinds, how each reaches the agent, and where a login can be set. No login command prints a token value, except [`agx login token`](#agx-login-token) when you ask for it. The examples below come from [`examples/acct-login-kinds`](../../examples/acct-login-kinds/README.md), [`examples/acct-login-manage`](../../examples/acct-login-manage/README.md), [`examples/acct-use-login`](../../examples/acct-use-login/README.md) [`examples/acct-login-token`](../../examples/acct-login-token/README.md) and [`examples/acct-login-pool`](../../examples/acct-login-pool/README.md), which run in the test suite.
 
 ## agx login list
 
@@ -50,15 +50,41 @@ Add a login. Cost W (X with `--login-setup`). Guide: [Adding a login](../logins.
 |---|---|
 | `--name` | the login name |
 | `--agent` | an agent it serves (repeat) |
-| `--kind` | `oauth-token`, `api-key` or `api-key-helper`; default the first agent's usual kind |
+| `--kind` | `oauth-token`, `api-key`, `api-key-helper` or `pool`; default the first agent's usual kind |
 | `--account` | a display label, such as an email |
 | `--provider` | the model provider, for agents with one key per provider (pi: `anthropic`, `openai`, …) |
+| `--pool-own` | with `--kind pool`: a member login that is your own account, used up almost fully (repeat) |
+| `--pool-shared` | with `--kind pool`: a member login that is a teammate's account, borrowed up to its caps (repeat) |
 | `--token-ref` | the token as a reference (`${gopass:…}`, `$(…)`, `${VAR}`) or a plain value, kept in config |
 | `--stdin` | read the token from stdin into `tokens.jsonc` (0600) |
 | `--login-setup` | run the agent's own token setup (`claude setup-token`), then store the pasted result (needs a terminal) |
 | `--helper-command` | for `api-key-helper`: the command the agent runs |
 
-Give one source. With none at a terminal, agx asks with a hidden prompt.
+Give one source. With none at a terminal, agx asks with a hidden prompt. A `pool` login takes no source: it names member logins with `--pool-own` and `--pool-shared`, serves exactly one agent (Claude Code), and its caps, windows and timings are keys in `config.jsonc` (see [Share a pool of Claude accounts](../guides/login-pool.md)):
+
+<!-- snippet: examples/acct-login-pool/session.txt#add -->
+```sh
+$ agx login add --name team --agent claude --kind pool --pool-own alice --pool-shared derek --pool-shared erin
+added login team (pool, pool 1 own, 2 shared)
+
+$ agx login show --id team
+name     team
+agents   claude
+kind     pool
+source   pool 1 own, 2 shared
+account  —
+users    —
+
+$ agx login pick --id team
+Use: alice (own)
+soonest weekly reset among usable accounts
+pool team · claude · usage from cache (20s old) · borrow window 48h
+
+Members (ready in pick order):
+  alice [own] #1 READY (5h 3%, week 29%, resets in 6 d 0 hr, room 41%)
+  derek [shared] WAIT (5h 0%, week 15%, resets in 4 d 0 hr, room 55%) (shared reset not within 48h while an own account is usable)
+  erin [shared] skip: 5h is 55% (cap 50%) (5h 55%, week 43%, resets in 3 hr 0 min, room 27%)
+```
 
 Try it:
 
@@ -119,6 +145,11 @@ Rotate or change a login. Every profile, default and binding that uses it keeps 
 | `--stdin` | a new stored value from stdin |
 | `--login-setup` | run the agent's token setup again |
 | `--helper-command` | a new helper command |
+| `--pool-own` | a pool's own members, replacing the list (repeat) |
+| `--pool-shared` | a pool's shared members, replacing the list (repeat) |
+| `--pool-force` | make a pool always pick this member, over every rule; empty clears it |
+
+A pool changes only its members, its force and its account label here; its other keys are edited in `config.jsonc`. A login never becomes a pool in place, or the reverse: add a new one.
 
 Try it:
 
@@ -165,7 +196,7 @@ Remove a login from config and `tokens.jsonc`. Refused while a profile, agent de
 | Flag | Meaning |
 |---|---|
 | `--id` | the login |
-| `--cascade` | also clear it from the profiles, defaults and bindings that use it |
+| `--cascade` | also clear it from the profiles, defaults, bindings and pools that use it |
 
 Try it:
 
@@ -273,6 +304,40 @@ derek  oauth-token  command gopass    ok       skipped  --no-probe
 
 Pitfalls: a probe spends a few tokens of each plan; do not run it in a loop. An API key bills per token and has no plan windows to probe.
 
+## agx login pick
+
+Show which member a pool login picks now, and why: the pick and the rule that chose it, then every member as `#N READY` (in pick order), `WAIT` (usable, held back by the borrow window) or `skip:` with every reason, and each one's 5-hour and weekly use, weekly reset and room under its cap. It prints no token. Cost Q and W: a member whose cached usage is older than the pool's `usage_max_age` is probed once (a few tokens of that plan) and the login-usage cache is rewritten; with `--cached` nothing is probed. Guide: [Share a pool of Claude accounts](../guides/login-pool.md).
+
+| Flag | Meaning |
+|---|---|
+| `--id` | the pool login |
+| `--cached` | use the login-usage cache only, of any age; probe nothing |
+| `--max-age` | reuse cached usage younger than this (a Go duration such as `30s`; default the pool's `usage_max_age`) |
+| `--force` | pick this member for this one run, over every rule and the pool's own `force` |
+
+Exit 0 when a member is picked (or forced); 1 with error code `auto-pick` when no member is usable, the report still printed; 1 (`not-found`) when `--force` names a login without a reading; 2 for a login that is not a pool.
+
+Try it (from [`examples/acct-login-pool`](../../examples/acct-login-pool/README.md)):
+
+<!-- snippet: examples/acct-login-pool/session.txt#pick -->
+```sh
+$ agx login pick --id auto
+Use: carol (shared)
+shared account resets within 48h, before any usable own account; using its room before it is lost
+pool auto · claude · usage from cache (20s old) · borrow window 48h
+
+Members (ready in pick order):
+  carol [shared] #1 READY (5h 0%, week 26%, resets in 1 d 14 hr, room 44%)
+  alice [own] #2 READY (5h 3%, week 29%, resets in 6 d 0 hr, room 69%)
+  derek [shared] WAIT (5h 0%, week 15%, resets in 4 d 0 hr, room 55%) (shared reset not within 48h while an own account is usable)
+  bob [own] skip: status is limit-reached; 5h is 100% (unavailable at 99%); 5h is 100% (cap 95%) (5h 100%, week 61%, resets in 3 d 0 hr, room 37%)
+  erin [shared] skip: 5h is 55% (cap 50%) (5h 55%, week 43%, resets in 3 hr 0 min, room 27%)
+```
+
+`--json` carries the same: `selected` (`name`, `group`, `forced`, `forced_by`, `reason`, `warnings`), `candidates` (each with `state` `ready`, `waiting` or `blocked`, `rank`, `reasons`, `notes`, `short`, `week`, `weekly_resets_at`, `room`, `caps`, `account`, `source`), `source`, `now` and the pool's numbers.
+
+Pitfalls: `--force` and the pool's `force` ignore every rule, including a member at its limit; each rule the forced member breaks is a warning on stderr. Do not loop it without `--cached`: every run older than `usage_max_age` probes.
+
 ## agx login token
 
 Print one login's token: the value and a newline on stdout, nothing else, for a pipe, a script or a Claude Code `apiKeyHelper`. It resolves the login's source (a stored value, `${gopass:…}`, `$(…)`, `${VAR}` or a plain value) and never refreshes a token. Cost X: a `$(…)` or gopass reference runs that local command; nothing goes over the network.
@@ -286,6 +351,8 @@ Print one login's token: the value and a newline on stdout, nothing else, for a 
 agx login token --id work-key | pbcopy
 agx login add --name console --agent claude --kind api-key-helper --helper-command 'agx login token --id work-key'
 ```
+
+On a `pool` login it picks a member by the pool's rules first (as [`agx login pick`](#agx-login-pick) does, probing members whose cached usage is old) and prints that member's token; a forced pick or a probe that fell back to the cache is a `warning:` line on stderr.
 
 The second line makes any agx login, wherever its token lives, the `apiKeyHelper` of a Claude Code launch. The login may be a plan token (`oauth-token`) or an API key: Claude Code accepts either from a helper, which is how [live login](../guides/live-login.md) delivers plan tokens.
 
@@ -309,6 +376,7 @@ Refusals. Each is exactly this one line on stderr, without hint lines, and stdou
 | no `--id` | 2 | `agx: --id is required: the login name (agx login list)` |
 | unknown login | 1 | `agx: unknown login NAME` |
 | `api-key-helper` login | 4 | `agx: login NAME is an api-key-helper: it has no token to print; the agent runs its helper command itself` |
+| `pool` login, no member usable | 1 | `agx: pool NAME: no member is usable: …`, each member with its reasons |
 | a reference that does not resolve | 1 | the reason, as `agx login check` gives it, such as `agx: login NAME: VAR is not set`; never a value |
 
 The whole sequence, to try on your own machine with one of your logins in place of `work-key` and a Claude profile in place of `work`:

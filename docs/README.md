@@ -34,6 +34,7 @@ From the first launch to the full setup. Each step names what you learn, the pag
 | print a login's token for a script, a pipe or an `apiKeyHelper` | [Logins: print a login's token](logins.md#print-a-logins-token) | [acct-login-token](../examples/acct-login-token/README.md) | [which login kind](choosing/login-kind.md) |
 | continue a chat on another account's quota | [Conversations: step 5](guides/conversations.md#step-5-resume-on-another-accounts-quota) | [convo-resume](../examples/convo-resume/README.md) | [continue on another account](choosing/continue-on-another-account.md) |
 | switch a running session's account | [Live login](guides/live-login.md) | [acct-live-login](../examples/acct-live-login/README.md) | [continue on another account](choosing/continue-on-another-account.md) |
+| let a session move between your and your teammates' Claude accounts by itself | [Share a pool of Claude accounts](guides/login-pool.md) | [acct-login-pool](../examples/acct-login-pool/README.md) | [continue on another account](choosing/continue-on-another-account.md) |
 | pass a Claude setting or an environment variable for one run | [Passing anything: recipe 3](launch-options.md#recipe-3-one-settings-key-for-one-run), [recipe 5](launch-options.md#recipe-5-any-environment-variable) | [launch-settings](../examples/launch-settings/README.md), [launch-env](../examples/launch-env/README.md) | [which way to pass something](choosing/passing-options.md) |
 | bind a folder to an account, per agent | [Folder bindings](guides/folder-bindings.md) | [decide-folder-binding](../examples/decide-folder-binding/README.md) | [where to set it](choosing/where-to-set.md) |
 | run several profiles on one home (an API provider next to a plan) | [Shared homes](guides/shared-homes.md) | [decide-shared-home](../examples/decide-shared-home/README.md) | [a second account](choosing/second-account.md) |
@@ -55,6 +56,7 @@ From the first launch to the full setup. Each step names what you learn, the pag
 | [Let agx pick by headroom](guides/auto-pick.md) | you want `--auto-profile` or `--auto-login` to choose the account |
 | [Plan usage](guides/usage.md) | you read quota: live, cached, per stored login |
 | [Live login](guides/live-login.md) | you switch a running Claude session to another login |
+| [Share a pool of Claude accounts](guides/login-pool.md) | a `pool` login picks the Claude account for each key by usage, while the session runs |
 | [Folder bindings](guides/folder-bindings.md) | you bind a folder to a profile or login, per agent |
 | [Shared homes](guides/shared-homes.md) | several profiles use one home, and resume or usage must pick one |
 | [Run folders, whoami and clean](guides/run-folders.md) | you want to know what a launch leaves behind and what the agent receives |

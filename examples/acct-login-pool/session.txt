@@ -1,0 +1,147 @@
+#: The login-usage cache in home/.agx/cache was probed 20 s before the session's clock, so no command here probes an account: a reading younger than the pool's usage_max_age (60s) is reused.
+#options env=AGX_TEST_NOW=2026-11-19T10:00:00Z env=ALICE_TOKEN=fake-token-alice env=BOB_TOKEN=fake-token-bob env=CAROL_TOKEN=fake-token-carol env=DEREK_TOKEN=fake-token-derek env=ERIN_TOKEN=fake-token-erin
+#region list
+$ agx login list --agent claude
+NAME   AGENTS  KIND         SOURCE                ACCOUNT
+alice  claude  oauth-token  env ALICE_TOKEN       alice@example.com
+bob    claude  oauth-token  env BOB_TOKEN         bob@example.com
+carol  claude  oauth-token  env CAROL_TOKEN       carol@example.com
+derek  claude  oauth-token  env DEREK_TOKEN       derek@example.com
+erin   claude  oauth-token  env ERIN_TOKEN        erin@example.com
+auto   claude  pool         pool 2 own, 3 shared  —
+
+#endregion
+#region pick
+$ agx login pick --id auto
+Use: carol (shared)
+shared account resets within 48h, before any usable own account; using its room before it is lost
+pool auto · claude · usage from cache (20s old) · borrow window 48h
+
+Members (ready in pick order):
+  carol [shared] #1 READY (5h 0%, week 26%, resets in 1 d 14 hr, room 44%)
+  alice [own] #2 READY (5h 3%, week 29%, resets in 6 d 0 hr, room 69%)
+  derek [shared] WAIT (5h 0%, week 15%, resets in 4 d 0 hr, room 55%) (shared reset not within 48h while an own account is usable)
+  bob [own] skip: status is limit-reached; 5h is 100% (unavailable at 99%); 5h is 100% (cap 95%) (5h 100%, week 61%, resets in 3 d 0 hr, room 37%)
+  erin [shared] skip: 5h is 55% (cap 50%) (5h 55%, week 43%, resets in 3 hr 0 min, room 27%)
+
+#endregion
+#region pick-json
+$ agx login pick --id auto --json --field data.selected.name
+carol
+
+#endregion
+#region force
+$ agx login pick --id auto --force bob
+agx: warning: forced bob: status is limit-reached
+agx: warning: forced bob: 5h is 100% (unavailable at 99%)
+agx: warning: forced bob: 5h is 100% (cap 95%)
+Use: bob (FORCED, ignoring rules)
+forced by --force; all rules ignored
+pool auto · claude · usage from cache (20s old) · borrow window 48h
+
+Members (ready in pick order):
+  carol [shared] #1 READY (5h 0%, week 26%, resets in 1 d 14 hr, room 44%)
+  alice [own] #2 READY (5h 3%, week 29%, resets in 6 d 0 hr, room 69%)
+  derek [shared] WAIT (5h 0%, week 15%, resets in 4 d 0 hr, room 55%) (shared reset not within 48h while an own account is usable)
+  bob [own] skip: status is limit-reached; 5h is 100% (unavailable at 99%); 5h is 100% (cap 95%) (5h 100%, week 61%, resets in 3 d 0 hr, room 37%)
+  erin [shared] skip: 5h is 55% (cap 50%) (5h 55%, week 43%, resets in 3 hr 0 min, room 27%)
+
+$ agx login edit --id auto --pool-force derek
+changed login auto (pool, pool 2 own, 3 shared)
+
+$ agx login pick --id auto
+Use: derek (FORCED, ignoring rules)
+forced by config "force"; all rules ignored
+pool auto · claude · usage from cache (20s old) · borrow window 48h
+
+Members (ready in pick order):
+  carol [shared] #1 READY (5h 0%, week 26%, resets in 1 d 14 hr, room 44%)
+  alice [own] #2 READY (5h 3%, week 29%, resets in 6 d 0 hr, room 69%)
+  derek [shared] WAIT (5h 0%, week 15%, resets in 4 d 0 hr, room 55%) (shared reset not within 48h while an own account is usable)
+  bob [own] skip: status is limit-reached; 5h is 100% (unavailable at 99%); 5h is 100% (cap 95%) (5h 100%, week 61%, resets in 3 d 0 hr, room 37%)
+  erin [shared] skip: 5h is 55% (cap 50%) (5h 55%, week 43%, resets in 3 hr 0 min, room 27%)
+
+$ agx login edit --id auto --pool-force ''
+changed login auto (pool, pool 2 own, 3 shared)
+
+#endregion
+#region token
+$ agx login token --id auto
+fake-token-carol
+
+#endregion
+#region run
+$ agx run --login auto --dry-run
+agx: agent claude (default_agent)
+agx: warning: installed Claude Code version unknown; flags not checked
+agent     claude                                                                                                      from default_agent
+profile   personal                                                                                                    from default profile of claude
+home      ~/.claude                                                                                                   from profile personal
+login     auto                                                                                                        from --login
+binary    /usr/local/bin/claude version unknown                                                                       from no install metadata
+folder    ~/projects/app                                                                                              from current folder
+note      login pool auto: own alice, bob; shared carol, derek, erin; picks a member each time claude asks for a key  from login auto (pool)
+          pick now: carol, from the cache (20s old); agx login pick --id auto probes                                  from login auto (pool)
+          live login: switch with agx live use --id 20261119-100000-oc0f --login NAME (refresh 1m0s)                  from login auto (pool)
+settings  apiKeyHelper                                                                                                from login auto (pool)
+          delivered as file ~/.agx/runs/20261119-100000-oc0f/settings-20261119-100000-oc0f.json (0600)                from settings_delivery file
+run       ~/.agx/runs/20261119-100000-oc0f                                                                            from AGX_RUN_ID=20261119-100000-oc0f
+command   claude --settings ~/.agx/runs/20261119-100000-oc0f/settings-20261119-100000-oc0f.json                       from built by agentio
+env       set AGX_RUN_ID=20261119-100000-oc0f                                                                         from launch environment
+          set AGX_RUN_AGENT=claude                                                                                    from launch environment
+          set AGX_RUN_PROFILE=personal                                                                                from launch environment
+          set AGX_RUN_LOGIN=auto                                                                                      from launch environment
+          set AGX_RUN_HOME=~/.claude                                                                                  from launch environment
+          set CLAUDE_CODE_API_KEY_HELPER_TTL_MS=60000                                                                 from launch environment
+note      installed Claude Code version unknown; flags not checked
+
+#endregion
+#region add
+$ agx login add --name team --agent claude --kind pool --pool-own alice --pool-shared derek --pool-shared erin
+added login team (pool, pool 1 own, 2 shared)
+
+$ agx login show --id team
+name     team
+agents   claude
+kind     pool
+source   pool 1 own, 2 shared
+account  —
+users    —
+
+$ agx login pick --id team
+Use: alice (own)
+soonest weekly reset among usable accounts
+pool team · claude · usage from cache (20s old) · borrow window 48h
+
+Members (ready in pick order):
+  alice [own] #1 READY (5h 3%, week 29%, resets in 6 d 0 hr, room 41%)
+  derek [shared] WAIT (5h 0%, week 15%, resets in 4 d 0 hr, room 55%) (shared reset not within 48h while an own account is usable)
+  erin [shared] skip: 5h is 55% (cap 50%) (5h 55%, week 43%, resets in 3 hr 0 min, room 27%)
+
+#endregion
+#region refusals
+$ agx login add --name cx --agent codex --kind pool --pool-own codex-key
+agx: codex cannot use a login pool (Codex reads its login from auth.json or the keyring and refreshes it itself; it has no credential-helper setting)
+[exit 4]
+
+$ agx login add --name bad --agent claude --kind pool --pool-own zoe
+agx: refused: the change would make config.jsonc invalid: unknown login zoe
+  unknown login zoe
+[exit 2]
+
+$ agx login remove --id derek
+agx: login derek is used by pool auto, pool team
+  agx login remove --id derek --cascade   (also clears it there)
+[exit 2]
+
+$ agx usage --login auto
+agx: login auto is a pool: it has no token to probe; its members do
+  agx login pick --id auto
+[exit 2]
+
+$ agx login pick --id alice
+agx: login alice is oauth-token, not a pool; agx login pick reads a pool login
+  agx login list
+[exit 2]
+
+#endregion

@@ -95,7 +95,7 @@ The `COST` column is what using the capability costs: `pure` computes from what 
 |---|---|
 | `usage`, `cached-usage`, `subscription` | `agx usage` (live, `--cached`, `--plan`) and `--auto-profile` |
 | `token-login` | `--login`, `agx login add`, `AGX_LOGIN`: a token handed to the agent per run |
-| `token-prober` | `agx login check`, `--login-probes`, `--auto-login` |
+| `token-prober` | `agx login check`, `--login-probes`, `--auto-login`, login pools (with `live-credential`) |
 | `conversations`, `history-checker` | `agx conversation list`, `agx resume` |
 | `history-mover`, `conversation-mover` | `agx conversation move` |
 | `live-credential` | live login (`--live-login`, `agx live use`) |

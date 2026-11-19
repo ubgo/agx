@@ -4,6 +4,18 @@ With two or more accounts you usually want the one with the most quota left. `--
 
 You want this when you run out of a plan's five-hour or weekly window often and do not want to check `agx usage` before each launch.
 
+`--auto-login` picks once, at launch, by the most headroom. A [login pool](login-pool.md) is the other way to pick among Claude logins, and the two use different rules on purpose:
+
+| | `--auto-login` | a `pool` login |
+|---|---|---|
+| when it picks | once, at launch | each time Claude asks for a key (every `key_ttl`, 60 s), while the session runs |
+| candidates | every token login serving the agent | the pool's `own` and `shared` members |
+| rule | lowest highest-window percent wins; a window at 100% skips | soonest weekly reset first, own before shared, teammates' accounts only up to their caps and within the borrow window ([the rules](login-pool.md#the-rules)) |
+| usage | probes every candidate, every launch | probes members once per `usage_max_age`, shared by every session through a cache |
+| agents | Claude Code (Codex homes with `--auto-profile`) | Claude Code |
+
+`--auto-login` never considers a pool login (a pool has no token to probe), and its candidates and rule did not change when pools were added.
+
 ## Before you start
 
 - Two or more profiles of one agent ([A second account](second-account.md)) for `--auto-profile`, or two or more stored logins serving one agent ([Logins](../logins.md#adding-a-login)) for `--auto-login`.

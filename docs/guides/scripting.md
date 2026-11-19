@@ -289,7 +289,7 @@ unsupported
 | `binary-not-executable` | the binary was found but cannot run (exit 126 on a launch) |
 | `feature-unavailable` | an option the installed agent version lacks |
 | `wrong-agent` | a login that does not serve the run's agent |
-| `auto-pick` | `--auto-profile` or `--auto-login` found nothing eligible |
+| `auto-pick` | `--auto-profile` or `--auto-login` found nothing eligible, or no member of a login pool is usable (`agx login pick`, `agx login token`) |
 | `before-run-failed` | the profile's `before_run` script failed or is missing |
 | `folder-gone` | a conversation whose folder no longer exists |
 | `plan-file` | a stale, foreign or unreadable shell plan file |

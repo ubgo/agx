@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "logins": {
+    "alice": {
+      "agent": "claude",
+      "account": "alice@example.com",
+      "probed_at": "2026-11-19T09:59:40Z",
+      "status": "ok",
+      "windows": [
+        { "class": "short", "percent": 3, "resets_at": "2026-11-19T13:00:00Z" },
+        { "class": "week", "percent": 29, "resets_at": "2026-11-25T10:00:00Z" }
+      ]
+    },
+    "bob": {
+      "agent": "claude",
+      "account": "bob@example.com",
+      "probed_at": "2026-11-19T09:59:40Z",
+      "status": "limit-reached",
+      "windows": [
+        { "class": "short", "percent": 100, "resets_at": "2026-11-19T11:00:00Z" },
+        { "class": "week", "percent": 61, "resets_at": "2026-11-22T10:00:00Z" }
+      ]
+    },
+    "carol": {
+      "agent": "claude",
+      "account": "carol@example.com",
+      "probed_at": "2026-11-19T09:59:40Z",
+      "status": "ok",
+      "windows": [
+        { "class": "short", "percent": 0, "resets_at": "2026-11-19T14:00:00Z" },
+        { "class": "week", "percent": 26, "resets_at": "2026-11-21T00:00:00Z" }
+      ]
+    },
+    "derek": {
+      "agent": "claude",
+      "account": "derek@example.com",
+      "probed_at": "2026-11-19T09:59:40Z",
+      "status": "ok",
+      "windows": [
+        { "class": "short", "percent": 0, "resets_at": "2026-11-19T14:00:00Z" },
+        { "class": "week", "percent": 15, "resets_at": "2026-11-23T10:00:00Z" }
+      ]
+    },
+    "erin": {
+      "agent": "claude",
+      "account": "erin@example.com",
+      "probed_at": "2026-11-19T09:59:40Z",
+      "status": "ok",
+      "windows": [
+        { "class": "short", "percent": 55, "resets_at": "2026-11-19T13:00:00Z" },
+        { "class": "week", "percent": 43, "resets_at": "2026-11-19T13:00:00Z" }
+      ]
+    }
+  }
+}

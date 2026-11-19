@@ -219,6 +219,26 @@ An `api-key-helper` login holds a command the agent runs, not a token, and `agx 
 
 A live-login session asks `agx credential` for its key at every refresh. When the chosen login does not resolve to one token, `agx credential` prints nothing and exits non-zero, and Claude Code treats that as a hard failure: it tries three times, then exits 1. It does not fall back to the home's own login. Claude's `/status` shows agx's one-line reason, for example `agx: login alice: token is empty (try: agx login check --id alice --no-probe)`. Run that check, fix the login, and resume the conversation (`agx resume --last --login NAME --live-login`); the ended run cannot be switched back. Check a login before you switch to it. See [a helper that fails stops the session](guides/live-login.md#a-helper-that-fails-stops-the-session). A helper of your own that runs `agx login token --id NAME` fails the same way when that login does not resolve: `agx login check --id NAME --no-probe` shows why.
 
+### "pool auto: no member is usable: …"
+
+Every member of the login pool is skipped, and the line lists each with its reasons (`status is limit-reached`, `week is 70% (cap 70%)`, `disabled in config`). `agx login pick --id auto` shows the same as a report; `agx login token` and the key helper of a running session exit 1 with it, so Claude's request fails. Wait for a reset, raise a cap, add a member, or force one: `agx login edit --id auto --pool-force NAME` (clear it later with `--pool-force ''`). See [the rules](guides/login-pool.md#the-rules).
+
+### "codex cannot use a login pool (…)"
+
+A pool needs an agent that asks for its key again while it runs and whose logins agx can probe; today that is Claude Code. The reason is the agent's own (exit 4 from `agx login add`; a config error at the line from `agx config check`).
+
+### "member NAME is an api-key-helper; agx cannot fetch its key", "unknown login NAME" in a pool
+
+Every pool member must be a token login (`oauth-token` or `api-key`) of the pool's agent, listed once across `own` and `shared`. Add the member as a login first (`agx login add`), or take it out of the pool.
+
+### "login NAME is used by pool auto"
+
+A pool lists the login as a member, so removing it would leave the pool naming a login that does not exist. `agx login remove --id NAME --cascade` also drops it from the pool's lists, its `accounts` entry and its `force`.
+
+### "warning: probe of NAME failed (…); using its cached usage from 2m0s ago"
+
+A pool member's usage probe failed for a passing reason (no network, a 429 without usage, an unexpected answer), so agx used its last cached reading; the pick may be stale. The next key request probes again. `agx login check --id NAME` shows the probe's own error.
+
 ## Launch options
 
 ### "--autonomy full needs --consent full-autonomy"

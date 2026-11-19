@@ -9,6 +9,7 @@ agx keeps its own settings in one JSONC file (JSON with comments and trailing co
 | `config.jsonc` | profiles, logins, projects, aliases, agent defaults and custom agents | 0644 |
 | `tokens.jsonc` | pasted token values keyed by login name; never expanded | 0600, checked |
 | `runs/<run id>/` | one folder per launch: `run.jsonc`, the delivered settings file, live-login state | 0700 |
+| `cache/login-usage.jsonc` | the last probe of each [login pool](guides/login-pool.md) member (windows, status, account label; never a token), shared by every agx process; rebuilt at any time | 0600, folder 0700 |
 | `<file>.lock` | the lock file agx keeps next to each file it writes, so two agx processes never write at once; never removed, by design | 0600 |
 
 The folder is `$AGX_CONFIG_DIR`, else `$AGX_HOME`, else `~/.agx`; an empty variable counts as unset, and agx expands a leading `~` and `$VAR` in either. `--config FILE` on any command reads that file instead, with `tokens.jsonc` and `runs/` next to it. `agx config path` prints the file in use, and with `--json` the rule that chose it:
@@ -360,14 +361,61 @@ Each entry is one named login; [adding a login](logins.md#adding-a-login) shows 
 | Key | Type | Meaning |
 |---|---|---|
 | `logins.<login>.agents` | list of agent ids | required; the agents this login serves |
-| `logins.<login>.kind` | `oauth-token`, `api-key`, `api-key-helper` | required; see [kinds](logins.md#kinds) |
+| `logins.<login>.kind` | `oauth-token`, `api-key`, `api-key-helper`, `pool` | required; see [kinds](logins.md#kinds) |
 | `logins.<login>.token` | string | a reference (`${gopass:…}`, `$(…)`, `${VAR}`) or a plain value |
 | `logins.<login>.stored` | bool | the value lives in `tokens.jsonc` under the login name |
 | `logins.<login>.command` | string | for `api-key-helper`: the command the agent runs |
 | `logins.<login>.account` | string | a display label, such as an email; never verified |
 | `logins.<login>.provider` | string | the model provider, for agents with one variable per provider (pi: `anthropic`, `openai`) |
+| `logins.<login>.pool` | object | for `pool`: the member logins and the selection rules' numbers (below) |
 
-Exactly one of `token`, `stored` and `command` is set.
+Exactly one of `token`, `stored` and `command` is set, except on a `pool`, which sets none of them and has `pool` instead.
+
+### Login pools
+
+A `pool` login serves exactly one agent that can re-ask for its key while it runs and whose logins can be probed (today Claude Code), and holds no value: each time the agent asks for a key, agx picks one member by the rules in [Share a pool of Claude accounts](guides/login-pool.md#the-rules) and hands out its token. Every member must be another token login of that agent (not a pool, not an `api-key-helper`), named once across `own` and `shared`.
+
+<!-- snippet: examples/acct-login-pool/config.jsonc#pool -->
+```jsonc
+    "auto": {
+      "agents": ["claude"],
+      "kind": "pool",
+      "pool": {
+        "own": ["alice", "bob"],              // yours: used up almost fully
+        "shared": ["carol", "derek", "erin"], // teammates': borrowed up to their caps
+        "force": null,                        // a member name overrides every rule
+        "shared_borrow_window": "48h",
+        "short_unavailable_at_percent": 99,
+        "defaults": { "short": 50, "week": 70 },
+        "accounts": {
+          "alice": { "short": 95, "week": 98 },
+          "bob": { "short": 95, "week": 98 }
+        },
+        "usage_max_age": "60s",
+        "key_ttl": "60s"
+      }
+    }
+```
+
+| Key | Type | Meaning |
+|---|---|---|
+| `logins.<login>.pool.own` | list of login names | your accounts, in order; used up to their caps (give them high caps, such as 95 and 98) |
+| `logins.<login>.pool.shared` | list of login names | teammates' accounts, in order; borrowed up to their caps |
+| `logins.<login>.pool.force` | login name or `null` | always pick this login, ignoring every rule; `null` (the default) is off |
+| `logins.<login>.pool.shared_borrow_window` | duration | a shared login goes before a usable own login only when its weekly reset is within this; default `48h`, `0s` never |
+| `logins.<login>.pool.short_unavailable_at_percent` | number | the 5-hour safety cutoff for every member, even one whose status is ok; default 99 |
+| `logins.<login>.pool.defaults` | object | caps of members without their own entry |
+| `logins.<login>.pool.defaults.short` | number | 5-hour cap in percent, exclusive; default 50 |
+| `logins.<login>.pool.defaults.week` | number | weekly cap in percent, exclusive; default 70 |
+| `logins.<login>.pool.accounts` | map of member to object | per-member entries; a name in neither list is refused |
+| `logins.<login>.pool.accounts.<key>.short` | number | this member's 5-hour cap |
+| `logins.<login>.pool.accounts.<key>.week` | number | this member's weekly cap |
+| `logins.<login>.pool.accounts.<key>.enabled` | bool | `false` leaves the member out (it is not probed) |
+| `logins.<login>.pool.usage_max_age` | duration | reuse the login-usage cache while it is younger than this; default `60s` |
+| `logins.<login>.pool.key_ttl` | duration | how long the agent keeps a key before asking again (Claude Code's `CLAUDE_CODE_API_KEY_HELPER_TTL_MS`); default `60s`, at least `1s` |
+| `logins.<login>.pool.log` | path | a file that gets one line per key request (time, pick, group, forced, source; never a token); `~` and `${VAR}` expand |
+
+Durations are Go duration strings (`48h`, `90m`, `60s`). Caps and the cutoff are 0 to 100. The old setting names of the stand-alone selector (`burnToFullest`, `priority`, `accountLimits`, `limits`, `sharedBorrowWindowHours`) are unknown keys and refused at their line.
 
 ## Projects
 
