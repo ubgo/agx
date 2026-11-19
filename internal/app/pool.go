@@ -57,7 +57,7 @@ const (
 
 // Force sources (PoolSelection.ForcedBy).
 const (
-	// ForcedByFlag is a one-run --pool-force (login pick, login token, or
+	// ForcedByFlag is a one-run --pool-force (pool pick, login token, or
 	// a launch whose run keeps it in live.jsonc).
 	ForcedByFlag = "--pool-force"
 	// ForcedByConfig is the pool's "force" key.
@@ -70,7 +70,7 @@ const envPoolName = "AGX_POOL"
 // PickerInputVersion is the version of the JSON a picker reads.
 const PickerInputVersion = 1
 
-// PoolPickOptions are agx login pick's flags (agx credential and login
+// PoolPickOptions are agx pool pick's flags (agx credential and login
 // token set Force from their own flag or the run).
 type PoolPickOptions struct {
 	// ID is the pool login.
@@ -133,7 +133,7 @@ type PoolCandidate struct {
 	AgeSeconds *float64 `json:"age_seconds"`
 }
 
-// PoolReport is agx login pick's result.
+// PoolReport is agx pool pick's result.
 type PoolReport struct {
 	Pool  string `json:"pool"`
 	Agent string `json:"agent"`
@@ -173,11 +173,11 @@ func (r PoolReport) StderrWarnings() []report.Warning {
 	return out
 }
 
-// LoginPick runs a pool's selection and returns the report (agx login
+// PoolPick runs a pool's selection and returns the report (agx pool
 // pick). Cost Q unless Cached: members whose cached reading is older than
 // the max age are probed once. No member usable is a failure with code
 // auto-pick (exit 1), the report still returned.
-func (a *App) LoginPick(ctx context.Context, o PoolPickOptions, to TimeOptions) (PoolReport, error) {
+func (a *App) PoolPick(ctx context.Context, o PoolPickOptions, to TimeOptions) (PoolReport, error) {
 	if err := checkTimeOptions(to); err != nil {
 		return PoolReport{}, err
 	}
@@ -189,7 +189,7 @@ func (a *App) LoginPick(ctx context.Context, o PoolPickOptions, to TimeOptions) 
 		return PoolReport{}, err
 	}
 	if lg.Kind != config.KindPool {
-		return PoolReport{}, apperr.Usage(a.notAPool(o.ID, lg)).WithHint("agx login list")
+		return PoolReport{}, apperr.Usage(a.notAPool(poolCmdPick, o.ID, lg)).WithHint(poolListHint)
 	}
 	view, err := a.timeView(cfg.Config, to)
 	if err != nil {
@@ -204,10 +204,20 @@ func (a *App) LoginPick(ctx context.Context, o PoolPickOptions, to TimeOptions) 
 	return rep, err
 }
 
-// notAPool says agx login pick is for pool logins, which agents can have
+// The agx pool subcommands, as a refusal names them ("pool show is for
+// pool logins").
+const (
+	poolCmdPick = "pick"
+	poolCmdShow = "show"
+)
+
+// poolListHint is the hint of a refused pool command: the pools there are.
+const poolListHint = "agx pool list"
+
+// notAPool says agx pool CMD is for pool logins, which agents can have
 // one (from the registry's capabilities, never a fixed name), and why
 // this login's own agents cannot when they cannot.
-func (a *App) notAPool(name string, lg config.Login) string {
+func (a *App) notAPool(cmd, name string, lg config.Login) string {
 	var can []string
 	if reg, err := a.Registry(); err == nil {
 		for _, id := range reg.IDs() {
@@ -216,7 +226,7 @@ func (a *App) notAPool(name string, lg config.Login) string {
 			}
 		}
 	}
-	msg := fmt.Sprintf("login pick is for pool logins; login %s is %s. Pools serve %s today", name, lg.Kind, strings.Join(can, ", "))
+	msg := fmt.Sprintf("pool %s is for pool logins; login %s is %s. Pools serve %s today", cmd, name, lg.Kind, strings.Join(can, ", "))
 	var why []string
 	for _, id := range lg.Agents {
 		if r := agents.PoolReason(id); r != "" {
@@ -316,7 +326,7 @@ func (a *App) poolPick(ctx context.Context, name string, lg config.Login, o Pool
 			parts = append(parts, c.Name+" ("+strings.Join(c.Reasons, "; ")+")")
 		}
 		return rep, apperr.Failure(apperr.CodeAutoPick, "pool "+name+": no member is usable: "+strings.Join(parts, ", ")).
-			WithHint("agx login pick --id " + name + " --pool-force NAME")
+			WithHint("agx pool pick --id " + name + " --pool-force NAME")
 	}
 	return rep, nil
 }

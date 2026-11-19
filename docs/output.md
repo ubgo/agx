@@ -218,7 +218,7 @@ Every command and costly flag has a cost class, shown in `agx help --json`:
 |---|---|---|---|
 | R | reads disk | `profile list`, `conversation list`, `usage --cached`, `agent list`, `doctor` | nothing |
 | N | network | live `usage` (one request per home) | the command is `usage` |
-| Q | spends quota | token probes | `--login-probes`, `--login`, `--all-logins` or `--login-picker` on usage, `login check`, `--auto-login`, `login pick` and `login token` on a pool (when its cached usage is old) |
+| Q | spends quota | token probes | `--login-probes`, `--login`, `--all-logins` or `--login-picker` on usage, `login check`, `--auto-login`, `pool pick` and `login token` on a pool (when its cached usage is old) |
 | X | runs the agent binary or a secret command | `run`, `new`, `resume`, `--login-setup`, `--resolved-secrets`, `--vendor-checks` | the command or the flag |
 | W | writes files | `profile add`, `profile import`, `conversation move`, `session clean`, `clean`, `config init`, `config set` | a plan, `--dry-run`, or `--yes` where it deletes |
 

@@ -26,11 +26,11 @@ step() { printf '\n%s\n' "$1"; }
 run()  { command "$agx" $args "$@"; }
 
 step "1. the pool reads its members' usage and picks one"
-if name=$(run login pick --id "$pool" --color never --json --field data.selected.name 2>/dev/null); then
-  source=$(run login pick --id "$pool" --color never --json --field data.source 2>/dev/null)
+if name=$(run pool pick --id "$pool" --color never --json --field data.selected.name 2>/dev/null); then
+  source=$(run pool pick --id "$pool" --color never --json --field data.source 2>/dev/null)
   ok "picked $name (source: $source)"
 else
-  bad "agx login pick exited non-zero (1 = no member usable or an error); run: $agx $args login pick --id $pool"
+  bad "agx pool pick exited non-zero (1 = no member usable or an error); run: $agx $args pool pick --id $pool"
 fi
 
 step "2. the picked member's token resolves (agx login token on the pool)"
@@ -38,7 +38,7 @@ len=$(run login token --id "$pool" 2>/dev/null | tr -d '\n' | wc -c | tr -d ' ')
 if [ "${len:-0}" -gt 20 ]; then ok "token is $len characters"; else bad "no token (run: $agx $args login token --id $pool | wc -c)"; fi
 
 step "3. a second pick within usage_max_age reuses the cache"
-src=$(run login pick --id "$pool" --color never --json --field data.source 2>/dev/null)
+src=$(run pool pick --id "$pool" --color never --json --field data.source 2>/dev/null)
 case "$src" in
   *"cache ("*) ok "second call used the cache: $src" ;;
   *) bad "expected the cache to be reused, got: $src" ;;

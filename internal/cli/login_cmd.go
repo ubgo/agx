@@ -32,7 +32,7 @@ var (
 func (c *cliCtx) loginCmd() *cobra.Command {
 	return group("login", "Logins: what a launch authenticates with",
 		c.loginListCmd(), c.loginShowCmd(), c.loginAddCmd(), c.loginEditCmd(),
-		c.loginRemoveCmd(), c.loginUseCmd(), c.loginCheckCmd(), c.loginTokenCmd(), c.loginPickCmd(),
+		c.loginRemoveCmd(), c.loginUseCmd(), c.loginCheckCmd(), c.loginTokenCmd(),
 	)
 }
 

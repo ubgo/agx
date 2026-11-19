@@ -472,7 +472,7 @@ func (a *App) chosenLogins(ctx context.Context, l *config.Loaded, ags []agentio.
 			}
 			if l.Kind == config.KindPool {
 				return nil, apperr.Usage(fmt.Sprintf("login %s is a pool: it has no token to probe; its members do", name)).
-					WithHint("agx login pick --id " + name)
+					WithHint("agx pool pick --id " + name)
 			}
 		}
 		// Shown in config order, each once, as agx v0.3's table was.

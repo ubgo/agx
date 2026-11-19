@@ -223,9 +223,9 @@ A live-login session asks `agx credential` for its key at every refresh. When th
 
 `API Error: Request rejected (429)` mid-task means the account ran out before the next key refresh. Claude does not retry it on another key: type `continue`. The first `continue` can fail once more (the request that fetches the new key still uses the old one); the next runs on the new account. `/status` shows only `apiKeyHelper` throughout; `! agx whoami` shows the login in use. See [when an account runs out mid-task](guides/login-pool.md#when-an-account-runs-out-mid-task).
 
-### "login pick is for pool logins; login NAME is …"
+### "pool pick is for pool logins; login NAME is …"
 
-`agx login pick` reads a pool login; NAME is a token login (exit 2). The message says which agents can have a pool today (from their capabilities) and, for another agent's login, why it cannot. `agx login list` shows the kinds.
+`agx pool pick` and `agx pool show` read a pool login; NAME is a token login (exit 2). `agx pool list` shows the pools. The message says which agents can have a pool today (from their capabilities) and, for another agent's login, why it cannot. `agx login list` shows the kinds.
 
 ### Which account is my session on?
 
@@ -233,7 +233,7 @@ Run `! agx whoami` inside Claude (the `!` runs it in the session's shell, which 
 
 ### "pool auto: no member is usable: …"
 
-Every member of the login pool is skipped, and the line lists each with its reasons (`status is limit-reached`, `week is 70% (cap 70%)`, `disabled in config`). `agx login pick --id auto` shows the same as a report; `agx login token` and the key helper of a running session exit 1 with it, so Claude's request fails. Wait for a reset, raise a cap (`agx login edit --id auto --pool-cap-week NAME=N`), take a disabled member back (`--pool-enable NAME`), add a member, or force one: `agx login edit --id auto --pool-force NAME` (clear it later with `--pool-force ''`). See [the rules](guides/login-pool.md#the-rules).
+Every member of the login pool is skipped, and the line lists each with its reasons (`status is limit-reached`, `week is 70% (cap 70%)`, `disabled in config`). `agx pool pick --id auto` shows the same as a report; `agx login token` and the key helper of a running session exit 1 with it, so Claude's request fails. Wait for a reset, raise a cap (`agx login edit --id auto --pool-cap-week NAME=N`), take a disabled member back (`--pool-enable NAME`), add a member, or force one: `agx login edit --id auto --pool-force NAME` (clear it later with `--pool-force ''`). See [the rules](guides/login-pool.md#the-rules).
 
 ### "codex cannot use a login pool (…)"
 

@@ -1,0 +1,21 @@
+name    team
+agents  claude
+own     alice
+shared  bob, carol
+
+Members (caps in percent):
+- alice [own] enabled (default), short 98 (config), week 60 (defaults)
+- bob [shared] enabled (default), short 40 (defaults), week 60 (defaults)
+- carol [shared] disabled (config), short 40 (defaults), week 60 (defaults)
+
+Settings:
+force                         bob (config)
+defaults.short                40 (config)
+defaults.week                 60 (config)
+shared_borrow_window          24h (config)
+short_unavailable_at_percent  95 (config)
+usage_max_age                 2m (config)
+key_ttl                       30s (config)
+picker.command                my-picker (config)
+picker.timeout                5s (config)
+log                           ~/pool.log (config)

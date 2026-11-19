@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "command": "pool list",
+  "ok": true,
+  "data": [
+    {
+      "name": "team",
+      "agents": [
+        "claude"
+      ],
+      "own": [
+        "alice"
+      ],
+      "shared": [
+        "bob",
+        "carol"
+      ],
+      "force": "bob",
+      "picker": "my-picker"
+    },
+    {
+      "name": "auto",
+      "agents": [
+        "claude"
+      ],
+      "own": [
+        "alice",
+        "bob",
+        "carol"
+      ],
+      "shared": [
+        "derek",
+        "erin",
+        "frank",
+        "grace",
+        "heidi",
+        "ivan",
+        "judy",
+        "mallory",
+        "niaj"
+      ],
+      "force": "",
+      "picker": ""
+    }
+  ],
+  "decisions": [],
+  "warnings": [],
+  "error": null
+}

@@ -10,7 +10,7 @@ import (
 	"github.com/ubgo/agx/pool"
 )
 
-// pickNow is the clock of the login pick report unit tests.
+// pickNow is the clock of the pool pick report unit tests.
 var pickNow = time.Date(2026, 11, 19, 10, 0, 0, 0, time.UTC)
 
 // pickReport is a report with every candidate state: ready, waiting,
@@ -75,5 +75,23 @@ func TestPoolReportForcedAndNone(t *testing.T) {
 	}
 	if !strings.Contains(b.String(), "No configured account is currently usable.") || !strings.Contains(b.String(), "\x1b[") {
 		t.Errorf("none:\n%q", b.String())
+	}
+}
+
+// TestFirstWordAfter: the word after a group skips flags; no group or
+// no word is "".
+func TestFirstWordAfter(t *testing.T) {
+	for _, c := range []struct {
+		args []string
+		want string
+	}{
+		{[]string{"login", "--json", "pick", "--id", "auto"}, "pick"},
+		{[]string{"--color", "never", "login", "pick"}, "pick"},
+		{[]string{"login", "--json"}, ""},
+		{[]string{"usage"}, ""},
+	} {
+		if got := firstWordAfter(c.args, "login"); got != c.want {
+			t.Errorf("%v: %q, want %q", c.args, got, c.want)
+		}
 	}
 }

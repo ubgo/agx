@@ -13,13 +13,13 @@ agx is one CLI for AI coding agents (Claude Code, OpenAI Codex, Gemini CLI, pi a
 
 - **Profiles** name an agent home (`~/.claude-work`) plus launch defaults: `agx run --profile work`.
 - **Logins** run any home on any account: a plan token or API key from a reference (`${gopass:…}`, `$(…)`, `${VAR}`), a pasted value in `tokens.jsonc` (0600), or a key helper. `agx run --login carol`. agx never prints a token, except `agx login token` on request (to a pipe, or with `--reveal`).
-- **Login pools** (Claude Code only): a login of kind `pool` lists your own logins and teammates' shared ones; `agx run --login auto` is a live run in which each key request picks a member by usage (soonest weekly reset first, own accounts almost fully, shared ones up to their caps). `agx login pick --id auto` shows the pick and why; `--pool-force NAME` forces one member; `agx live use --id RUN --login NAME` pins a running session and `--login auto` unpins it.
+- **Login pools** (Claude Code only): a login of kind `pool` lists your own logins and teammates' shared ones; `agx run --login auto` is a live run in which each key request picks a member by usage (soonest weekly reset first, own accounts almost fully, shared ones up to their caps). `agx pool pick --id auto` shows the pick and why, `agx pool list` and `agx pool show --id auto` the pools and their settings (create and change one with `agx login add --kind pool` and `agx login edit --pool-…`); `--pool-force NAME` forces one member; `agx live use --id RUN --login NAME` pins a running session and `--login auto` unpins it.
 - **Live login**: `--live-login` makes a Claude session's login switchable while it runs (`agx live use`).
 - **Which account a session is on**: run `! agx whoami` inside Claude (`in use:`, `next:`); Claude's /status only says apiKeyHelper.
 - **Resolution chain**: agent, profile, home, login, binary, folder and args are each decided by the first source that sets them: flags, then `AGX_LOGIN`/`AGX_LOGIN_<AGENT>`, a folder binding (`agx project use`), the profile, the agent defaults, the default profile. `--dry-run` on `run`/`new`/`resume` prints every decision with its source and starts nothing: use it before launching.
 - **Scripting**: `--json` prints one envelope (`ok`, `data`, `decisions`, `warnings`, `error`); `--field data.PATH` prints one value; `--quiet` drops notes. `agx help --json` prints the command tree.
 - **Exit codes**: 0 ok, 1 failure, 2 usage error (a bad flag or value), 3 partial (some rows failed), 4 unsupported by the agent; launching commands use 125 for agx's own errors, 126 and 127 for the agent binary.
-- **Cost**: some commands spend quota (login probes: `agx login check`, `agx usage --all-logins`, `agx login pick` on a stale cache) or hit the network (`agx usage`); prefer `--cached`, `--no-probe`, `--dry-run` when you only need to look.
+- **Cost**: some commands spend quota (login probes: `agx login check`, `agx usage --all-logins`, `agx pool pick` on a stale cache) or hit the network (`agx usage`); prefer `--cached`, `--no-probe`, `--dry-run` when you only need to look.
 
 ## Global flags
 
@@ -380,30 +380,6 @@ Every login, never a value.
 |---|---|
 | `--agent VALUE` | only logins serving this agent |
 
-### agx login pick
-
-Show which member a pool login picks now, and why (probes members whose cached usage is old).
-
-Read the usage of a pool login's members (a probe each, spending a few tokens, unless the login-usage cache is younger than the pool's usage_max_age), decide as a key request would (--pool-force, the pool's force, its picker command, else the built-in rules) and print the member it picks, why, where the usage came from, then every member: #N READY in pick order, WAIT (usable, held back by the borrow window) or skip with every reason. Reset times follow --time-format, --duration-format, --tz and --date-format, as in agx usage. Exit 0 when a member is picked; exit 1 (error code auto-pick) when none is usable. It never prints a token: agx login token --id POOL prints the picked member's.
-
-```sh
-agx login pick --id auto
-agx login pick --id auto --cached
-agx login pick --id auto --pool-force alice
-agx login pick --id auto --time-format both
-agx login pick --id auto --json --field data.selected.name
-```
-
-| Flag | Meaning |
-|---|---|
-| `--cached` | use the login-usage cache only, of any age; probe nothing |
-| `--duration-format VALUE` | how a reset a day or more away reads: truncate, round, minutes (default: config usage.duration_format, else truncate) |
-| `--id VALUE` | the pool login |
-| `--max-age DURATION` | reuse cached usage younger than this; 0 probes every member (default: the pool's usage_max_age) (default 0s) |
-| `--pool-force VALUE` | pick this member for this one run, over the pool's rules, force and picker |
-| `--time-format VALUE` | how reset times read: relative, day, absolute, both (default: config usage.time_format, else relative) |
-| `--tz VALUE` | IANA zone for reset days and dates (default: this machine's) |
-
 ### agx login remove
 
 Remove a login from config and tokens.jsonc.
@@ -496,6 +472,60 @@ agx new --name "pglite golang" --profile work
 | `--settings-delivery VALUE` | file (default) or inline |
 | `--token-kind VALUE` | kind of --token-ref: oauth-token, api-key or api-key-helper (default oauth-token) |
 | `--token-ref VALUE` | a one-off token: a reference (${gopass:…}, $(…), ${VAR}) or a plain value |
+
+### agx pool
+
+Login pools: list them, show their settings, see which member they pick.
+
+### agx pool list
+
+Every pool login: agents, own and shared members, force and picker.
+
+List every login of kind pool from config, in the file's order: the agents it serves, its own and shared members, the member it always picks (force) and its picker command. It reads config only: no probe, no cache. A pool is a login of kind pool: create it with agx login add --kind pool, change it with agx login edit --pool-…, and run on it with agx run --login POOL.
+
+```sh
+agx pool list
+agx pool list --json
+```
+
+### agx pool pick
+
+Show which member a pool login picks now, and why (probes members whose cached usage is old).
+
+Read the usage of a pool login's members (a probe each, spending a few tokens, unless the login-usage cache is younger than the pool's usage_max_age), decide as a key request would (--pool-force, the pool's force, its picker command, else the built-in rules) and print the member it picks, why, where the usage came from, then every member: #N READY in pick order, WAIT (usable, held back by the borrow window) or skip with every reason. Reset times follow --time-format, --duration-format, --tz and --date-format, as in agx usage. Exit 0 when a member is picked; exit 1 (error code auto-pick) when none is usable. It never prints a token: agx login token --id POOL prints the picked member's. A pool is a login of kind pool: create it with agx login add --kind pool, change it with agx login edit --pool-…, and run on it with agx run --login POOL.
+
+```sh
+agx pool pick --id auto
+agx pool pick --id auto --cached
+agx pool pick --id auto --pool-force alice
+agx pool pick --id auto --time-format both
+agx pool pick --id auto --json --field data.selected.name
+```
+
+| Flag | Meaning |
+|---|---|
+| `--cached` | use the login-usage cache only, of any age; probe nothing |
+| `--duration-format VALUE` | how a reset a day or more away reads: truncate, round, minutes (default: config usage.duration_format, else truncate) |
+| `--id VALUE` | the pool login |
+| `--max-age DURATION` | reuse cached usage younger than this; 0 probes every member (default: the pool's usage_max_age) (default 0s) |
+| `--pool-force VALUE` | pick this member for this one run, over the pool's rules, force and picker |
+| `--time-format VALUE` | how reset times read: relative, day, absolute, both (default: config usage.time_format, else relative) |
+| `--tz VALUE` | IANA zone for reset days and dates (default: this machine's) |
+
+### agx pool show
+
+One pool's settings, each with where it comes from (config or default).
+
+Show one pool login's full settings: its agents, own and shared members with each member's caps and enabled state, then force, defaults, the shared borrow window, the 5-hour cutoff, usage_max_age, key_ttl, the picker and the log. Each value says where it comes from: config (the pool's block sets it), defaults (a member cap from the pool's defaults key) or default (agx's default for an omitted key). It reads config only: no probe, no cache. A pool is a login of kind pool: create it with agx login add --kind pool, change it with agx login edit --pool-…, and run on it with agx run --login POOL.
+
+```sh
+agx pool show --id auto
+agx pool show --id auto --json --field data.settings
+```
+
+| Flag | Meaning |
+|---|---|
+| `--id VALUE` | the pool login |
 
 ### agx profile
 

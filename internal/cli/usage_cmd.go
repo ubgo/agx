@@ -62,7 +62,7 @@ func (c *cliCtx) usageCmd() *cobra.Command {
 }
 
 // timeFlags declares how reset times read, shared by agx usage and agx
-// login pick (the global --date-format completes the set).
+// pool pick (the global --date-format completes the set).
 func timeFlags(cmd *cobra.Command, o *app.TimeOptions) {
 	f := cmd.Flags()
 	f.StringVar(&o.TZ, "tz", "", "IANA zone for reset days and dates (default: this machine's)")

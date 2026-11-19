@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "command": "login pick",
+  "command": "pool pick",
   "ok": true,
   "data": {
     "pool": "auto",

@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "command": "pool show",
+  "ok": true,
+  "data": {
+    "name": "team",
+    "agents": [
+      "claude"
+    ],
+    "own": [
+      "alice"
+    ],
+    "shared": [
+      "bob",
+      "carol"
+    ],
+    "force": "bob",
+    "picker": "my-picker",
+    "members": [
+      {
+        "name": "alice",
+        "group": "own",
+        "enabled": true,
+        "enabled_source": "default",
+        "short": 98,
+        "short_source": "config",
+        "week": 60,
+        "week_source": "defaults"
+      },
+      {
+        "name": "bob",
+        "group": "shared",
+        "enabled": true,
+        "enabled_source": "default",
+        "short": 40,
+        "short_source": "defaults",
+        "week": 60,
+        "week_source": "defaults"
+      },
+      {
+        "name": "carol",
+        "group": "shared",
+        "enabled": false,
+        "enabled_source": "config",
+        "short": 40,
+        "short_source": "defaults",
+        "week": 60,
+        "week_source": "defaults"
+      }
+    ],
+    "settings": [
+      {
+        "key": "force",
+        "value": "bob",
+        "source": "config"
+      },
+      {
+        "key": "defaults.short",
+        "value": "40",
+        "source": "config"
+      },
+      {
+        "key": "defaults.week",
+        "value": "60",
+        "source": "config"
+      },
+      {
+        "key": "shared_borrow_window",
+        "value": "24h",
+        "source": "config"
+      },
+      {
+        "key": "short_unavailable_at_percent",
+        "value": "95",
+        "source": "config"
+      },
+      {
+        "key": "usage_max_age",
+        "value": "2m",
+        "source": "config"
+      },
+      {
+        "key": "key_ttl",
+        "value": "30s",
+        "source": "config"
+      },
+      {
+        "key": "picker.command",
+        "value": "my-picker",
+        "source": "config"
+      },
+      {
+        "key": "picker.timeout",
+        "value": "5s",
+        "source": "config"
+      },
+      {
+        "key": "log",
+        "value": "~/pool.log",
+        "source": "config"
+      }
+    ]
+  },
+  "decisions": [],
+  "warnings": [],
+  "error": null
+}

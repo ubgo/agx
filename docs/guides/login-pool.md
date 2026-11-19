@@ -16,7 +16,7 @@ Nothing changes for anyone without a `pool` login: plain logins, an `api-key-hel
 | a running session pinned to one member | `agx live use --id RUN --login carol` | that run |
 | a pinned session back on the pool's rules | `agx live use --id RUN --login auto` (or `--start-login`) | that run |
 | the pool for this terminal | `AGX_LOGIN=auto` or `AGX_LOGIN_CLAUDE=auto`, like any login | this terminal |
-| what `login pick` and `login token` would do with a force | `--pool-force carol` on either | one call |
+| what `pool pick` and `login token` would do with a force | `--pool-force carol` on either | one call |
 | your own rules | a [picker command](#your-own-picker) of yours in the pool | every key request |
 | your own key helper instead of a pool | an `api-key-helper` login: `agx login add --name mine --agent claude --kind api-key-helper --helper-command '/path/to/your-helper'`, then `agx run --login mine` | runs on that login |
 
@@ -69,7 +69,7 @@ login team: no change (every value given is already set)
 $ agx config set --key logins.team.pool.defaults.week --value 80
 logins.team.pool.defaults.week = 80
 
-$ agx login pick --id team
+$ agx pool pick --id team
 Pool: team (claude)
 Use: erin (shared)
 shared account resets within 48h, before any usable own account; using its room before it is lost
@@ -136,13 +136,23 @@ Or write the whole login by hand. Every key but `own` or `shared` may be left ou
 
 Your own accounts get caps a little under 100 (5-hour 95%, weekly 98%) so agx moves on before Claude gets a 429 for the account (see [When an account runs out mid-task](#when-an-account-runs-out-mid-task)). `agx config check` checks every member: it exists, serves Claude, is a token login, and is named once. Every key is in the [config reference](../config.md#login-pools).
 
+`agx pool list` lists your pools, and `agx pool show --id auto` prints one pool's settings with where each value comes from (`config`, the pool's `defaults`, or agx's `default`), from config alone:
+
+<!-- snippet: examples/acct-login-pool/session.txt#pool-list -->
+```sh
+$ agx pool list
+NAME   AGENTS  OWN        SHARED            FORCE  PICKER
+auto   claude  alice,bob  carol,derek,erin  —      —
+picky  claude  alice,bob  carol             —      sh $HOME/picker.sh
+```
+
 ## Step 2: see what it picks
 
-`agx login pick` names the pool and its agent (`Pool: auto (claude)`), reads each member's usage (one small probe each, a few tokens of that plan, unless the [usage cache](#usage-and-the-cache) is younger than `usage_max_age`) and prints the pick, the rule that chose it, and every member:
+`agx pool pick` names the pool and its agent (`Pool: auto (claude)`), reads each member's usage (one small probe each, a few tokens of that plan, unless the [usage cache](#usage-and-the-cache) is younger than `usage_max_age`) and prints the pick, the rule that chose it, and every member:
 
 <!-- snippet: examples/acct-login-pool/session.txt#pick -->
 ```sh
-$ agx login pick --id auto
+$ agx pool pick --id auto
 Pool: auto (claude)
 Use: carol (shared)
 shared account resets within 48h, before any usable own account; using its room before it is lost
@@ -156,7 +166,7 @@ Candidates (ready accounts in pick order):
 - erin [shared] skip: 5h is 55% (cap 50%) (5h 55%, week 43%, resets in 3 hr 0 min, room 27%)
 ```
 
-`#N READY` is the pick order, `WAIT` is usable but held back by the borrow window, `skip:` lists every reason. `room` is the weekly cap minus the weekly use. `--json` carries the same, for scripts: `agx login pick --id auto --json --field data.selected.name` prints `carol`.
+`#N READY` is the pick order, `WAIT` is usable but held back by the borrow window, `skip:` lists every reason. `room` is the weekly cap minus the weekly use. `--json` carries the same, for scripts: `agx pool pick --id auto --json --field data.selected.name` prints `carol`.
 
 ## Step 3: launch on the pool
 
@@ -200,7 +210,7 @@ pool      auto (claude): own alice, bob; shared carol, derek, erin              
           5h cutoff 99%                                                                                 from config logins.auto.pool.short_unavailable_at_percent
           default caps 5h 50%, week 70%                                                                 from config logins.auto.pool.defaults
           member entries: 2                                                                             from config logins.auto.pool.accounts
-          pick now: carol (rules), from the cache (20s old); agx login pick --id auto probes            from login-usage cache
+          pick now: carol (rules), from the cache (20s old); agx pool pick --id auto probes            from login-usage cache
 note      live login: switch with agx live use --id 20261119-100000-19p7 --login NAME (refresh 1m0s)    from login auto (pool)
 settings  apiKeyHelper                                                                                  from login auto (pool)
           delivered as file ~/.agx/runs/20261119-100000-19p7/settings-20261119-100000-19p7.json (0600)  from settings_delivery file
@@ -228,7 +238,7 @@ agx reads `config.jsonc` on every key request, so a change applies from the next
 - Leave a member out: `agx login edit --id auto --pool-disable derek` (back with `--pool-enable derek`). It is not probed any more.
 - Any cap, list or window change: `agx login edit --id auto --pool-cap-short NAME=N`, `--pool-cap-week NAME=N`, `--pool-default-short N`, `--pool-default-week N`, `--pool-short-cutoff N`, `--pool-borrow-window 24h`, `--pool-usage-max-age 30s`, `--pool-key-ttl 30s`, `--pool-own`/`--pool-shared` (an empty value puts a key back to its default). Add `--dry-run` to see the change first.
 
-`agx login pick --id auto --pool-force alice` shows what a force would do without changing anything.
+`agx pool pick --id auto --pool-force alice` shows what a force would do without changing anything.
 
 ## Your own picker
 
@@ -258,7 +268,7 @@ Set `picker.command` and agx runs it at every key request instead of the built-i
 }
 ```
 
-`builtin` is the member the built-in rules would pick (`null` when none is usable); `members` are the [`agx login pick --json`](../commands/login.md#agx-login-pick) candidates, in the rules' order. The input never holds a token. The rules are:
+`builtin` is the member the built-in rules would pick (`null` when none is usable); `members` are the [`agx pool pick --json`](../commands/pool.md#agx-pool-pick) candidates, in the rules' order. The input never holds a token. The rules are:
 
 - The output must be exactly one non-empty line (spaces around it are trimmed) naming a member of the pool. A member the rules would skip is used anyway, with a warning per broken rule.
 - Anything else falls back to the built-in rules with one warning naming why: the command does not start, exits non-zero (`exited 3: <first stderr line>`), runs past `picker.timeout` (`timed out after 10s`), prints nothing, prints more than one line, or prints a name that is not a member. A broken picker never takes the session down: a failed key request would stop Claude.
@@ -293,7 +303,7 @@ esac
 
 <!-- snippet: examples/acct-login-pool/session.txt#picker -->
 ```sh
-$ agx login pick --id picky
+$ agx pool pick --id picky
 Pool: picky (claude)
 Use: alice (own)
 picked by the picker command (sh)
@@ -307,11 +317,11 @@ Candidates (ready accounts in pick order):
 
 ## The rules
 
-1. **Force.** `--pool-force` (one run, `login pick` or `login token` call), else the pool's `force`, wins outright and every rule below is ignored. Each rule the forced member breaks is printed as a warning. Forcing a login without a usage reading is an error (exit 1). Forcing a login listed in neither group works, checked against the default caps, with the warning `not listed in own or shared`.
+1. **Force.** `--pool-force` (one run, `pool pick` or `login token` call), else the pool's `force`, wins outright and every rule below is ignored. Each rule the forced member breaks is printed as a warning. Forcing a login without a usage reading is an error (exit 1). Forcing a login listed in neither group works, checked against the default caps, with the warning `not listed in own or shared`.
 2. **Usable.** A member is skipped when any of these holds, and every reason is listed: disabled in config; no usage reading; status is not `ok` (`limit-reached`, `rejected`, `secret`, `network`, …); usage that is not a number (`week usage is unreadable`: a cap cannot be checked on it, so the member is blocked rather than treated as fine); 5-hour use at or over `short_unavailable_at_percent` (99), even when the status is `ok`; 5-hour use at or over its 5-hour cap; weekly use at or over its weekly cap. Caps are exclusive: under the cap is usable. Caps count the account's total use: at 60% of a 70% weekly cap you can use 10%, and the teammate keeps 30%. A window the probe does not report is not checked.
 3. **Pool.** While any own member is usable, the pool is the usable own members plus the usable shared members whose weekly reset is within `shared_borrow_window`; the other usable shared members wait. With no own member usable, the pool is every usable shared member.
 4. **Order.** The pool is sorted by weekly reset, soonest first. An unknown reset, an unreadable one (noted `weekly reset time is unreadable; treated as unknown`), or one that has already passed (stale data, noted on the member), sorts last. Ties keep config order, own before shared.
-5. **Pick.** The first of the pool. An empty pool picks nothing: `agx login pick` and `agx login token` exit 1 with error code `auto-pick` and each member's reasons, and the key helper fails, so Claude's request fails with that line.
+5. **Pick.** The first of the pool. An empty pool picks nothing: `agx pool pick` and `agx login token` exit 1 with error code `auto-pick` and each member's reasons, and the key helper fails, so Claude's request fails with that line.
 
 Caps always apply: a reset coming soon moves a member up the order, it never lifts a cap. Examples with the example's names:
 
@@ -332,7 +342,7 @@ agx reads a member's usage with the same small probe `agx login check` and `--au
 
 - A member's reading younger than `usage_max_age` (60 s) is reused; older ones are probed again, in parallel. So however many sessions run, each member is probed about once a minute.
 - A probe that fails for a passing reason (no network, a 429 without usage, an unexpected answer) falls back to that member's last cached reading, with a warning on stderr (never on stdout, which Claude reads); the next request probes again.
-- `agx login pick --cached` uses the cache only, of any age, and probes nothing; `--max-age 10s` asks for fresher readings once.
+- `agx pool pick --cached` uses the cache only, of any age, and probes nothing; `--max-age 10s` asks for fresher readings once.
 
 With a `log` path, every key request appends one line, so you can watch the switching (`tail -f`):
 
@@ -364,7 +374,7 @@ To make this rare, give your own members caps a little under 100 (95 and 98), so
 | A new key applies one request late | the request right after a switch still fails | Claude refreshes the key in the background | expect one extra failed request after a switch |
 | No switch while idle | the old member is kept for a while | Claude asks for a key only when it is about to call the API and the TTL has passed | nothing; it switches on the next request |
 | claude.ai connectors warning | `claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set` | a helper key counts as another auth source | expected; connectors do not load in that session |
-| Nothing usable | Claude's request fails with `pool auto: no member is usable: …` | the helper exits 1 with no key | `agx login pick --id auto` shows why; force a member if you must go on |
+| Nothing usable | Claude's request fails with `pool auto: no member is usable: …` | the helper exits 1 with no key | `agx pool pick --id auto` shows why; force a member if you must go on |
 | Forced member at its limit | every request is a 429 | force ignores every rule | clear it: `agx login edit --id auto --pool-force ''` |
 | A teammate's account is picked before yours | `Use: carol (shared)` while yours have room | her weekly quota expires within the window; yours can wait | intended; `"shared_borrow_window": "0s"` borrows only when none of yours is usable |
 | Teammate caps can be overshot | a teammate's 5-hour use goes past 50% | usage is checked only when Claude asks for a key | lower the cap for a buffer (40) |
@@ -418,4 +428,4 @@ go test -count=1 ./internal/docscheck/ -run 'TestExamples/acct-login-pool$'
 
 - [Live login](live-login.md): switch a session by hand; a pool run is a live run whose next login is the pool.
 - [Let agx pick by headroom](auto-pick.md): `--auto-login` picks one login at launch by the most headroom; a pool keeps picking while the session runs, by the rules above.
-- [`agx login pick`](../commands/login.md#agx-login-pick) and [`agx login token`](../commands/login.md#agx-login-token) in the command reference.
+- [`agx pool list`, `show` and `pick`](../commands/pool.md) and [`agx login token`](../commands/login.md#agx-login-token) in the command reference.

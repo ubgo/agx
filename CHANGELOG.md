@@ -2,6 +2,17 @@
 
 All notable changes to agx are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and agx uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- `agx login pick` is now `agx pool pick`, in a new `agx pool` group: `login` names a login (a noun), and picking applies to pools only. Same flags, output and exit codes. `agx login pick` is an unknown command (exit 2) whose hint names `agx pool pick`; there is no alias. A pool command given a login that is not a pool says `pool pick is for pool logins; login NAME is KIND` (or `pool show …`) with the hint `agx pool list`. Pools are still created and changed with `agx login add --kind pool` and `agx login edit --pool-…`, and `agx run --login auto` is unchanged.
+
+### Added
+
+- `agx pool list`: every pool login with its agents, own and shared members, force and picker, as a table or `--json`.
+- `agx pool show --id NAME`: one pool's full settings (members with their caps and enabled state, force, defaults, borrow window, cutoff, `usage_max_age`, `key_ttl`, picker, log), each with its source: `config`, `defaults` (a member cap from the pool's defaults) or `default`; `--json` too.
+
 ## [0.4.10] - 2026-11-19
 
 ### Fixed

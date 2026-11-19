@@ -101,7 +101,7 @@ var noLeakExtra = [][]string{
 	{"doctor"}, {"doctor", "--resolved-secrets"},
 	{"usage", "--cached"}, {"whoami"}, {"shell-init", "--shell", "bash"},
 	{"login", "use", "--id", "ref", "--terminal"},
-	{"login", "pick", "--id", "pl", "--cached"}, {"login", "show", "--id", "pl"}, {"login", "check", "--no-probe", "--id", "pl"},
+	{"pool", "pick", "--id", "pl", "--cached"}, {"pool", "show", "--id", "pl"}, {"pool", "list"}, {"login", "show", "--id", "pl"}, {"login", "check", "--no-probe", "--id", "pl"},
 	{"run", "--dry-run", "--resolved-secrets", "--login", "pl"},
 }
 

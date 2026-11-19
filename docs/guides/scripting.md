@@ -289,7 +289,7 @@ unsupported
 | `binary-not-executable` | the binary was found but cannot run (exit 126 on a launch) |
 | `feature-unavailable` | an option the installed agent version lacks |
 | `wrong-agent` | a login that does not serve the run's agent |
-| `auto-pick` | `--auto-profile` or `--auto-login` found nothing eligible, or no member of a login pool is usable (`agx login pick`, `agx login token`) |
+| `auto-pick` | `--auto-profile` or `--auto-login` found nothing eligible, or no member of a login pool is usable (`agx pool pick`, `agx login token`) |
 | `before-run-failed` | the profile's `before_run` script failed or is missing |
 | `folder-gone` | a conversation whose folder no longer exists |
 | `plan-file` | a stale, foreign or unreadable shell plan file |
@@ -314,13 +314,13 @@ $ agx help --json --field data.flags.*.name
 ["color","config","date-format","field","json","quiet","timeout"]
 
 $ agx help --json --field data.commands.*.name
-["agent","alias","clean","completion","config","conversation","credential","doctor","help","launch","live","login","new","plan","profile","project","resume","run","session","shell-init","skill","usage","version","whoami"]
+["agent","alias","clean","completion","config","conversation","credential","doctor","help","launch","live","login","new","plan","pool","profile","project","resume","run","session","shell-init","skill","usage","version","whoami"]
 
-$ agx help --json --field data.commands.21.name --field data.commands.21.cost --field data.commands.21.fields
+$ agx help --json --field data.commands.22.name --field data.commands.22.cost --field data.commands.22.fields
 {
-  "data.commands.21.name": "usage",
-  "data.commands.21.cost": "N",
-  "data.commands.21.fields": [
+  "data.commands.22.name": "usage",
+  "data.commands.22.cost": "N",
+  "data.commands.22.fields": [
     "data.*.kind",
     "data.*.name",
     "data.*.agent",
@@ -483,10 +483,10 @@ agx: unknown login nosuch
 
 ## Read a login pool in a script
 
-`agx login pick --id auto --json` carries the pool's decision: `--field data.selected.name` is the member a key request would get now, `data.source` says whether that came from a probe or the cache, and `data.candidates` lists every member with `state`, `reasons` and `room_percent`. Use `--cached` in a loop: without it, a cache older than the pool's `usage_max_age` is probed. Inside a session, `agx whoami --json --field data.in_use` is the member the agent got last and `data.next` the one it gets next (empty when no switch is pending). `agx login token --id auto` prints the picked member's token for a pipe.
+`agx pool pick --id auto --json` carries the pool's decision: `--field data.selected.name` is the member a key request would get now, `data.source` says whether that came from a probe or the cache, and `data.candidates` lists every member with `state`, `reasons` and `room_percent`. Use `--cached` in a loop: without it, a cache older than the pool's `usage_max_age` is probed. Inside a session, `agx whoami --json --field data.in_use` is the member the agent got last and `data.next` the one it gets next (empty when no switch is pending). `agx login token --id auto` prints the picked member's token for a pipe.
 
 ```sh
-member=$(agx login pick --id auto --cached --json --field data.selected.name) || echo "no member usable (exit $?)"
+member=$(agx pool pick --id auto --cached --json --field data.selected.name) || echo "no member usable (exit $?)"
 ```
 
 

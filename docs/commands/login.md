@@ -1,6 +1,6 @@
 # Logins
 
-Named logins: plan tokens, API keys, key helpers and login pools. [Logins](../logins.md) is the guide: the kinds, how each reaches the agent, and where a login can be set. No login command prints a token value, except [`agx login token`](#agx-login-token) when you ask for it. The examples below come from [`examples/acct-login-kinds`](../../examples/acct-login-kinds/README.md), [`examples/acct-login-manage`](../../examples/acct-login-manage/README.md), [`examples/acct-use-login`](../../examples/acct-use-login/README.md) [`examples/acct-login-token`](../../examples/acct-login-token/README.md) and [`examples/acct-login-pool`](../../examples/acct-login-pool/README.md), which run in the test suite.
+Named logins: plan tokens, API keys, key helpers and login pools. [Logins](../logins.md) is the guide: the kinds, how each reaches the agent, and where a login can be set. No login command prints a token value, except [`agx login token`](#agx-login-token) when you ask for it. The examples below come from [`examples/acct-login-kinds`](../../examples/acct-login-kinds/README.md), [`examples/acct-login-manage`](../../examples/acct-login-manage/README.md), [`examples/acct-use-login`](../../examples/acct-use-login/README.md) [`examples/acct-login-token`](../../examples/acct-login-token/README.md) and [`examples/acct-login-pool`](../../examples/acct-login-pool/README.md), which run in the test suite. A login pool is made and changed here (`login add --kind pool`, `login edit --pool-…`); [Pools](pool.md) lists pools, shows their settings and the member each picks (`agx pool list`, `show`, `pick`).
 
 ## agx login list
 
@@ -89,7 +89,7 @@ source   pool 1 own, 2 shared
 account  —
 users    —
 
-$ agx login pick --id team
+$ agx pool pick --id team
 Pool: team (claude)
 Use: alice (own)
 soonest weekly reset among usable accounts
@@ -200,7 +200,7 @@ login team: no change (every value given is already set)
 $ agx config set --key logins.team.pool.defaults.week --value 80
 logins.team.pool.defaults.week = 80
 
-$ agx login pick --id team
+$ agx pool pick --id team
 Pool: team (claude)
 Use: erin (shared)
 shared account resets within 48h, before any usable own account; using its room before it is lost
@@ -392,67 +392,6 @@ derek  oauth-token  command gopass    ok       skipped  --no-probe
 
 Pitfalls: a probe spends a few tokens of each plan; do not run it in a loop. An API key bills per token and has no plan windows to probe.
 
-## agx login pick
-
-Show which member a pool login picks now, and why, in the stand-alone selector's report line for line, under a first line naming the pool and its agent (`Pool: auto (claude)`): `Use: NAME (GROUP)` (or `(FORCED, ignoring rules)` with an indented `warning:` line per rule it ignores), the reason, any `warning:` lines (a probe that fell back to the cache, a picker that failed), `Source:` (`live agx result`, `cache (25s old)`, or both), a blank line, `Candidates (ready accounts in pick order):`, then one `- NAME [GROUP] …` line per member: `#N READY` in pick order, `WAIT` (usable, held back by the borrow window) or `skip:` with every reason, then the 5-hour and weekly use, the weekly reset (`reset passed` for stale data, `reset unknown` without one) and the room under the weekly cap. It decides as a key request would: `--pool-force`, else the pool's `force`, else its picker command, else the built-in rules. It prints no token. Cost Q and W: a member whose cached usage is older than the pool's `usage_max_age` is probed once (a few tokens of that plan) and the login-usage cache is rewritten; with `--cached` nothing is probed. Guide: [Share a pool of Claude accounts](../guides/login-pool.md).
-
-| Flag | Meaning |
-|---|---|
-| `--id` | the pool login |
-| `--cached` | use the login-usage cache only, of any age; probe nothing |
-| `--max-age` | reuse cached usage younger than this (a Go duration such as `30s`; `0` probes every member; default the pool's `usage_max_age`) |
-| `--pool-force` | pick this member for this one run, over the pool's rules, its `force` and its picker |
-| `--time-format` | how resets read, as in `agx usage`: `relative` (default), `day`, `absolute`, `both`; default config `usage.time_format` |
-| `--duration-format` | how a reset a day or more away reads: `truncate` (default), `round`, `minutes`; default config `usage.duration_format` |
-| `--tz` | the IANA zone of days and clock times (default this machine's) |
-
-The global `--date-format` (and config `usage.date_format`, `date_format`) writes the clock and date parts, as for `agx usage`.
-
-On a login that is not a pool it says pick is for pool logins, which agents can have one today (`Pools serve claude today`, from the agents' capabilities) and, for a login of another agent, why that agent cannot (`codex: …`). Exit 0 when a member is picked (or forced); 1 with error code `auto-pick` when no member is usable, the report still printed (the selector exited 2 there; in agx 2 is a usage error); 1 (`not-found`) when `--pool-force` names a login without a reading or not at all; 2 for a login that is not a pool or a bad flag value.
-
-Try it (from [`examples/acct-login-pool`](../../examples/acct-login-pool/README.md)):
-
-<!-- snippet: examples/acct-login-pool/session.txt#pick -->
-```sh
-$ agx login pick --id auto
-Pool: auto (claude)
-Use: carol (shared)
-shared account resets within 48h, before any usable own account; using its room before it is lost
-Source: cache (20s old)
-
-Candidates (ready accounts in pick order):
-- carol [shared] #1 READY (5h 0%, week 26%, resets in 1 d 14 hr, room 44%)
-- alice [own] #2 READY (5h 3%, week 29%, resets in 6 d 0 hr, room 69%)
-- derek [shared] WAIT (5h 0%, week 15%, resets in 4 d 0 hr, room 55%) (shared reset not within 48h while an own account is usable)
-- bob [own] skip: status is limit-reached; 5h is 100% (unavailable at 99%); 5h is 100% (cap 95%) (5h 100%, week 61%, resets in 3 d 0 hr, room 37%)
-- erin [shared] skip: 5h is 55% (cap 50%) (5h 55%, week 43%, resets in 3 hr 0 min, room 27%)
-```
-
-With `--time-format both`, a custom `--date-format` and `--tz`:
-
-<!-- snippet: examples/acct-login-pool/session.txt#times -->
-```sh
-$ agx login pick --id auto --time-format both --date-format "ddd HH:mm" --tz UTC
-Pool: auto (claude)
-Use: carol (shared)
-shared account resets within 48h, before any usable own account; using its room before it is lost
-Source: cache (20s old)
-
-Candidates (ready accounts in pick order):
-- carol [shared] #1 READY (5h 0%, week 26%, resets in 1 d 14 hr (Sat 00:00), room 44%)
-- alice [own] #2 READY (5h 3%, week 29%, resets in 6 d 0 hr (Wed 10:00), room 69%)
-- derek [shared] WAIT (5h 0%, week 15%, resets in 4 d 0 hr (Mon 10:00), room 55%) (shared reset not within 48h while an own account is usable)
-- bob [own] skip: status is limit-reached; 5h is 100% (unavailable at 99%); 5h is 100% (cap 95%) (5h 100%, week 61%, resets in 3 d 0 hr (Sun 10:00), room 37%)
-- erin [shared] skip: 5h is 55% (cap 50%) (5h 55%, week 43%, resets in 3 hr 0 min (13:00), room 27%)
-
-$ agx login pick --id auto --duration-format minutes --json --field data.selected
-{"name":"carol","group":"shared","forced":false,"picked_by":"rules","reason":"shared account resets within 48h, before any usable own account; using its room before it is lost","warnings":[],"weekly_resets_at":"2026-11-21T00:00:00Z","room_percent":44}
-```
-
-`--json` carries the selector's `--json` fields in agx's envelope (snake_case): `selected` (`name`, `group`, `forced`, `forced_by`, `picked_by` `rules`/`force`/`picker`, `reason`, `warnings`, `weekly_resets_at`, `room_percent`), `source`, `now`, `warnings`, `short_unavailable_at_percent`, `shared_borrow_window_hours`, and `candidates` (each with `state` `ready`, `waiting` or `blocked`, `rank` (null unless ready), `eligible`, `enabled`, `status`, `account`, `short`, `week`, `weekly_resets_at`, `hours_to_reset`, `room_percent`, `caps`, `reasons`, `notes`, `source`, `age_seconds`); `--field` reads any of them.
-
-Pitfalls: `--pool-force` and the pool's `force` ignore every rule, including a member at its limit; each rule the forced member breaks is a `warning:` line. Do not loop it without `--cached`: every run older than `usage_max_age` probes.
-
 ## agx login token
 
 Print one login's token: the value and a newline on stdout, nothing else, for a pipe, a script or a Claude Code `apiKeyHelper`. It resolves the login's source (a stored value, `${gopass:…}`, `$(…)`, `${VAR}` or a plain value) and never refreshes a token. Cost X: a `$(…)` or gopass reference runs that local command; nothing goes over the network.
@@ -468,7 +407,7 @@ agx login token --id work-key | pbcopy
 agx login add --name console --agent claude --kind api-key-helper --helper-command 'agx login token --id work-key'
 ```
 
-On a `pool` login it picks a member by the pool's rules first (as [`agx login pick`](#agx-login-pick) does, probing members whose cached usage is old) and prints that member's token; a forced pick or a probe that fell back to the cache is a `warning:` line on stderr.
+On a `pool` login it picks a member by the pool's rules first (as [`agx pool pick`](pool.md#agx-pool-pick) does, probing members whose cached usage is old) and prints that member's token; a forced pick or a probe that fell back to the cache is a `warning:` line on stderr.
 
 The second line makes any agx login, wherever its token lives, the `apiKeyHelper` of a Claude Code launch. The login may be a plan token (`oauth-token`) or an API key: Claude Code accepts either from a helper, which is how [live login](../guides/live-login.md) delivers plan tokens.
 

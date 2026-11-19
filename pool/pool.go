@@ -98,7 +98,7 @@ type ForcedBy string
 
 // Force sources.
 const (
-	// ForcedByFlag is a one-run force (agx login pick --pool-force).
+	// ForcedByFlag is a one-run force (agx pool pick --pool-force).
 	ForcedByFlag ForcedBy = "--pool-force"
 	// ForcedByConfig is the pool's "force" key.
 	ForcedByConfig ForcedBy = "config"

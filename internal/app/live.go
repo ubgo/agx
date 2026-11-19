@@ -183,7 +183,7 @@ func (a *App) poolPlanNotes(ctx context.Context, o LaunchOptions, res resolve.Re
 	if err != nil || rep.Selected == nil {
 		return append(out, report.Decision{Name: decPool, Value: "pick now: none from the cache; picks when " + string(res.Agent.ID()) + " first asks for its key", Source: "login-usage cache"})
 	}
-	return append(out, report.Decision{Name: decPool, Value: fmt.Sprintf("pick now: %s (%s), from the %s; agx login pick --id %s probes", rep.Selected.Name, rep.Selected.PickedBy, rep.Source, name), Source: "login-usage cache"})
+	return append(out, report.Decision{Name: decPool, Value: fmt.Sprintf("pick now: %s (%s), from the %s; agx pool pick --id %s probes", rep.Selected.Name, rep.Selected.PickedBy, rep.Source, name), Source: "login-usage cache"})
 }
 
 // loginLabel names a resolved login in a message.

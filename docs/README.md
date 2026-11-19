@@ -99,6 +99,7 @@ From the first launch to the full setup. Each step names what you learn, the pag
 - [Live login](commands/live.md): `live`
 - [Profiles](commands/profile.md): `profile`
 - [Logins](commands/login.md): `login`
+- [Pools](commands/pool.md): `pool`
 - [Projects](commands/project.md): `project`
 - [Setup and tools](commands/setup.md): `agent`, `doctor`, `clean`, `config`, `alias`, `shell-init`, `completion`, `help`, `version`
 

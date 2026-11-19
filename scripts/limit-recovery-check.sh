@@ -10,7 +10,7 @@
 #   scripts/limit-recovery-check.sh LIMITED WORKING
 #
 # LIMITED is one of your logins at its limit, WORKING a usable one
-# (agx login pick --id auto shows both). Environment: AGX (default agx),
+# (agx pool pick --id auto shows both). Environment: AGX (default agx),
 # AGX_ARGS (extra global flags, such as "--config FILE"; default none).
 set -u
 
@@ -22,7 +22,7 @@ run() { command "$agx" $args "$@"; }
 limited=${1:-}
 working=${2:-}
 if [ -z "$limited" ] || [ -z "$working" ]; then
-  echo "usage: scripts/limit-recovery-check.sh LIMITED WORKING   (agx login pick --id auto shows candidates)"
+  echo "usage: scripts/limit-recovery-check.sh LIMITED WORKING   (agx pool pick --id auto shows candidates)"
   exit 2
 fi
 tmp=$(mktemp -d)

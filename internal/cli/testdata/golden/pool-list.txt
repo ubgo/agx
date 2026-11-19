@@ -1,0 +1,3 @@
+NAME  AGENTS  OWN              SHARED                                               FORCE  PICKER
+team  claude  alice            bob,carol                                            bob    my-picker
+auto  claude  alice,bob,carol  derek,erin,frank,grace,heidi,ivan,judy,mallory,niaj  —      —

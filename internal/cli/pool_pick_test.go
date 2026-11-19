@@ -10,7 +10,7 @@ import (
 	"github.com/ubgo/agx/internal/testkit"
 )
 
-// agx login pick through the real binary on the anonymised real snapshot
+// agx pool pick through the real binary on the anonymised real snapshot
 // (pool/testdata), seeded as a login-usage cache 20 seconds old at the
 // pinned clock, so no command probes. Goldens pin the selector's report
 // line for line, plain and coloured, forced, and with every time option.
@@ -86,42 +86,42 @@ func pickFixture(t *testing.T) *testkit.Fixture {
 	return f
 }
 
-// TestLoginPickGoldens pins the report: plain, coloured, forced (with a
+// TestPoolPickGoldens pins the report: plain, coloured, forced (with a
 // warning line per ignored rule), --time-format both with a custom
 // --date-format and --tz, --duration-format round, and --json.
-func TestLoginPickGoldens(t *testing.T) {
+func TestPoolPickGoldens(t *testing.T) {
 	f := pickFixture(t)
 	for _, c := range []struct {
 		golden string
 		args   []string
 	}{
-		{"login-pick-plain", []string{"--color", "never"}},
-		{"login-pick-color", []string{"--color", "always"}},
-		{"login-pick-forced", []string{"--color", "never", "--pool-force", "bob"}},
-		{"login-pick-both", []string{"--color", "never", "--time-format", "both", "--date-format", "ddd D MMM HH:mm", "--tz", "Asia/Kolkata"}},
-		{"login-pick-day", []string{"--color", "never", "--time-format", "day", "--tz", "UTC"}},
-		{"login-pick-round", []string{"--color", "never", "--duration-format", "round"}},
+		{"pool-pick-plain", []string{"--color", "never"}},
+		{"pool-pick-color", []string{"--color", "always"}},
+		{"pool-pick-forced", []string{"--color", "never", "--pool-force", "bob"}},
+		{"pool-pick-both", []string{"--color", "never", "--time-format", "both", "--date-format", "ddd D MMM HH:mm", "--tz", "Asia/Kolkata"}},
+		{"pool-pick-day", []string{"--color", "never", "--time-format", "day", "--tz", "UTC"}},
+		{"pool-pick-round", []string{"--color", "never", "--duration-format", "round"}},
 	} {
 		t.Run(c.golden, func(t *testing.T) {
-			r := f.Run(append([]string{"login", "pick", "--id", "auto"}, c.args...)...)
+			r := f.Run(append([]string{"pool", "pick", "--id", "auto"}, c.args...)...)
 			if r.Code != 0 {
 				t.Fatalf("exit %d: %s", r.Code, r.Stderr)
 			}
 			testkit.GoldenText(t, c.golden, r.Stdout)
 		})
 	}
-	r := f.Run("login", "pick", "--id", "auto", "--json")
+	r := f.Run("pool", "pick", "--id", "auto", "--json")
 	if r.Code != 0 {
 		t.Fatalf("json exit %d: %s", r.Code, r.Stderr)
 	}
-	f.Golden(t, "login-pick-json", r.Stdout)
+	f.Golden(t, "pool-pick-json", r.Stdout)
 }
 
-// TestLoginPickPlainShape: the selector's lines in its order, checked
+// TestPoolPickPlainShape: the selector's lines in its order, checked
 // here as well as in the golden so the contract reads in the test.
-func TestLoginPickPlainShape(t *testing.T) {
+func TestPoolPickPlainShape(t *testing.T) {
 	f := pickFixture(t)
-	r := f.Run("login", "pick", "--id", "auto")
+	r := f.Run("pool", "pick", "--id", "auto")
 	lines := strings.Split(r.Stdout, "\n")
 	want := []string{
 		"Pool: auto (claude)",
@@ -144,43 +144,43 @@ func TestLoginPickPlainShape(t *testing.T) {
 	}
 }
 
-// TestLoginPickFlags: --field reads the envelope; --now reads an old
+// TestPoolPickFlags: --field reads the envelope; --now reads an old
 // cache as of that time (the snapshot is then stale for every reset
 // before it); a bad --now, a negative --max-age and an unknown
 // --duration-format are usage errors; nothing usable exits 1 with the
 // report and an error line; a token login is refused.
-func TestLoginPickFlags(t *testing.T) {
+func TestPoolPickFlags(t *testing.T) {
 	f := pickFixture(t)
-	if r := f.Run("login", "pick", "--id", "auto", "--json", "--field", "data.selected.name"); strings.TrimSpace(r.Stdout) != "grace" {
+	if r := f.Run("pool", "pick", "--id", "auto", "--json", "--field", "data.selected.name"); strings.TrimSpace(r.Stdout) != "grace" {
 		t.Errorf("field: %q %s", r.Stdout, r.Stderr)
 	}
-	if r := f.Run("login", "pick", "--id", "auto", "--cached", "--now", "2026-11-20T09:00:00Z"); r.Code != 0 || !strings.Contains(r.Stdout, "reset passed") {
+	if r := f.Run("pool", "pick", "--id", "auto", "--cached", "--now", "2026-11-20T09:00:00Z"); r.Code != 0 || !strings.Contains(r.Stdout, "reset passed") {
 		t.Errorf("--now: %d %s %s", r.Code, r.Stdout, r.Stderr)
 	}
 	for _, args := range [][]string{
 		{"--now", "yesterday"}, {"--max-age", "-5s"}, {"--duration-format", "hours"}, {"--time-format", "clock"},
 	} {
-		if r := f.Run(append([]string{"login", "pick", "--id", "auto", "--cached"}, args...)...); r.Code != 2 {
+		if r := f.Run(append([]string{"pool", "pick", "--id", "auto", "--cached"}, args...)...); r.Code != 2 {
 			t.Errorf("%v: exit %d %s", args, r.Code, r.Stderr)
 		}
 	}
-	if r := f.Run("login", "pick", "--id", "alice"); r.Code != 2 || !strings.Contains(r.Stderr, "login pick is for pool logins; login alice is oauth-token. Pools serve claude today") {
+	if r := f.Run("pool", "pick", "--id", "alice"); r.Code != 2 || !strings.Contains(r.Stderr, "pool pick is for pool logins; login alice is oauth-token. Pools serve claude today") {
 		t.Errorf("token login: %d %s", r.Code, r.Stderr)
 	}
-	if r := f.Run("login", "pick", "--id", "auto", "--cached", "--pool-force", "zoe"); r.Code != 1 || !strings.Contains(r.Stderr, "unknown login zoe") {
+	if r := f.Run("pool", "pick", "--id", "auto", "--cached", "--pool-force", "zoe"); r.Code != 1 || !strings.Contains(r.Stderr, "unknown login zoe") {
 		t.Errorf("unknown force: %d %s", r.Code, r.Stderr)
 	}
 }
 
-// TestLoginPickNoneUsable: with only blocked members, exit 1, the
+// TestPoolPickNoneUsable: with only blocked members, exit 1, the
 // selector's "No configured account" line, the error on stderr.
-func TestLoginPickNoneUsable(t *testing.T) {
+func TestPoolPickNoneUsable(t *testing.T) {
 	f := pickFixture(t)
 	cfg := strings.Replace(pickConfig, `"own": ["alice", "bob", "carol"],`, `"own": ["bob"],`, 1)
 	cfg = strings.Replace(cfg, `"shared": ["derek", "erin", "frank", "grace", "heidi", "ivan", "judy", "mallory", "niaj"],`, `"shared": ["niaj"],`, 1)
 	cfg = strings.Replace(cfg, `"accounts": { "alice": { "short": 99, "week": 100 }, "bob": { "short": 99, "week": 100 }, "carol": { "short": 99, "week": 100 } }`, `"accounts": { "bob": { "short": 99, "week": 100 } }`, 1)
 	f.WriteConfig(cfg)
-	r := f.Run("login", "pick", "--id", "auto")
+	r := f.Run("pool", "pick", "--id", "auto")
 	if r.Code != 1 || !strings.HasPrefix(r.Stdout, "Pool: auto (claude)\nNo configured account is currently usable.\n") || !strings.Contains(r.Stderr, "pool auto: no member is usable") {
 		t.Errorf("exit %d\n%s\n%s", r.Code, r.Stdout, r.Stderr)
 	}
@@ -214,11 +214,11 @@ func TestLoginTokenOnPool(t *testing.T) {
 	}
 }
 
-// TestLoginPickCacheFollowsConfigDir: the login-usage cache lives in the
+// TestPoolPickCacheFollowsConfigDir: the login-usage cache lives in the
 // config dir of the config in use (--config), never the current folder
 // or another config dir (the selector's "config.json and .cache.json live
 // next to the script, not in cwd").
-func TestLoginPickCacheFollowsConfigDir(t *testing.T) {
+func TestPoolPickCacheFollowsConfigDir(t *testing.T) {
 	f := pickFixture(t)
 	other := f.Root + "/other"
 	f.WriteFile(other+"/config.jsonc", pickConfig, 0o644)
@@ -226,11 +226,11 @@ func TestLoginPickCacheFollowsConfigDir(t *testing.T) {
 	if err := os.Remove(f.ConfigDir + "/cache/login-usage.jsonc"); err != nil {
 		t.Fatal(err)
 	}
-	r := f.Run("--config", other+"/config.jsonc", "login", "pick", "--id", "auto", "--cached")
+	r := f.Run("--config", other+"/config.jsonc", "pool", "pick", "--id", "auto", "--cached")
 	if r.Code != 0 || !strings.Contains(r.Stdout, "\nUse: grace (shared)") {
 		t.Fatalf("other config dir: %d %s %s", r.Code, r.Stdout, r.Stderr)
 	}
-	if r := f.Run("login", "pick", "--id", "auto", "--cached"); r.Code != 1 || !strings.Contains(r.Stdout, "no usage reading") {
+	if r := f.Run("pool", "pick", "--id", "auto", "--cached"); r.Code != 1 || !strings.Contains(r.Stdout, "no usage reading") {
 		t.Errorf("default config dir has no cache: %d %s", r.Code, r.Stdout)
 	}
 	if _, err := os.Stat(f.Work + "/cache"); err == nil {

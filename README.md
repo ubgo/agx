@@ -31,7 +31,7 @@ agx makes that one command:
 - **Folder bindings** pick the account per repository, per agent: a plain `agx run` in the client repository uses the client profile.
 - **Usage** across every home and login at once: `agx usage`.
 - **Teach your agent agx**: `agx skill --install` writes a Claude Code skill listing every agx command and flag, generated from the binary.
-- **Login pools** move one Claude session between your and your teammates' accounts by itself as quotas fill: `agx run --login auto` on a `pool` login, `agx login pick --id auto` to see the pick and why, `! agx whoami` inside Claude to see the account in use.
+- **Login pools** move one Claude session between your and your teammates' accounts by itself as quotas fill: `agx run --login auto` on a `pool` login, `agx pool pick --id auto` to see the pick and why, `! agx whoami` inside Claude to see the account in use.
 - **Resume** finds the home that stores a conversation: `agx resume --id 3f2a9c1e`.
 - **Every option** reaches the agent the same way for every vendor: settings, typed options, environment, autonomy levels and raw flags.
 
@@ -216,7 +216,8 @@ Every command takes named flags only; a bare `agx`, or a bare group such as `agx
 | [`agx session`](docs/commands/conversation.md#agx-session-list) | Session folders made by `agx new`: list, clean, promote |
 | [`agx live`](docs/commands/live.md) | Running sessions started with `--live-login`: list, show, switch the login |
 | [`agx profile`](docs/commands/profile.md) | Profiles, a name for one home plus launch defaults: list, show, add, import, edit, remove, use |
-| [`agx login`](docs/commands/login.md) | Logins, what a launch authenticates with: list, show, add, edit, remove, use, check, token, pick |
+| [`agx login`](docs/commands/login.md) | Logins, what a launch authenticates with: list, show, add, edit, remove, use, check, token |
+| [`agx pool`](docs/commands/pool.md) | Login pools: list, show their settings, pick (which member a pool uses now, and why) |
 | [`agx project`](docs/commands/project.md) | Folder bindings per agent: list, show, use, remove |
 | [`agx agent`](docs/commands/setup.md#agx-agent-list) | Known agents and their capabilities: list, show |
 | [`agx doctor`](docs/commands/setup.md#agx-doctor) | Local checks: config, references, binaries, homes, run folders |
@@ -319,7 +320,7 @@ For Claude Code, yes: start it with `--live-login`, then `agx live use --id <run
 
 ### Can agx move a running Claude session between accounts automatically?
 
-Yes, with a login pool: a login of kind `pool` lists your own Claude logins and your teammates' shared ones, and `agx run --login auto` starts Claude with agx as its key helper. Each time Claude asks for a key (every minute by default), agx reads the members' usage (one small probe each, cached and shared by every session) and hands out the token of the member whose weekly quota expires soonest, using your own accounts almost fully and teammates' only up to their caps. `agx login pick --id auto` shows the pick and why. It is Claude Code only. See [Share a pool of Claude accounts](docs/guides/login-pool.md).
+Yes, with a login pool: a login of kind `pool` lists your own Claude logins and your teammates' shared ones, and `agx run --login auto` starts Claude with agx as its key helper. Each time Claude asks for a key (every minute by default), agx reads the members' usage (one small probe each, cached and shared by every session) and hands out the token of the member whose weekly quota expires soonest, using your own accounts almost fully and teammates' only up to their caps. `agx pool pick --id auto` shows the pick and why. It is Claude Code only. See [Share a pool of Claude accounts](docs/guides/login-pool.md).
 
 ### Which account is my Claude session on?
 

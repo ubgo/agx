@@ -35,8 +35,8 @@ const (
 	detailHelper  = "the agent runs the helper itself; agx never does"
 	detailNoProbe = "--no-probe"
 	// detailPool: a pool holds no token; its members are checked as
-	// logins of their own, and agx login pick reads their usage.
-	detailPool     = "a pool: its members are checked as logins; agx login pick shows their usage"
+	// logins of their own, and agx pool pick reads their usage.
+	detailPool     = "a pool: its members are checked as logins; agx pool pick shows their usage"
 	detailPerToken = "billed per token: no plan windows"
 )
 

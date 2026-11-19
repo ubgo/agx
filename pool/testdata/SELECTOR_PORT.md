@@ -43,7 +43,7 @@ Paths are relative to the repository root. `TestPortX/name` is a subtest whose n
 | 33 | --force option overrides config force | `TestPortForce/--force_option_overrides_config_force` (agx's flag is `--pool-force`) |
 | 34 | force overrides enabled: false | `TestPortForce/force_overrides_enabled:_false`, `TestBoundaryForceCases` |
 | 35 | force may pick an account not listed in own/shared, with a warning | `TestPortForce/force_may_pick_an_account_not_listed…` |
-| 36 | force of a name not in agx data is an error | `TestPortForce/force_of_a_name_not_in_agx_data…`; through the CLI, `internal/cli/login_pick_test.go` `TestLoginPickFlags` (unknown login, exit 1) |
+| 36 | force of a name not in agx data is an error | `TestPortForce/force_of_a_name_not_in_agx_data…`; through the CLI, `internal/cli/pool_pick_test.go` `TestPoolPickFlags` (unknown login, exit 1) |
 | 37 | force: null means normal selection | `TestPortForce/force:_null…`, `config/pool_test.go` `TestPoolLoads` (null loads) |
 | 38 | candidates are still ranked when forced | `TestPortForce/candidates_are_still_ranked_when_forced` |
 | 39 | missing own/shared arrays | `config/pool_port_test.go` `TestPortConfigValidation/missing_own/shared_arrays` (agx: either may be omitted; a pool with no member is refused) |
@@ -76,7 +76,7 @@ Paths are relative to the repository root. `TestPortX/name` is a subtest whose n
 | 61 | duplicate login record: first one used, with a warning | `TestPortOddData/duplicate_login_record…`: does not apply as written; readings are a map keyed by login name and the cache and config are JSON objects, so one reading per name holds by type |
 | 62 | record order from agx never changes the pick | `TestPortOddData/record_order_from_agx_never_changes_the_pick` (200 runs over Go's randomised map order) |
 | 63 | forced name that exists only for another agent is an error | `TestPortOddData/forced_name_that_exists_only_for_another_agent…` (`ErrForcedMissing`); at load, `config/pool_test.go` `TestPoolProblems/other_agent's_member` and the force check |
-| 64 | bad now is an error, not a silent wrong order | `TestPortOddData/bad_now…` (`ErrBadNow` for a zero `Options.Now`); CLI `--now yesterday`: `TestLoginPickFlags` |
+| 64 | bad now is an error, not a silent wrong order | `TestPortOddData/bad_now…` (`ErrBadNow` for a zero `Options.Now`); CLI `--now yesterday`: `TestPoolPickFlags` |
 | 65 | other statuses all block | `TestPortOddData/other_statuses_all_block` |
 | 66 | 5h safety cutoff defaults to 99% | `TestPortDefaults/5h_safety_cutoff_defaults_to_99%` |
 | 67 | borrow window defaults to 48h | `TestPortDefaults/borrow_window_defaults_to_48h` |
@@ -101,15 +101,15 @@ Paths are relative to the repository root. `TestPortX/name` is a subtest whose n
 |---|---|---|
 | 1 | library exposes the high- and low-level API | Public package `pool` (`Select`, `New`, `Config.Validate`, `Config.Reasons`, `CapsFor`, `Enabled`, `Hours`), compiled by every test in `pool/`. |
 | 2 | package name resolves to index.mjs | Does not apply (Go import path `github.com/ubgo/agx/pool`). |
-| 3 | default config is the package's config.json | Does not apply: the pool is a login in `~/.agx/config.jsonc`; the cache follows the config dir, `internal/cli/login_pick_test.go` `TestLoginPickCacheFollowsConfigDir`. |
+| 3 | default config is the package's config.json | Does not apply: the pool is a login in `~/.agx/config.jsonc`; the cache follows the config dir, `internal/cli/pool_pick_test.go` `TestPoolPickCacheFollowsConfigDir`. |
 | 4 | with a report and config object: no files touched | `pool.Select` is pure (all of `pool/`); `TestPortStability`. |
-| 5 | now accepts Date, ms and ISO string | `pool.Options.Now` (`time.Time`); through the CLI, the hidden `--now` takes RFC 3339: `TestLoginPickFlags`. |
-| 6 | bad now throws SelectorError | `TestLoginPickFlags` (`--now yesterday`, exit 2) |
+| 5 | now accepts Date, ms and ISO string | `pool.Options.Now` (`time.Time`); through the CLI, the hidden `--now` takes RFC 3339: `TestPoolPickFlags`. |
+| 6 | bad now throws SelectorError | `TestPoolPickFlags` (`--now yesterday`, exit 2) |
 | 7 | force option wins over config.force | `TestPortForce/--force_option_overrides_config_force`, `pool/pool_test.go` `TestFlowExamples/E_--force_wins_over_config_force` |
 | 8 | errors throw SelectorError instead of exiting | `TestForcedMissingIsAnError` (`ErrForcedMissing`), `TestValidate` |
 | 9 | configPath: live run writes the cache next to it, cached reads it back | `internal/app/pool_test.go` `TestPoolPickProbesOnceThenReusesCache`, `TestPoolProbeFailureFallsBackToCache` (`--cached`) |
-| 10 | explicit cachePath is used | `login/usagecache_test.go` `TestUsageCacheRoundTrip` (the cache path comes from the config dir); `TestLoginPickCacheFollowsConfigDir` |
-| 11 | input path is read without running agx | `--cached` reads a seeded cache without probing: `TestLoginPickGoldens`, `examples/acct-login-pool` |
+| 10 | explicit cachePath is used | `login/usagecache_test.go` `TestUsageCacheRoundTrip` (the cache path comes from the config dir); `TestPoolPickCacheFollowsConfigDir` |
+| 11 | input path is read without running agx | `--cached` reads a seeded cache without probing: `TestPoolPickGoldens`, `examples/acct-login-pool` |
 | 12 | same call twice gives the same pick | `TestPortStability`, `TestPoolPickProbesOnceThenReusesCache` (second pick) |
 | 13 | failed agx falls back to the cache with a warning | `TestPoolProbeFailureFallsBackToCache`, `TestPortFlow/7._…` |
 | 14 | failed agx without cache throws | `TestPoolProbeWithoutCacheBlocks` (agx: the member is blocked with `status is network`; no member usable is exit 1) |
@@ -121,9 +121,9 @@ Paths are relative to the repository root. `TestPortX/name` is a subtest whose n
 | 20 | stale cache runs agx and refreshes the cache | `TestPortFlow/4._…`, `TestPoolMaxAge` |
 | 21 | no cache runs agx | `TestPortFlow/1._…` |
 | 22 | maxAge 0 always runs agx | `TestPoolMaxAge` (`--max-age 0`; a reading exactly max-age old is stale) |
-| 23 | bad maxAge is an error | `TestLoginPickFlags` (`--max-age -5s`, exit 2); `config/pool_test.go` `TestPoolProblems` (bad durations) |
+| 23 | bad maxAge is an error | `TestPoolPickFlags` (`--max-age -5s`, exit 2); `config/pool_test.go` `TestPoolProblems` (bad durations) |
 | 24 | pickAccount passes maxAge through | `TestPoolMaxAge` |
-| 25 | cacheAgeSeconds is null without a cache | `TestUsageCacheRoundTrip` (missing cache reads empty); `age_seconds` is null for a live reading (`login-pick-json` golden) |
+| 25 | cacheAgeSeconds is null without a cache | `TestUsageCacheRoundTrip` (missing cache reads empty); `age_seconds` is null for a live reading (`pool-pick-json` golden) |
 | 26 | reads the shipped config.json and it is valid | `examples/acct-login-pool` (its `config.jsonc` loads in every run) |
 
 ## tokens.test.mjs (19): tokens
@@ -131,13 +131,13 @@ Paths are relative to the repository root. `TestPortX/name` is a subtest whose n
 | # | Selector test | Go test |
 |---|---|---|
 | 1 | returns what agx login token prints, trimmed | `internal/cli/login_token_test.go` `TestLoginTokenPrintsOnlyTheValue` |
-| 2 | agxConfig is passed to agx as --config | Does not apply (no subprocess); the global `--config` picks the config: `TestLoginPickCacheFollowsConfigDir` |
+| 2 | agxConfig is passed to agx as --config | Does not apply (no subprocess); the global `--config` picks the config: `TestPoolPickCacheFollowsConfigDir` |
 | 3 | agx error: its one-line message, as SelectorError | `TestLoginTokenErrors` |
 | 4 | empty output is an error | `internal/cli/live_test.go` `TestCredentialNeverEmpty`, `internal/cli/login_test.go` `TestLoginAddRefusals` |
 | 5 | hung agx times out | `login/login_test.go` `TestEdge16GopassTimeout` (a reference that hangs) |
 | 6 | missing agx binary is reported clearly | Does not apply (agx is the binary). |
 | 7 | a name is required | `TestLoginTokenErrors` (`--id` missing, exit 2) |
-| 8 | returns the picked name and its token | `internal/app/pool_test.go` `TestPoolLoginToken`, `internal/cli/login_pick_test.go` `TestLoginTokenOnPool` |
+| 8 | returns the picked name and its token | `internal/app/pool_test.go` `TestPoolLoginToken`, `internal/cli/pool_pick_test.go` `TestLoginTokenOnPool` |
 | 9 | force picks the forced account's token | `internal/app/pool_override_test.go` `TestPoolTokenForce`, `TestLoginTokenOnPool` |
 | 10 | nothing usable gives null name and token, and agx is not called | `TestLoginTokenOnPool` (exit 1, empty stdout), `TestPoolCredentialNoneUsableIsOneLine` |
 | 11 | token <login> prints only the token on stdout | `TestLoginTokenPrintsOnlyTheValue` |
@@ -154,19 +154,19 @@ Paths are relative to the repository root. `TestPortX/name` is a subtest whose n
 
 | # | Selector test | Go test |
 |---|---|---|
-| 1 | --input prints the pick and exits 0 | `internal/cli/login_pick_test.go` `TestLoginPickPlainShape`, `TestLoginPickGoldens` |
-| 2 | --json is valid JSON with the same pick | `TestLoginPickGoldens` (`login-pick-json`), `TestLoginPickFlags` (`--field`) |
-| 3 | --force prints FORCED with warnings | `TestLoginPickGoldens` (`login-pick-forced`) |
+| 1 | --input prints the pick and exits 0 | `internal/cli/pool_pick_test.go` `TestPoolPickPlainShape`, `TestPoolPickGoldens` |
+| 2 | --json is valid JSON with the same pick | `TestPoolPickGoldens` (`pool-pick-json`), `TestPoolPickFlags` (`--field`) |
+| 3 | --force prints FORCED with warnings | `TestPoolPickGoldens` (`pool-pick-forced`) |
 | 4 | config force works the same way | `examples/acct-login-pool` region `force`, `TestPortFlow/9._…` |
-| 5 | forcing an unknown account exits 1 | `TestLoginPickFlags` |
-| 6 | nothing usable exits 2 | `TestLoginPickNoneUsable` (exit 1, code `auto-pick`, the selector's line) |
+| 5 | forcing an unknown account exits 1 | `TestPoolPickFlags` |
+| 6 | nothing usable exits 2 | `TestPoolPickNoneUsable` (exit 1, code `auto-pick`, the selector's line) |
 | 7 | invalid config exits 1 | `config/pool_port_test.go` `TestPortConfigValidation` (a config problem; exit 2 in agx) |
-| 8 | bad arguments exit 1 | `TestLoginPickFlags` (exit 2 in agx) |
+| 8 | bad arguments exit 1 | `TestPoolPickFlags` (exit 2 in agx) |
 | 9 | live run caches the result, --cached reads it back | `TestPoolPickProbesOnceThenReusesCache`, `TestPoolProbeFailureFallsBackToCache` |
 | 10 | failed agx falls back to cache and says so | `TestPoolProbeFailureFallsBackToCache` (`warning: probe of … failed`), `TestPoolReportText` (the warning line) |
 | 11 | agx returning ok:false does not overwrite the cache | `TestPoolProbeWithoutCacheBlocks` |
 | 12 | failed agx without a cache exits 1 | `TestPoolProbeWithoutCacheBlocks` |
-| 13 | default config.json and .cache.json live next to the script, not in cwd | `TestLoginPickCacheFollowsConfigDir` |
+| 13 | default config.json and .cache.json live next to the script, not in cwd | `TestPoolPickCacheFollowsConfigDir` |
 
 ## flow.test.mjs (12): the key-helper flow
 

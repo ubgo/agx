@@ -524,7 +524,7 @@ agx live use --id 20261114-101500-k3x9 --login alice      # applies at the agent
 agx live use --id 20261114-101500-k3x9 --start-login      # back to the login it started with
 ```
 
-A [login pool](guides/login-pool.md) does the switching for you: a run on a `pool` login is live, and each key request picks the member to use by usage (`agx login pick --id auto` shows the pick and why).
+A [login pool](guides/login-pool.md) does the switching for you: a run on a `pool` login is live, and each key request picks the member to use by usage (`agx pool pick --id auto` shows the pick and why).
 
 ## Try it
 

@@ -12,8 +12,42 @@ auto   claude  pool         pool 2 own, 3 shared  —
 picky  claude  pool         pool 2 own, 1 shared  —
 
 #endregion
+#region pool-list
+$ agx pool list
+NAME   AGENTS  OWN        SHARED            FORCE  PICKER
+auto   claude  alice,bob  carol,derek,erin  —      —
+picky  claude  alice,bob  carol             —      sh $HOME/picker.sh
+
+#endregion
+#region pool-show
+$ agx pool show --id auto
+name    auto
+agents  claude
+own     alice, bob
+shared  carol, derek, erin
+
+Members (caps in percent):
+- alice [own] enabled (default), short 95 (config), week 98 (config)
+- bob [own] enabled (default), short 95 (config), week 98 (config)
+- carol [shared] enabled (default), short 50 (defaults), week 70 (defaults)
+- derek [shared] enabled (default), short 50 (defaults), week 70 (defaults)
+- erin [shared] enabled (default), short 50 (defaults), week 70 (defaults)
+
+Settings:
+force                         off (default)
+defaults.short                50 (config)
+defaults.week                 70 (config)
+shared_borrow_window          48h (config)
+short_unavailable_at_percent  99 (config)
+usage_max_age                 60s (config)
+key_ttl                       60s (config)
+picker.command                built-in rules (default)
+picker.timeout                10s (default)
+log                           none (default)
+
+#endregion
 #region pick
-$ agx login pick --id auto
+$ agx pool pick --id auto
 Pool: auto (claude)
 Use: carol (shared)
 shared account resets within 48h, before any usable own account; using its room before it is lost
@@ -28,12 +62,12 @@ Candidates (ready accounts in pick order):
 
 #endregion
 #region pick-json
-$ agx login pick --id auto --json --field data.selected.name
+$ agx pool pick --id auto --json --field data.selected.name
 carol
 
 #endregion
 #region force
-$ agx login pick --id auto --pool-force bob
+$ agx pool pick --id auto --pool-force bob
 Pool: auto (claude)
 Use: bob (FORCED, ignoring rules)
   warning: status is limit-reached
@@ -53,7 +87,7 @@ $ agx login edit --id auto --pool-force derek
 changed login auto (pool, pool 2 own, 3 shared)
   pool.force  —  ->  derek
 
-$ agx login pick --id auto
+$ agx pool pick --id auto
 Pool: auto (claude)
 Use: derek (FORCED, ignoring rules)
 forced by config "force"; all rules ignored
@@ -80,7 +114,7 @@ fake-token-alice
 
 #endregion
 #region times
-$ agx login pick --id auto --time-format both --date-format "ddd HH:mm" --tz UTC
+$ agx pool pick --id auto --time-format both --date-format "ddd HH:mm" --tz UTC
 Pool: auto (claude)
 Use: carol (shared)
 shared account resets within 48h, before any usable own account; using its room before it is lost
@@ -93,7 +127,7 @@ Candidates (ready accounts in pick order):
 - bob [own] skip: status is limit-reached; 5h is 100% (unavailable at 99%); 5h is 100% (cap 95%) (5h 100%, week 61%, resets in 3 d 0 hr (Sun 10:00), room 37%)
 - erin [shared] skip: 5h is 55% (cap 50%) (5h 55%, week 43%, resets in 3 hr 0 min (13:00), room 27%)
 
-$ agx login pick --id auto --duration-format minutes --json --field data.selected
+$ agx pool pick --id auto --duration-format minutes --json --field data.selected
 {"name":"carol","group":"shared","forced":false,"picked_by":"rules","reason":"shared account resets within 48h, before any usable own account; using its room before it is lost","warnings":[],"weekly_resets_at":"2026-11-21T00:00:00Z","room_percent":44}
 
 #endregion
@@ -114,7 +148,7 @@ agx: --pool-force picks a member of a pool login; this run's login is bob (oauth
 
 #endregion
 #region picker
-$ agx login pick --id picky
+$ agx pool pick --id picky
 Pool: picky (claude)
 Use: alice (own)
 picked by the picker command (sh)
@@ -144,7 +178,7 @@ pool      auto (claude): own alice, bob; shared carol, derek, erin              
           5h cutoff 99%                                                                                 from config logins.auto.pool.short_unavailable_at_percent
           default caps 5h 50%, week 70%                                                                 from config logins.auto.pool.defaults
           member entries: 2                                                                             from config logins.auto.pool.accounts
-          pick now: carol (rules), from the cache (20s old); agx login pick --id auto probes            from login-usage cache
+          pick now: carol (rules), from the cache (20s old); agx pool pick --id auto probes            from login-usage cache
 note      live login: switch with agx live use --id 20261119-100000-19p7 --login NAME (refresh 1m0s)    from login auto (pool)
 settings  apiKeyHelper                                                                                  from login auto (pool)
           delivered as file ~/.agx/runs/20261119-100000-19p7/settings-20261119-100000-19p7.json (0600)  from settings_delivery file
@@ -173,7 +207,7 @@ source   pool 1 own, 2 shared
 account  —
 users    —
 
-$ agx login pick --id team
+$ agx pool pick --id team
 Pool: team (claude)
 Use: alice (own)
 soonest weekly reset among usable accounts
@@ -202,12 +236,22 @@ agx: login derek is used by pool auto, pool team
 
 $ agx usage --login auto
 agx: login auto is a pool: it has no token to probe; its members do
-  agx login pick --id auto
+  agx pool pick --id auto
 [exit 2]
 
-$ agx login pick --id alice
-agx: login pick is for pool logins; login alice is oauth-token. Pools serve claude today
-  agx login list
+$ agx pool pick --id alice
+agx: pool pick is for pool logins; login alice is oauth-token. Pools serve claude today
+  agx pool list
+[exit 2]
+
+$ agx pool show --id alice
+agx: pool show is for pool logins; login alice is oauth-token. Pools serve claude today
+  agx pool list
+[exit 2]
+
+$ agx login pick --id auto
+agx: unknown command "pick" for agx login
+  agx pool pick
 [exit 2]
 
 #endregion
@@ -232,7 +276,7 @@ login team: no change (every value given is already set)
 $ agx config set --key logins.team.pool.defaults.week --value 80
 logins.team.pool.defaults.week = 80
 
-$ agx login pick --id team
+$ agx pool pick --id team
 Pool: team (claude)
 Use: erin (shared)
 shared account resets within 48h, before any usable own account; using its room before it is lost

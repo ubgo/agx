@@ -188,7 +188,7 @@ func TestPoolPicker(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.cmd, func(t *testing.T) {
 			m.f.WriteConfig(pickerConfig(c.cmd, c.timeout))
-			rep, err := m.app(t).LoginPick(context.Background(), PoolPickOptions{ID: "auto"}, TimeOptions{})
+			rep, err := m.app(t).PoolPick(context.Background(), PoolPickOptions{ID: "auto"}, TimeOptions{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -204,12 +204,12 @@ func TestPoolPicker(t *testing.T) {
 		})
 	}
 	m.f.WriteConfig(pickerConfig("pick-derek", ""))
-	rep, err := m.app(t).LoginPick(context.Background(), PoolPickOptions{ID: "auto"}, TimeOptions{})
+	rep, err := m.app(t).PoolPick(context.Background(), PoolPickOptions{ID: "auto"}, TimeOptions{})
 	if err != nil || !strings.Contains(rep.Selected.Reason, "picked by the picker command (pick-derek)") ||
 		len(rep.Selected.Warnings) != 1 || rep.Selected.Warnings[0] != "5h is 60% (cap 50%)" {
 		t.Errorf("picker warnings %+v %v", rep.Selected, err)
 	}
-	rep, err = m.app(t).LoginPick(context.Background(), PoolPickOptions{ID: "auto", Force: "bob"}, TimeOptions{})
+	rep, err = m.app(t).PoolPick(context.Background(), PoolPickOptions{ID: "auto", Force: "bob"}, TimeOptions{})
 	if err != nil || rep.Selected.Name != "bob" || rep.Selected.PickedBy != PickedByForce {
 		t.Errorf("force over picker %+v %v", rep.Selected, err)
 	}
@@ -224,7 +224,7 @@ func TestPoolPickerInput(t *testing.T) {
 	envf := filepath.Join(m.f.Home, "picker-env.txt")
 	m.f.WriteFile(filepath.Join(m.f.Bin, "pick-record"), "#!/bin/sh\ncat > "+in+"\necho \"$AGX_POOL\" > "+envf+"\necho alice\n", 0o755)
 	m.f.WriteConfig(pickerConfig("pick-record", ""))
-	if _, err := m.app(t).LoginPick(context.Background(), PoolPickOptions{ID: "auto"}, TimeOptions{}); err != nil {
+	if _, err := m.app(t).PoolPick(context.Background(), PoolPickOptions{ID: "auto"}, TimeOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	b, err := os.ReadFile(in)
@@ -267,7 +267,7 @@ func TestPoolDryRunSources(t *testing.T) {
 		"pool default caps 5h 50%, week 70% [default]",
 		"pool member entries: 2 [config logins.auto.pool.accounts]",
 		"pool log ~/pool.log [config logins.auto.pool.log]",
-		"pool pick now: alice (rules), from the cache (0s old); agx login pick --id auto probes [login-usage cache]",
+		"pool pick now: alice (rules), from the cache (0s old); agx pool pick --id auto probes [login-usage cache]",
 	} {
 		if !strings.Contains(notes, want) {
 			t.Errorf("missing %q in\n%s", want, notes)
@@ -291,7 +291,7 @@ func TestPoolDryRunSources(t *testing.T) {
 func TestPoolProbeWithoutCacheBlocks(t *testing.T) {
 	m, _ := poolMachine(t, map[string]account{tokPersonal: {fail: true}, tokWork: {fail: true}, tokCarol: {fail: true}, tokDave: {fail: true}})
 	a := m.app(t)
-	rep, err := a.LoginPick(context.Background(), PoolPickOptions{ID: "auto"}, TimeOptions{})
+	rep, err := a.PoolPick(context.Background(), PoolPickOptions{ID: "auto"}, TimeOptions{})
 	if err == nil || apperr.As(err).Code != apperr.CodeAutoPick || !strings.Contains(err.Error(), "alice (status is network)") {
 		t.Fatalf("err %v", err)
 	}
@@ -310,7 +310,7 @@ func TestPoolMaxAge(t *testing.T) {
 	m, fv := poolMachine(t, map[string]account{tokPersonal: {weekly: 1}, tokWork: {weekly: 1}, tokCarol: {weekly: 1}, tokDave: {weekly: 1}})
 	pick := func(o PoolPickOptions) {
 		o.ID = "auto"
-		if _, err := m.app(t).LoginPick(context.Background(), o, TimeOptions{}); err != nil {
+		if _, err := m.app(t).PoolPick(context.Background(), o, TimeOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -325,14 +325,14 @@ func TestPoolMaxAge(t *testing.T) {
 	}
 	m2, fv2 := poolMachine(t, map[string]account{tokPersonal: {weekly: 1}, tokWork: {weekly: 1}, tokCarol: {weekly: 1}, tokDave: {weekly: 1}})
 	writeCache(t, m2.app(t), 60*time.Second, map[string]login.UsageEntry{"alice": okEntry(1, 1, weeklyReset), "bob": okEntry(1, 1, weeklyReset), "carol": okEntry(1, 1, weeklyReset), "derek": okEntry(1, 1, weeklyReset)})
-	if _, err := m2.app(t).LoginPick(context.Background(), PoolPickOptions{ID: "auto"}, TimeOptions{}); err != nil {
+	if _, err := m2.app(t).PoolPick(context.Background(), PoolPickOptions{ID: "auto"}, TimeOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if fv2.count("/v1/messages") != 4 {
 		t.Errorf("a reading exactly 60s old must be probed again: %d probes", fv2.count("/v1/messages"))
 	}
 	writeCache(t, m2.app(t), 59*time.Second, map[string]login.UsageEntry{"alice": okEntry(1, 1, weeklyReset), "bob": okEntry(1, 1, weeklyReset), "carol": okEntry(1, 1, weeklyReset), "derek": okEntry(1, 1, weeklyReset)})
-	if _, err := m2.app(t).LoginPick(context.Background(), PoolPickOptions{ID: "auto"}, TimeOptions{}); err != nil || fv2.count("/v1/messages") != 4 {
+	if _, err := m2.app(t).PoolPick(context.Background(), PoolPickOptions{ID: "auto"}, TimeOptions{}); err != nil || fv2.count("/v1/messages") != 4 {
 		t.Errorf("59s old is fresh: %d probes (%v)", fv2.count("/v1/messages"), err)
 	}
 }
@@ -346,7 +346,7 @@ func TestPoolProbeTimeoutFallsBack(t *testing.T) {
 	a := m.app(t)
 	writeCache(t, a, 5*time.Minute, map[string]login.UsageEntry{"alice": okEntry(3, 40, weeklyReset)})
 	start := time.Now()
-	rep, err := m.app(t).LoginPick(context.Background(), PoolPickOptions{ID: "auto"}, TimeOptions{})
+	rep, err := m.app(t).PoolPick(context.Background(), PoolPickOptions{ID: "auto"}, TimeOptions{})
 	if err != nil || rep.Selected.Name != "alice" || len(rep.Warnings) != 1 || !strings.Contains(rep.Warnings[0], "probe of alice failed (network") {
 		t.Fatalf("%+v %v %v", rep.Selected, rep.Warnings, err)
 	}
@@ -355,16 +355,16 @@ func TestPoolProbeTimeoutFallsBack(t *testing.T) {
 	}
 }
 
-// TestLoginPickNotAPool: login pick on a token login says pick is for
+// TestPoolPickNotAPool: pool pick on a token login says pick is for
 // pool logins, which agents can have one (from capabilities), and why
 // the login's own agent cannot.
-func TestLoginPickNotAPool(t *testing.T) {
+func TestPoolPickNotAPool(t *testing.T) {
 	m, _ := poolMachine(t, nil)
 	cfg := strings.Replace(poolConfig, `"logins": {`, `"logins": { "cx": { "agents": ["codex"], "kind": "api-key", "token": "x" },`, 1)
 	m.f.WriteConfig(cfg)
-	_, err := m.app(t).LoginPick(context.Background(), PoolPickOptions{ID: "cx"}, TimeOptions{})
+	_, err := m.app(t).PoolPick(context.Background(), PoolPickOptions{ID: "cx"}, TimeOptions{})
 	if err == nil || apperr.As(err).Code != apperr.CodeUsage ||
-		!strings.Contains(err.Error(), "login pick is for pool logins; login cx is api-key. Pools serve claude today (codex: ") {
+		!strings.Contains(err.Error(), "pool pick is for pool logins; login cx is api-key. Pools serve claude today (codex: ") {
 		t.Errorf("err %v", err)
 	}
 }

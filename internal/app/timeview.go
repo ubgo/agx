@@ -13,7 +13,7 @@ import (
 )
 
 // TimeOptions are the flags that decide how reset times read, shared by
-// agx usage and agx login pick so both print a reset the same way.
+// agx usage and agx pool pick so both print a reset the same way.
 type TimeOptions struct {
 	// TZ is --tz: the IANA zone of days and clock times; "" = local.
 	TZ string

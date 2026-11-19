@@ -57,7 +57,7 @@ func poolMachine(t *testing.T, accounts map[string]account) (*machine, *fakeVend
 func TestPoolPickProbesOnceThenReusesCache(t *testing.T) {
 	m, fv := poolMachine(t, map[string]account{tokPersonal: {session: 10, weekly: 30}, tokWork: {session: 5, weekly: 20}, tokCarol: {session: 1, weekly: 1}, tokDave: {session: 60, weekly: 10}})
 	a := m.app(t)
-	rep, err := a.LoginPick(context.Background(), PoolPickOptions{ID: "auto"}, TimeOptions{})
+	rep, err := a.PoolPick(context.Background(), PoolPickOptions{ID: "auto"}, TimeOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +84,7 @@ func TestPoolPickProbesOnceThenReusesCache(t *testing.T) {
 	if !strings.Contains(string(b), "alice@example.com") || strings.Contains(string(b), tokPersonal) {
 		t.Errorf("cache content:\n%s", b)
 	}
-	rep, err = a.LoginPick(context.Background(), PoolPickOptions{ID: "auto"}, TimeOptions{})
+	rep, err = a.PoolPick(context.Background(), PoolPickOptions{ID: "auto"}, TimeOptions{})
 	if err != nil || rep.Selected.Name != "alice" || !strings.HasPrefix(rep.Source, sourceCache) {
 		t.Fatalf("second pick %+v %s %v", rep.Selected, rep.Source, err)
 	}
@@ -120,7 +120,7 @@ func TestPoolProbeFailureFallsBackToCache(t *testing.T) {
 	m, fv := poolMachine(t, map[string]account{tokPersonal: {status: http.StatusInternalServerError, noHeaders: true}, tokWork: {weekly: 99}, tokCarol: {weekly: 90}, tokDave: {weekly: 90}})
 	a := m.app(t)
 	writeCache(t, a, 10*time.Minute, map[string]login.UsageEntry{"alice": okEntry(3, 40, weeklyReset)})
-	rep, err := a.LoginPick(context.Background(), PoolPickOptions{ID: "auto"}, TimeOptions{})
+	rep, err := a.PoolPick(context.Background(), PoolPickOptions{ID: "auto"}, TimeOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,7 +128,7 @@ func TestPoolProbeFailureFallsBackToCache(t *testing.T) {
 		t.Fatalf("selected %s warnings %+v", rep.Selected.Name, rep.Warnings)
 	}
 	before := fv.count("/v1/messages")
-	rep, err = a.LoginPick(context.Background(), PoolPickOptions{ID: "auto", Cached: true}, TimeOptions{})
+	rep, err = a.PoolPick(context.Background(), PoolPickOptions{ID: "auto", Cached: true}, TimeOptions{})
 	if err != nil || fv.count("/v1/messages") != before {
 		t.Fatalf("cached pick probed: %d → %d (%v)", before, fv.count("/v1/messages"), err)
 	}
@@ -142,7 +142,7 @@ func TestPoolProbeFailureFallsBackToCache(t *testing.T) {
 func TestPoolNoneUsable(t *testing.T) {
 	m, _ := poolMachine(t, map[string]account{tokPersonal: {session: 100, weekly: 100}, tokWork: {weekly: 99}, tokCarol: {status: http.StatusUnauthorized}, tokDave: {session: 50}})
 	a := m.app(t)
-	rep, err := a.LoginPick(context.Background(), PoolPickOptions{ID: "auto"}, TimeOptions{})
+	rep, err := a.PoolPick(context.Background(), PoolPickOptions{ID: "auto"}, TimeOptions{})
 	if err == nil || apperr.As(err).Code != apperr.CodeAutoPick || apperr.Exit(err, false) != apperr.ExitFailure {
 		t.Fatalf("err %v", err)
 	}
@@ -161,17 +161,17 @@ func TestPoolNoneUsable(t *testing.T) {
 func TestPoolForce(t *testing.T) {
 	m, _ := poolMachine(t, map[string]account{tokPersonal: {weekly: 10}, tokWork: {weekly: 100}, tokCarol: {weekly: 1}, tokDave: {weekly: 1}})
 	a := m.app(t)
-	rep, err := a.LoginPick(context.Background(), PoolPickOptions{ID: "auto", Force: "bob"}, TimeOptions{})
+	rep, err := a.PoolPick(context.Background(), PoolPickOptions{ID: "auto", Force: "bob"}, TimeOptions{})
 	if err != nil || !rep.Selected.Forced || rep.Selected.Name != "bob" {
 		t.Fatalf("%+v %v", rep.Selected, err)
 	}
 	if w := rep.StderrWarnings(); len(w) != 2 || w[1].Message != "forced bob: week is 100% (cap 98%)" {
 		t.Errorf("warnings %+v", w)
 	}
-	if _, err := a.LoginPick(context.Background(), PoolPickOptions{ID: "auto", Force: "zoe"}, TimeOptions{}); err == nil || apperr.As(err).Code != apperr.CodeNotFound {
+	if _, err := a.PoolPick(context.Background(), PoolPickOptions{ID: "auto", Force: "zoe"}, TimeOptions{}); err == nil || apperr.As(err).Code != apperr.CodeNotFound {
 		t.Errorf("unknown force: %v", err)
 	}
-	if _, err := a.LoginPick(context.Background(), PoolPickOptions{ID: "alice"}, TimeOptions{}); err == nil || !strings.Contains(err.Error(), "is for pool logins") {
+	if _, err := a.PoolPick(context.Background(), PoolPickOptions{ID: "alice"}, TimeOptions{}); err == nil || !strings.Contains(err.Error(), "is for pool logins") {
 		t.Errorf("token login: %v", err)
 	}
 }
@@ -234,7 +234,7 @@ func TestPoolCredentialNoneUsableIsOneLine(t *testing.T) {
 	a := m.app(t)
 	liveRun(t, m, a, "auto")
 	_, err := a.Credential(context.Background())
-	if err == nil || strings.Contains(err.Error(), "\n") || !strings.Contains(err.Error(), "pool auto: no member is usable") || !strings.Contains(err.Error(), "(try: agx login pick --id auto --pool-force NAME)") {
+	if err == nil || strings.Contains(err.Error(), "\n") || !strings.Contains(err.Error(), "pool auto: no member is usable") || !strings.Contains(err.Error(), "(try: agx pool pick --id auto --pool-force NAME)") {
 		t.Fatalf("err %v", err)
 	}
 }

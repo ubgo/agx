@@ -211,13 +211,13 @@ $ agx help --json --field data.flags.*.name
 ["color","config","date-format","field","json","quiet","timeout"]
 
 $ agx help --json --field data.commands.*.name
-["agent","alias","clean","completion","config","conversation","credential","doctor","help","launch","live","login","new","plan","profile","project","resume","run","session","shell-init","skill","usage","version","whoami"]
+["agent","alias","clean","completion","config","conversation","credential","doctor","help","launch","live","login","new","plan","pool","profile","project","resume","run","session","shell-init","skill","usage","version","whoami"]
 
-$ agx help --json --field data.commands.21.name --field data.commands.21.cost --field data.commands.21.fields
+$ agx help --json --field data.commands.22.name --field data.commands.22.cost --field data.commands.22.fields
 {
-  "data.commands.21.name": "usage",
-  "data.commands.21.cost": "N",
-  "data.commands.21.fields": [
+  "data.commands.22.name": "usage",
+  "data.commands.22.cost": "N",
+  "data.commands.22.fields": [
     "data.*.kind",
     "data.*.name",
     "data.*.agent",

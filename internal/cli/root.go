@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -283,12 +284,51 @@ func group(use, short string, subs ...*cobra.Command) *cobra.Command {
 	g := &cobra.Command{Use: use, Short: short, Args: cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
-				return apperr.Usage("unknown command " + quote(args[0]) + " for agx " + commandPath(cmd))
+				return withRenamedHint(unknownCommand(cmd, args[0]), cmd, args[0])
 			}
 			return cmd.Help()
 		}}
 	g.AddCommand(subs...)
 	return g
+}
+
+// unknownCommand is a group's refusal of a word it has no command for.
+func unknownCommand(cmd *cobra.Command, word string) *apperr.Error {
+	return apperr.Usage("unknown command " + quote(word) + " for agx " + commandPath(cmd))
+}
+
+// renamedCommands are commands that moved, keyed by their old path (no
+// "agx "), valued by the new one. The old path stays an unknown command,
+// never a hidden alias; its error only gains a hint naming the new path.
+var renamedCommands = map[string]string{
+	// login pick read like "log in"; picking applies to pools only.
+	"login pick": "agx pool pick",
+}
+
+// withRenamedHint adds the new path to err when word under group cmd is
+// a command that moved.
+func withRenamedHint(err *apperr.Error, cmd *cobra.Command, word string) *apperr.Error {
+	if to, ok := renamedCommands[commandPath(cmd)+" "+word]; ok {
+		return err.WithHint(to)
+	}
+	return err
+}
+
+// firstWordAfter is the first argument after name that is not a flag
+// ("pick" in "login --json pick --id auto"), or "". A flag error is
+// raised before a group's RunE sees its words, so the renamed hint reads
+// them from the command line.
+func firstWordAfter(args []string, name string) string {
+	i := slices.Index(args, name)
+	if i < 0 {
+		return ""
+	}
+	for _, a := range args[i+1:] {
+		if !strings.HasPrefix(a, "-") {
+			return a
+		}
+	}
+	return ""
 }
 
 // launching marks a launching command (exit codes 125/126/127, 14.2).
@@ -351,6 +391,11 @@ func NewRoot(env Env) (*cobra.Command, *cliCtx) {
 		if errors.As(err, &own) {
 			return c.fail(cmd, own)
 		}
+		// A moved command given its flags ("login pick --id auto") fails
+		// on the first flag, before the group sees the word: name the word.
+		if word := firstWordAfter(c.env.Args, cmd.Name()); renamedCommands[commandPath(cmd)+" "+word] != "" {
+			return c.fail(cmd, withRenamedHint(unknownCommand(cmd, word), cmd, word))
+		}
 		return c.fail(cmd, apperr.Usage(err.Error()))
 	})
 	root.AddCommand(c.commands()...)
@@ -371,7 +416,7 @@ func (c *cliCtx) commands() []*cobra.Command {
 		c.usageCmd(),
 		c.runCmd(), c.newSessionCmd(), c.resumeCmd(), c.whoamiCmd(),
 		c.conversationCmd(), c.liveCmd(),
-		c.profileCmd(), c.loginCmd(), c.projectCmd(), c.sessionCmd(),
+		c.profileCmd(), c.loginCmd(), c.poolCmd(), c.projectCmd(), c.sessionCmd(),
 		c.agentCmd(), c.doctorCmd(), c.cleanCmd(), c.configCmd(), c.aliasCmd(),
 		c.shellInitCmd(), c.completionCmd(), c.skillCmd(), c.versionCmd(),
 	}
@@ -391,8 +436,13 @@ func Main(ctx context.Context, env Env) int {
 	}
 	var p printed
 	if !errors.As(err, &p) {
-		// cobra's own errors (unknown command or flag before our wrapper).
-		err = apperr.Usage(err.Error())
+		// cobra's own errors (unknown command or flag before our wrapper),
+		// and a group's unknown-command error, which keeps its hint.
+		var own *apperr.Error
+		if !errors.As(err, &own) {
+			own = apperr.Usage(err.Error())
+		}
+		err = own
 		_ = c.fail(cmd, err)
 	}
 	if ctx.Err() != nil && apperr.As(err).Class != apperr.ClassDismissed {

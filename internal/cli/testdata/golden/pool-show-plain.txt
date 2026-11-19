@@ -1,0 +1,30 @@
+name    auto
+agents  claude
+own     alice, bob, carol
+shared  derek, erin, frank, grace, heidi, ivan, judy, mallory, niaj
+
+Members (caps in percent):
+- alice [own] enabled (default), short 99 (config), week 100 (config)
+- bob [own] enabled (default), short 99 (config), week 100 (config)
+- carol [own] enabled (default), short 99 (config), week 100 (config)
+- derek [shared] enabled (default), short 50 (default), week 70 (default)
+- erin [shared] enabled (default), short 50 (default), week 70 (default)
+- frank [shared] enabled (default), short 50 (default), week 70 (default)
+- grace [shared] enabled (default), short 50 (default), week 70 (default)
+- heidi [shared] enabled (default), short 50 (default), week 70 (default)
+- ivan [shared] enabled (default), short 50 (default), week 70 (default)
+- judy [shared] enabled (default), short 50 (default), week 70 (default)
+- mallory [shared] enabled (default), short 50 (default), week 70 (default)
+- niaj [shared] enabled (default), short 50 (default), week 70 (default)
+
+Settings:
+force                         off (default)
+defaults.short                50 (default)
+defaults.week                 70 (default)
+shared_borrow_window          48h (default)
+short_unavailable_at_percent  99 (default)
+usage_max_age                 60s (default)
+key_ttl                       60s (default)
+picker.command                built-in rules (default)
+picker.timeout                10s (default)
+log                           none (default)

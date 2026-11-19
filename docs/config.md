@@ -445,7 +445,7 @@ Durations are Go duration strings (`48h`, `90m`, `60s`). Caps and the cutoff are
 | Key | Type | Meaning |
 |---|---|---|
 | `usage.time_format` | `relative`, `day`, `absolute` or `both` | how `agx usage` writes reset times: `relative` (the default, "2 hr 50 min", as agx v0.3 and claude.ai write them), `day` ("Tue 05:30"), `absolute` ("Tue 24 Nov 05:30") or `both` ("3 hr 10 min (22:20)", with the weekday when the reset is not today and the date when it is more than six days away), in the `--tz` zone; `--time-format` overrides it for one run |
-| `usage.duration_format` | `truncate`, `round` or `minutes` | how a relative time a day or more away reads, in `agx usage` and `agx login pick`: `truncate` (the default, "1 d 2 hr"), `round` (nearest hour, "1 d 3 hr") or `minutes` ("1 d 2 hr 52 min"); `--duration-format` overrides it for one run |
+| `usage.duration_format` | `truncate`, `round` or `minutes` | how a relative time a day or more away reads, in `agx usage` and `agx pool pick`: `truncate` (the default, "1 d 2 hr"), `round` (nearest hour, "1 d 3 hr") or `minutes` ("1 d 2 hr 52 min"); `--duration-format` overrides it for one run |
 | `usage.date_format` | string | how `agx usage` writes the clock and date parts of `day`, `absolute`, `both` and `RESETS ON`: a preset or tokens ([below](#date-formats)); unset uses the top-level `date_format`, else `long`; `--date-format` overrides it for one run |
 
 ```jsonc
