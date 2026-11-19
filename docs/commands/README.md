@@ -53,6 +53,6 @@ The [Scripting with agx](../guides/scripting.md) guide uses every global flag; [
 | [Live login](live.md) | `live list/show/use` |
 | [Profiles](profile.md) | `profile list/show/add/import/edit/remove/use` |
 | [Logins](login.md) | `login list/show/add/edit/remove/use/check/token` |
-| [Pools](pool.md) | `pool list/show/pick` |
+| [Pools](pool.md) | `pool list/show/pick`; the pool flags of other commands: `--pool-force` and `--pool-only` (with `--pool-only-short`, `--pool-only-week`) on `run`, `new`, `resume`, `pool pick` and `login token`, `--pool-only` on `live use` |
 | [Projects](project.md) | `project list/show/use/remove` |
 | [Setup and tools](setup.md) | `agent list/show`, `doctor`, `clean`, `config init/show/path/check/set`, `alias list/add/remove`, `shell-init`, `completion`, `help`, `version` |

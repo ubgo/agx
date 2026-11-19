@@ -492,6 +492,14 @@ agx pool pick --id auto --cached --pool-only carol --json --field data.selected.
 
 With `--pool-only NAME` the pick is that member alone with its caps enforced (`data.selected.picked_by` is `only`); exit 1 means it is blocked, and `data.candidates[0].reasons` says why. Inside a pinned session, `agx whoami --json --field data.only` is the pinned member.
 
+A session started with `agx run --login auto --pool-only carol` stays on carol for every key. At her cap the key helper (`agx credential`) prints nothing on stdout, one line on stderr (`carol: week is 70% (cap 70%)`) and exits 1 with code `auto-pick`, so Claude's request fails rather than switching; the next key request after her usage falls under the cap gets her key again. A script can watch for that:
+
+```sh
+agx live show --id "$RUN" --json --field data.only     # carol: the run is pinned
+agx live show --id "$RUN" --json --field data.no_key   # empty, or why the last key request got none
+agx pool pick --id auto --cached --pool-only carol >/dev/null 2>&1 && echo "carol usable again"
+```
+
 
 ```sh
 go test -count=1 ./internal/docscheck/ -run 'TestExamples/(out-|acct-login-token$)'
