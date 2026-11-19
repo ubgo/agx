@@ -2,6 +2,20 @@
 
 All notable changes to agx are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and agx uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.7] - 2026-11-19
+
+### Added
+
+- Login pools: a login of kind `pool` (Claude Code only) lists your own logins (`own`, used up almost fully) and teammates' shared ones (`shared`, borrowed up to their caps), with per-member caps, a borrow window, a 5-hour safety cutoff and an optional `force`, as `logins.<name>.pool` in `config.jsonc`. Each time Claude asks for a key, agx picks one member and hands out its token: usable members only (every reason a member is skipped is listed), your own first plus teammates' accounts whose weekly reset is within `shared_borrow_window` (48h), soonest weekly reset first. `agx run --login auto` (or a profile, agent or folder bound to the pool) is always a live run, with `apiKeyHelper` running `agx credential` and `CLAUDE_CODE_API_KEY_HELPER_TTL_MS` from the pool's `key_ttl` (60s); `agx live use --login MEMBER` pins one member for a run. Guide: [Share a pool of Claude accounts](docs/guides/login-pool.md).
+- `agx login pick --id POOL` prints the pick, the rule that chose it and every member (`#N READY`, `WAIT`, `skip:` with reasons, use, reset, room), with `--json`, `--cached`, `--max-age` and a one-run `--force`; it never prints a token. Exit 0 when a member is picked, 1 with error code `auto-pick` when none is usable.
+- `agx login token --id POOL` prints the picked member's token; `agx login add --kind pool --pool-own NAME --pool-shared NAME` and `agx login edit --pool-own`, `--pool-shared`, `--pool-force`.
+- The members' usage comes from one token probe each, kept in `~/.agx/cache/login-usage.jsonc` (0600, written atomically, shared by every session) and reused while younger than the pool's `usage_max_age` (60s); a probe that fails for a passing reason falls back to the cached reading with a warning on stderr. An optional `log` file gets one line per key request (time, pick, source; never a token).
+- The public package `github.com/ubgo/agx/pool` holds the selection rules as a pure function.
+
+### Changed
+
+- `agx login remove` refuses a login a pool lists as a member; `--cascade` also drops it from the pool. `agx usage --all-logins`, `--auto-login` and `agx login check` leave a pool out (it has no token to probe; its members are logins of their own). `--auto-login` keeps its own rule (most headroom, once at launch); [Let agx pick by headroom](docs/guides/auto-pick.md) compares the two.
+
 ## [0.4.6] - 2026-11-19
 
 ### Changed
