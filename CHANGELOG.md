@@ -2,6 +2,18 @@
 
 All notable changes to agx are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and agx uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.10] - 2026-11-19
+
+### Fixed
+
+- `agx config set` accepts every scalar the config schema allows at the key: a number (`--key logins.auto.pool.accounts.alice.short --value 95` was refused with `is a float64, not a scalar`), an integer, `true`/`false`, a string, and `null` only where the key takes it (a pool's `force` does; a cap does not). The value is typed by the schema at the key, never by the Go type or the value already in the file, so a key that is not in the file yet works too, such as a cap on a member entry that does not exist. Digits on a string key stay a string; a quoted value (`'"null"'`) is a string. A wrong value is refused naming what the key takes (`--key logins.auto.pool.accounts.alice.short takes a number from 0 to 100, not "101"`, `takes one of: plan, api`, `takes an integer`), never a Go type name, and nothing is written. A typed agent block key (`profiles.work.claude.effort`) can be set too.
+- `agx config show` lists a pool's caps and cutoff (number values were left out).
+
+### Added
+
+- Pool settings as flags on `agx login add --kind pool` and `agx login edit`, so no pool number needs a hand edit: `--pool-cap-short NAME=N` and `--pool-cap-week NAME=N` (a member's own caps; `NAME=` removes one), `--pool-disable NAME` and `--pool-enable NAME`, `--pool-default-short N`, `--pool-default-week N`, `--pool-short-cutoff N`, `--pool-borrow-window DUR`, `--pool-usage-max-age DUR`, `--pool-key-ttl DUR` and `--pool-picker CMD`; an empty value removes the key so its default applies, and a member entry, `accounts`, `defaults` or `picker` block left empty is removed. Each changed key prints its value before and after, as `agx profile edit` does; `--dry-run` prints the changes and writes nothing; flags that match the file print `no change` and write nothing. A cap outside 0 to 100 (`NaN` included), a member the pool does not list, `--pool-disable` and `--pool-enable` for one member, a bad or negative duration and a `--pool-key-ttl` under `1s` are refused before anything is written. `--json` adds `changes` and `written`.
+- The published config schema states the pool's ranges: every cap and the cutoff is a number with `minimum` 0 and `maximum` 100, and caps, the cutoff and `enabled` are never `null`, so an editor flags them as you type and `agx config check` reports them at their line.
+
 ## [0.4.9] - 2026-11-19
 
 ### Added
