@@ -174,7 +174,7 @@ func TestFlowExamples(t *testing.T) {
 			cfg:      team,
 			readings: map[string]pool.Reading{"alice": read(-1, 29, 6*day), "bob": status("limit-reached")},
 			force:    "bob",
-			want:     "bob", group: pool.GroupOwn, reason: "forced by --force; all rules ignored",
+			want:     "bob", group: pool.GroupOwn, reason: "forced by --pool-force; all rules ignored",
 			check: func(t *testing.T, r pool.Result) {
 				if s := r.Selected; !s.Forced || s.ForcedBy != pool.ForcedByFlag || !slices.Equal(s.Warnings, []string{"status is limit-reached"}) {
 					t.Errorf("selection %+v", s)
@@ -190,7 +190,7 @@ func TestFlowExamples(t *testing.T) {
 			},
 			readings: map[string]pool.Reading{"alice": read(-1, 29, 6*day), "carol": read(-1, 10, day)},
 			force:    "carol",
-			want:     "carol", group: pool.GroupOwn, reason: "forced by --force; all rules ignored",
+			want:     "carol", group: pool.GroupOwn, reason: "forced by --pool-force; all rules ignored",
 		},
 		{
 			name: "E config force",
@@ -207,7 +207,7 @@ func TestFlowExamples(t *testing.T) {
 			cfg:      team,
 			readings: map[string]pool.Reading{"alice": read(-1, 29, 6*day), "zoe": read(60, 10, day)},
 			force:    "zoe",
-			want:     "zoe", group: pool.GroupUnlisted, reason: "forced by --force; all rules ignored",
+			want:     "zoe", group: pool.GroupUnlisted, reason: "forced by --pool-force; all rules ignored",
 			check: func(t *testing.T, r pool.Result) {
 				want := []string{"not listed in own or shared", "5h is 60% (cap 50%)"}
 				if !slices.Equal(r.Selected.Warnings, want) {

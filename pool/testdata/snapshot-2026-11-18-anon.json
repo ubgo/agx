@@ -1,0 +1,357 @@
+{
+  "schema_version": 1,
+  "command": "usage",
+  "ok": true,
+  "data": [
+    {
+      "kind": "login",
+      "index": 12,
+      "name": "niaj",
+      "agent": "claude",
+      "login": "niaj",
+      "account": "niaj@example.com",
+      "source": "probe",
+      "observed_at": "2026-11-18T23:38:12.726683+05:30",
+      "status": "ok",
+      "left": 20,
+      "windows": [
+        {
+          "class": "week",
+          "label": "All models",
+          "percent": 80,
+          "resets_at": "2026-11-23T08:00:00Z",
+          "reset": "Mon 23 Nov 13:30"
+        }
+      ]
+    },
+    {
+      "kind": "login",
+      "index": 2,
+      "name": "mallory",
+      "agent": "claude",
+      "login": "mallory",
+      "account": "mallory@example.com",
+      "source": "probe",
+      "observed_at": "2026-11-18T23:38:12.203594+05:30",
+      "status": "ok",
+      "left": 42.00000000000001,
+      "windows": [
+        {
+          "class": "short",
+          "label": "Current session",
+          "percent": 36,
+          "resets_at": "2026-11-18T20:10:00Z",
+          "reset": "Thu 19 Nov 01:40"
+        },
+        {
+          "class": "week",
+          "label": "All models",
+          "percent": 57.99999999999999,
+          "resets_at": "2026-11-24T00:00:00Z",
+          "reset": "Tue 24 Nov 05:30"
+        }
+      ]
+    },
+    {
+      "kind": "login",
+      "index": 13,
+      "name": "derek",
+      "agent": "claude",
+      "login": "derek",
+      "account": "derek@example.com",
+      "source": "probe",
+      "observed_at": "2026-11-18T23:38:12.301557+05:30",
+      "status": "ok",
+      "left": 99,
+      "windows": [
+        {
+          "class": "short",
+          "label": "Current session",
+          "percent": 0,
+          "resets_at": "2026-11-18T23:00:00Z",
+          "reset": "Thu 19 Nov 04:30"
+        },
+        {
+          "class": "week",
+          "label": "All models",
+          "percent": 1,
+          "resets_at": "2026-11-25T16:00:00Z",
+          "reset": "Wed 25 Nov 21:30"
+        }
+      ]
+    },
+    {
+      "kind": "login",
+      "index": 4,
+      "name": "erin",
+      "agent": "claude",
+      "login": "erin",
+      "account": "erin@example.com",
+      "source": "probe",
+      "observed_at": "2026-11-18T23:38:12.30156+05:30",
+      "status": "ok",
+      "left": 94,
+      "windows": [
+        {
+          "class": "short",
+          "label": "Current session",
+          "percent": 6,
+          "resets_at": "2026-11-18T21:40:00Z",
+          "reset": "Thu 19 Nov 03:10"
+        },
+        {
+          "class": "week",
+          "label": "All models",
+          "percent": 3,
+          "resets_at": "2026-11-25T03:00:00Z",
+          "reset": "Wed 25 Nov 08:30"
+        }
+      ]
+    },
+    {
+      "kind": "login",
+      "index": 5,
+      "name": "alice",
+      "agent": "claude",
+      "login": "alice",
+      "account": "alice@example.com",
+      "source": "probe",
+      "observed_at": "2026-11-18T23:38:12.321749+05:30",
+      "status": "ok",
+      "left": 71,
+      "windows": [
+        {
+          "class": "week",
+          "label": "All models",
+          "percent": 28.999999999999996,
+          "resets_at": "2026-11-25T06:00:00Z",
+          "reset": "Wed 25 Nov 11:30"
+        }
+      ]
+    },
+    {
+      "kind": "login",
+      "index": 6,
+      "name": "bob",
+      "agent": "claude",
+      "login": "bob",
+      "account": "bob@example.com",
+      "source": "probe",
+      "observed_at": "2026-11-18T23:38:12.061684+05:30",
+      "status": "limit-reached",
+      "left": 0,
+      "windows": [
+        {
+          "class": "short",
+          "label": "Current session",
+          "percent": 0,
+          "resets_at": "2026-11-18T23:00:00Z",
+          "reset": "Thu 19 Nov 04:30"
+        },
+        {
+          "class": "week",
+          "label": "All models",
+          "percent": 100,
+          "resets_at": "2026-11-19T18:00:00Z",
+          "reset": "Thu 19 Nov 23:30"
+        }
+      ]
+    },
+    {
+      "kind": "login",
+      "index": 8,
+      "name": "oscar",
+      "agent": "claude",
+      "login": "oscar",
+      "account": "oscar@example.com",
+      "source": "probe",
+      "observed_at": "2026-11-18T23:38:12.061686+05:30",
+      "status": "limit-reached",
+      "left": 0,
+      "windows": [
+        {
+          "class": "short",
+          "label": "Current session",
+          "percent": 0,
+          "resets_at": "2026-11-18T23:00:00Z",
+          "reset": "Thu 19 Nov 04:30"
+        },
+        {
+          "class": "week",
+          "label": "All models",
+          "percent": 100,
+          "resets_at": "2026-11-19T12:00:00Z",
+          "reset": "Thu 19 Nov 17:30"
+        }
+      ]
+    },
+    {
+      "kind": "login",
+      "index": 9,
+      "name": "grace",
+      "agent": "claude",
+      "login": "grace",
+      "account": "grace@example.com",
+      "source": "probe",
+      "observed_at": "2026-11-18T23:38:12.203698+05:30",
+      "status": "ok",
+      "left": 74,
+      "windows": [
+        {
+          "class": "short",
+          "label": "Current session",
+          "percent": 0,
+          "resets_at": "2026-11-18T23:00:00Z",
+          "reset": "Thu 19 Nov 04:30"
+        },
+        {
+          "class": "week",
+          "label": "All models",
+          "percent": 26,
+          "resets_at": "2026-11-20T08:00:00Z",
+          "reset": "Fri 20 Nov 13:30"
+        }
+      ]
+    },
+    {
+      "kind": "login",
+      "index": 7,
+      "name": "ivan",
+      "agent": "claude",
+      "login": "ivan",
+      "account": "ivan@example.com",
+      "source": "probe",
+      "observed_at": "2026-11-18T23:38:12.206848+05:30",
+      "status": "ok",
+      "left": 57,
+      "windows": [
+        {
+          "class": "short",
+          "label": "Current session",
+          "percent": 4,
+          "resets_at": "2026-11-18T21:20:00Z",
+          "reset": "Thu 19 Nov 02:50"
+        },
+        {
+          "class": "week",
+          "label": "All models",
+          "percent": 43,
+          "resets_at": "2026-11-20T12:00:00Z",
+          "reset": "Fri 20 Nov 17:30"
+        }
+      ]
+    },
+    {
+      "kind": "login",
+      "index": 1,
+      "name": "judy",
+      "agent": "claude",
+      "login": "judy",
+      "account": "judy@example.com",
+      "source": "probe",
+      "observed_at": "2026-11-18T23:38:12.203419+05:30",
+      "status": "ok",
+      "left": 56,
+      "windows": [
+        {
+          "class": "short",
+          "label": "Current session",
+          "percent": 41,
+          "resets_at": "2026-11-18T19:50:00Z",
+          "reset": "Thu 19 Nov 01:20"
+        },
+        {
+          "class": "week",
+          "label": "All models",
+          "percent": 44,
+          "resets_at": "2026-11-21T03:00:00Z",
+          "reset": "Sat 21 Nov 08:30"
+        }
+      ]
+    },
+    {
+      "kind": "login",
+      "index": 11,
+      "name": "carol",
+      "agent": "claude",
+      "login": "carol",
+      "account": "carol@example.com",
+      "source": "probe",
+      "observed_at": "2026-11-18T23:38:12.238596+05:30",
+      "status": "ok",
+      "left": 41,
+      "windows": [
+        {
+          "class": "short",
+          "label": "Current session",
+          "percent": 1,
+          "resets_at": "2026-11-18T21:10:00Z",
+          "reset": "Thu 19 Nov 02:40"
+        },
+        {
+          "class": "week",
+          "label": "All models",
+          "percent": 59,
+          "resets_at": "2026-11-21T04:00:00Z",
+          "reset": "Sat 21 Nov 09:30"
+        }
+      ]
+    },
+    {
+      "kind": "login",
+      "index": 3,
+      "name": "frank",
+      "agent": "claude",
+      "login": "frank",
+      "account": "frank@example.com",
+      "source": "probe",
+      "observed_at": "2026-11-18T23:38:12.203498+05:30",
+      "status": "ok",
+      "left": 85,
+      "windows": [
+        {
+          "class": "short",
+          "label": "Current session",
+          "percent": 0,
+          "resets_at": "2026-11-18T23:00:00Z",
+          "reset": "Thu 19 Nov 04:30"
+        },
+        {
+          "class": "week",
+          "label": "All models",
+          "percent": 15,
+          "resets_at": "2026-11-22T09:00:00Z",
+          "reset": "Sun 22 Nov 14:30"
+        }
+      ]
+    },
+    {
+      "kind": "login",
+      "index": 10,
+      "name": "heidi",
+      "agent": "claude",
+      "login": "heidi",
+      "account": "heidi@example.com",
+      "source": "probe",
+      "observed_at": "2026-11-18T23:38:12.2287+05:30",
+      "status": "ok",
+      "left": 67,
+      "windows": [
+        {
+          "class": "short",
+          "label": "Current session",
+          "percent": 0,
+          "resets_at": "2026-11-18T23:00:00Z",
+          "reset": "Thu 19 Nov 04:30"
+        },
+        {
+          "class": "week",
+          "label": "All models",
+          "percent": 33,
+          "resets_at": "2026-11-22T03:00:00Z",
+          "reset": "Sun 22 Nov 08:30"
+        }
+      ]
+    }
+  ]
+}

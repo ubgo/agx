@@ -89,8 +89,8 @@ type ForcedBy string
 
 // Force sources.
 const (
-	// ForcedByFlag is a one-run force (agx login pick --force).
-	ForcedByFlag ForcedBy = "--force"
+	// ForcedByFlag is a one-run force (agx login pick --pool-force).
+	ForcedByFlag ForcedBy = "--pool-force"
 	// ForcedByConfig is the pool's "force" key.
 	ForcedByConfig ForcedBy = "config"
 )
@@ -404,16 +404,21 @@ func candidate(cfg Config, name string, g Group, order int, rd Reading, found bo
 	return c
 }
 
+// Reasons is every reason account name cannot be used now under cfg,
+// given its reading (found false = none); empty = usable. A caller that
+// lets something other than the rules choose (a picker command) reports
+// these as warnings.
+func (c Config) Reasons(name string, rd Reading, found bool) []string {
+	return blockReasons(rd, found, c.Enabled(name), c.CapsFor(name), c.ShortUnavailableAt)
+}
+
 // blockReasons is every reason an account cannot be used now; empty =
-// usable. A disabled account without a reading is only "disabled": agx
-// does not spend a probe on an account it would never pick.
+// usable. Every reason is listed, a disabled account without a reading
+// included ("disabled in config", "no usage reading").
 func blockReasons(rd Reading, found, enabled bool, caps Caps, shortUnavailableAt float64) []string {
 	reasons := []string{}
 	if !enabled {
 		reasons = append(reasons, reasonDisabled)
-		if !found {
-			return reasons
-		}
 	}
 	if !found {
 		return append(reasons, reasonNoReading)
@@ -451,7 +456,7 @@ func forced(cfg Config, readings map[string]Reading, cands []*Candidate, name st
 			sel.WeeklyResetsAt = rd.Week.ResetsAt
 		}
 	}
-	src := "--force"
+	src := string(ForcedByFlag)
 	if by == ForcedByConfig {
 		src = `config "force"`
 	}
