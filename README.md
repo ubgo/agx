@@ -30,6 +30,7 @@ agx makes that one command:
 - **Logins** run any home on any account: `agx run --profile work --login carol`, with the token taken from gopass, a command or a variable and never printed (only `agx login token` prints one, on request).
 - **Folder bindings** pick the account per repository, per agent: a plain `agx run` in the client repository uses the client profile.
 - **Usage** across every home and login at once: `agx usage`.
+- **Login pools** move one Claude session between your and your teammates' accounts by itself as quotas fill: `agx run --login auto` on a `pool` login, `agx login pick --id auto` to see the pick and why, `! agx whoami` inside Claude to see the account in use.
 - **Resume** finds the home that stores a conversation: `agx resume --id 3f2a9c1e`.
 - **Every option** reaches the agent the same way for every vendor: settings, typed options, environment, autonomy levels and raw flags.
 
@@ -62,10 +63,10 @@ Prebuilt binaries (macOS and Linux on amd64 and arm64, Windows on amd64) are on 
 
 ```sh
 # macOS on Apple Silicon: swap darwin_arm64 for darwin_amd64, linux_amd64 or linux_arm64
-curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.7/agx_v0.4.7_darwin_arm64.tar.gz
-curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.7/checksums.txt
+curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.8/agx_v0.4.8_darwin_arm64.tar.gz
+curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.8/checksums.txt
 shasum -a 256 -c checksums.txt --ignore-missing
-tar -xzf agx_v0.4.7_darwin_arm64.tar.gz agx && sudo mv agx /usr/local/bin/
+tar -xzf agx_v0.4.8_darwin_arm64.tar.gz agx && sudo mv agx /usr/local/bin/
 agx version
 ```
 
@@ -317,6 +318,10 @@ For Claude Code, yes: start it with `--live-login`, then `agx live use --id <run
 ### Can agx move a running Claude session between accounts automatically?
 
 Yes, with a login pool: a login of kind `pool` lists your own Claude logins and your teammates' shared ones, and `agx run --login auto` starts Claude with agx as its key helper. Each time Claude asks for a key (every minute by default), agx reads the members' usage (one small probe each, cached and shared by every session) and hands out the token of the member whose weekly quota expires soonest, using your own accounts almost fully and teammates' only up to their caps. `agx login pick --id auto` shows the pick and why. It is Claude Code only. See [Share a pool of Claude accounts](docs/guides/login-pool.md).
+
+### Which account is my Claude session on?
+
+Run `! agx whoami` inside Claude. In a pool or `--live-login` session it shows `in use:` (the login whose key Claude got last) and `next:` when a switch is pending. Claude's `/status` only says `apiKeyHelper`, and Claude's own guess reads the keychain login, not the key it uses.
 
 ### Does agx work on Windows?
 
