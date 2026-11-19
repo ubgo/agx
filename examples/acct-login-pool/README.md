@@ -16,6 +16,7 @@ go test -count=1 ./internal/docscheck/ -run 'TestExamples/acct-login-pool$'
 
 | File | What it is |
 |---|---|
-| [`config.jsonc`](config.jsonc) | Five Claude token logins from `${…_TOKEN}` variables, a Codex key, and the pool `auto` with every key written out. Region: `pool`. |
-| [`session.txt`](session.txt) | `agx login list`, `agx login pick` (human and `--field`), `--force`, `login edit --pool-force`, `agx login token`, `agx run --dry-run`, `login add --kind pool`, and the refusals: a Codex pool (exit 4), an unknown member, removing a member a pool lists, `usage --login` on a pool, `login pick` on a token login (exit 2). Regions: `list`, `pick`, `pick-json`, `force`, `token`, `run`, `add`, `refusals`. |
+| [`config.jsonc`](config.jsonc) | Five Claude token logins from `${…_TOKEN}` variables, a Codex key, the pool `auto` with every key written out, and the pool `picky` with a picker command. Regions: `pool`, `picker`. |
+| [`session.txt`](session.txt) | `agx login list`, `agx login pick` (human and `--field`), `--force`, `login edit --pool-force`, `agx login token`, `agx run --dry-run`, `login add --kind pool`, and the refusals: a Codex pool (exit 4), an unknown member, removing a member a pool lists, `usage --login` on a pool, `login pick` on a token login (exit 2). Also `--time-format both` with a custom `--date-format`, `--duration-format`, the overrides (`--login MEMBER`, `AGX_LOGIN=auto`, `run --pool-force`) and the picker. Regions: `list`, `pick`, `pick-json`, `force`, `token`, `times`, `overrides`, `picker`, `run`, `add`, `refusals`. |
+| [`home/picker.sh`](home/picker.sh) | A tiny picker: prefers `alice` whenever she is ready, else the built-in pick. |
 | [`home/.agx/cache/login-usage.jsonc`](home/.agx/cache/login-usage.jsonc) | The members' last probe: windows, resets, status. |
