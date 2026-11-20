@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "logins": {
+    "alice": { "agent": "claude", "probed_at": "2026-11-20T09:59:30Z", "status": "ok", "detected": "oauth-token",
+      "windows": [ { "class": "short", "percent": 20, "resets_at": "2026-11-20T13:00:00Z" }, { "class": "week", "percent": 35, "resets_at": "2026-11-23T10:00:00Z" } ] },
+    "bob": { "agent": "claude", "probed_at": "2026-11-20T09:59:30Z", "status": "per-token", "reason": "token is an API key (billed per use); not probed", "detected": "api-key", "windows": [] }
+  }
+}

@@ -189,8 +189,8 @@ agx: mycli has no oauth-token login; it takes api-key
 [exit 4]
 
 $ agx login check --id my-key
-NAME    KIND     SOURCE            RESOLVE  PROBE    DETAIL
-my-key  api-key  reference gopass  ok       skipped  mycli: config-only agent: a spec describes L1 only; this needs code
+NAME    KIND     SOURCE            RESOLVE  DETECTED  PROBE    DETAIL
+my-key  api-key  reference gopass  ok       unknown   skipped  mycli: config-only agent: a spec describes L1 only; this needs code
 ```
 
 A dry run shows the variable the token goes into, redacted, and resolves nothing:

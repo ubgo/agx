@@ -186,7 +186,7 @@ func TestDryRunRedactsAndResolvesNothing(t *testing.T) {
 	}
 	f.Env["TOKVAR"] = "fake-oauth-SECRETVALUE"
 	r = f.Run("run", "--login", "carol", "--dry-run", "--resolved-secrets")
-	if r.Code != 0 || !strings.Contains(r.Stdout, "(resolved)") || strings.Contains(r.Stdout+r.Stderr, "SECRETVALUE") {
+	if r.Code != 0 || !strings.Contains(r.Stdout, "(resolved, detected unknown)") || strings.Contains(r.Stdout+r.Stderr, "SECRETVALUE") {
 		t.Errorf("resolved dry run: code %d %s %s", r.Code, r.Stdout, r.Stderr)
 	}
 }

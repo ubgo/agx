@@ -65,20 +65,20 @@ A token login holds exactly one of `token`, `stored` or `command`. Pick the sour
 <!-- snippet: examples/choose-login-kind/session.txt#list -->
 ```sh
 $ agx login list
-NAME           AGENTS     KIND            SOURCE                 ACCOUNT
-carol          claude     oauth-token     reference gopass       —
-pasted         claude     oauth-token     stored (tokens.jsonc)  —
-console        claude     api-key-helper  helper gopass          —
-anthropic-key  claude,pi  api-key         reference gopass       —
-gem-key        gemini     api-key         reference gopass       —
+NAME           AGENTS     KIND            SOURCE                 DETECTED  ACCOUNT
+carol          claude     oauth-token     reference gopass       —         —
+pasted         claude     oauth-token     stored (tokens.jsonc)  unknown   —
+console        claude     api-key-helper  helper gopass          —         —
+anthropic-key  claude,pi  api-key         reference gopass       —         —
+gem-key        gemini     api-key         reference gopass       —         —
 
 $ agx login check --no-probe
-NAME           KIND            SOURCE                 RESOLVE  PROBE    DETAIL
-carol          oauth-token     reference gopass       ok       skipped  --no-probe
-pasted         oauth-token     stored (tokens.jsonc)  ok       skipped  --no-probe
-console        api-key-helper  helper gopass          skipped  skipped  the agent runs the helper itself; agx never does
-anthropic-key  api-key         reference gopass       ok       skipped  --no-probe
-gem-key        api-key         reference gopass       ok       skipped  --no-probe
+NAME           KIND            SOURCE                 RESOLVE  DETECTED  PROBE    DETAIL
+carol          oauth-token     reference gopass       ok       unknown   skipped  --no-probe
+pasted         oauth-token     stored (tokens.jsonc)  ok       unknown   skipped  --no-probe
+console        api-key-helper  helper gopass          skipped  —         skipped  the agent runs the helper itself; agx never does
+anthropic-key  api-key         reference gopass       ok       unknown   skipped  --no-probe
+gem-key        api-key         reference gopass       ok       unknown   skipped  --no-probe
 ```
 
 A `--dry-run` resolves nothing; add `--resolved-secrets` to resolve each reference and print `resolved` or the error, never the value:
@@ -86,7 +86,7 @@ A `--dry-run` resolves nothing; add `--resolved-secrets` to resolve each referen
 <!-- snippet: examples/choose-login-kind/session.txt#resolved -->
 ```sh
 $ agx run --profile work --login carol --resolved-secrets --dry-run --quiet --json --field decisions.3
-{"name":"login","value":"carol (resolved)","source":"--login"}
+{"name":"login","value":"carol (resolved, detected unknown)","source":"--login"}
 ```
 
 ## How each kind reaches the agent

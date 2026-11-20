@@ -70,7 +70,11 @@ func whoamiText(w io.Writer, s app.Whoami) error {
 			if s.Only != "" {
 				line("only", app.OnlyText(s.Only))
 			}
-			line("in use", app.InUseText(s.InUse, s.Live.NoKey, "— (the agent has not asked for a key yet)"))
+			inUse := app.InUseText(s.InUse, s.Live.NoKey, "— (the agent has not asked for a key yet)")
+			if s.InUseDetected != "" {
+				inUse += " (detected " + s.InUseDetected + ")"
+			}
+			line("in use", inUse)
 			if s.Next != "" {
 				line("next", s.Next)
 			}

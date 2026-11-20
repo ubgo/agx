@@ -1,0 +1,71 @@
+#: Four logins and a pool. alice holds a setup-token, bob an API key filed under kind oauth-token, console an API key filed as api-key, and carol a gopass reference. Every value is fake and none is ever printed: only the kind word.
+#options env=AGX_TEST_NOW=2026-11-20T10:00:00Z
+#region list
+$ agx login list
+NAME     AGENTS  KIND         SOURCE                 DETECTED            ACCOUNT
+alice    claude  oauth-token  stored (tokens.jsonc)  oauth-token         —
+bob      claude  oauth-token  stored (tokens.jsonc)  api-key (mismatch)  —
+console  claude  api-key      stored (tokens.jsonc)  api-key             —
+carol    claude  oauth-token  reference gopass       —                   —
+team     claude  pool         pool 2 own, 0 shared   —                   —
+
+#endregion
+#: A gopass reference is detected only when you ask, because resolving it runs gopass.
+#region verify
+$ agx login list --verify
+NAME     AGENTS  KIND         SOURCE                 DETECTED            ACCOUNT
+alice    claude  oauth-token  stored (tokens.jsonc)  oauth-token         —
+bob      claude  oauth-token  stored (tokens.jsonc)  api-key (mismatch)  —
+console  claude  api-key      stored (tokens.jsonc)  api-key             —
+carol    claude  oauth-token  reference gopass       unknown             —
+team     claude  pool         pool 2 own, 0 shared   —                   —
+
+#endregion
+#region check
+$ agx login check --no-probe
+agx: 1 of 5 logins failed: bob
+NAME     KIND         SOURCE                 RESOLVE  DETECTED            PROBE    DETAIL
+alice    oauth-token  stored (tokens.jsonc)  ok       oauth-token         skipped  --no-probe
+bob      oauth-token  stored (tokens.jsonc)  ok       api-key (mismatch)  failed   login bob holds an API key (billed per use), but its kind is oauth-token
+console  api-key      stored (tokens.jsonc)  ok       api-key             skipped  --no-probe
+carol    oauth-token  reference gopass       ok       unknown             skipped  --no-probe
+team     pool         pool 2 own, 0 shared   skipped  —                   skipped  a pool: its members are checked as logins; agx pool pick shows their usage
+[exit 3]
+
+#endregion
+#: bob would be billed per use while the config says plan, so a launch on it is refused.
+#region refused
+$ agx run --login bob
+agx: login bob holds an API key (billed per use), but its kind is oauth-token
+  --allow-api-key for one run, or agx config set --key logins.bob.allow_api_key --value true
+[exit 125]
+
+#endregion
+#region allow
+$ agx run --login bob --allow-api-key --dry-run --resolved-secrets --quiet --json --field data.login
+bob
+
+$ agx config set --key logins.bob.allow_api_key --value true
+logins.bob.allow_api_key = true
+
+$ agx login check --no-probe --id bob
+NAME  KIND         SOURCE                 RESOLVE  DETECTED            PROBE    DETAIL
+bob   oauth-token  stored (tokens.jsonc)  ok       api-key (mismatch)  skipped  --no-probe
+
+#endregion
+#: A pool never picks a member whose token is a per-use API key, unless that member allows it.
+#region pool
+$ agx config set --key logins.bob.allow_api_key --value false
+logins.bob.allow_api_key = false
+
+$ agx pool pick --id team --cached
+Pool: team (claude)
+Use: alice (own)
+soonest weekly reset among usable accounts
+Source: cache (30s old)
+
+Candidates (ready accounts in pick order):
+- alice [own] #1 READY (5h 20%, week 35%, resets in 3 d 0 hr, room 35%)
+- bob [own] skip: token is an API key (billed per use); allow_api_key is off (no windows, reset unknown)
+
+#endregion

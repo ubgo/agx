@@ -27,7 +27,10 @@
         "name": "/p/client",
         "agent": "claude"
       }
-    ]
+    ],
+    "detected": "",
+    "detected_mismatch": false,
+    "detected_view": "—"
   },
   "decisions": [],
   "warnings": [],

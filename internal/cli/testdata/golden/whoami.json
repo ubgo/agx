@@ -12,6 +12,7 @@
     "run_dir": "<root>/home/.agx/runs/<run-id>",
     "login_kind": "oauth-token",
     "in_use": "",
+    "in_use_detected": "",
     "next": "carol",
     "only": "",
     "live": {

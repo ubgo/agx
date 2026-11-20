@@ -2,6 +2,21 @@
 
 All notable changes to agx are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and agx uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.15] - 2026-11-20
+
+### Added
+
+- agx detects the kind a Claude token really is from its public prefix, since a login's `kind` is only a label in config: `oauth-token` (a setup-token, billed to the plan), `api-key` (an API key, billed per use) or `unknown`. Only the kind word is ever shown, never any part of the token, the prefix included.
+- `agx login list` has a DETECTED column (`detected`, `detected_mismatch` and `detected_view` in `--json`), filled for pasted, plain and `${VAR}` tokens and for kinds a pool probe recorded; `--verify` resolves every token login (runs gopass and `$(…)` references, cost X). A kind that contradicts the login's reads `api-key (mismatch)`. `agx login show` and `agx login check` show it too.
+- A login declared `oauth-token` whose token is an API key is refused (code `per-use-key`) by `agx run`, `agx new`, `agx resume` and `agx credential`, with one line naming the login. Allow it for one run with `--allow-api-key` (kept for a live run's key requests) or for the login with `logins.NAME.allow_api_key: true`. A login declared `api-key` is unchanged, and `agx login check` fails such a login without probing it.
+- Login pools never pick a member whose token is a per-use API key unless that member's `allow_api_key` is set: `agx pool pick` lists it as `skip: token is an API key (billed per use); allow_api_key is off`, it is never probed, a forced or pinned one is refused, and a member found to be one while its key is handed out is recorded in the login-usage cache (`detected`) and the pool picks again.
+- `agx whoami` adds the detected kind to `in use:` (`alice (detected oauth-token)`; `in_use_detected` in `--json`), recorded by `agx credential` in `live.jsonc`.
+- Guide section [Is a login billed per use?](docs/logins.md#is-a-login-billed-per-use), a README FAQ entry, the example `examples/acct-login-detect`, and the agx skill text.
+
+### Changed
+
+- `agx run --dry-run --resolved-secrets` on a named login says `(resolved, detected KIND)`.
+
 ## [0.4.14] - 2026-11-20
 
 ### Changed

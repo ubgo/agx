@@ -41,19 +41,19 @@ added login gh (api-key, env COPILOT_GITHUB_TOKEN)
 #endregion
 #region list
 $ agx login list
-NAME           AGENTS     KIND            SOURCE                    ACCOUNT
-carol          claude     oauth-token     reference gopass          —
-derek          claude     oauth-token     command gopass            e@example.com
-pasted         claude     oauth-token     stored (tokens.jsonc)     —
-console        claude     api-key-helper  helper gopass             —
-anthropic-key  claude,pi  api-key         reference gopass          —
-gem-work       gemini     api-key         env GEMINI_KEY_WORK       —
-gh             pi         api-key         env COPILOT_GITHUB_TOKEN  —
+NAME           AGENTS     KIND            SOURCE                    DETECTED  ACCOUNT
+carol          claude     oauth-token     reference gopass          —         —
+derek          claude     oauth-token     command gopass            —         e@example.com
+pasted         claude     oauth-token     stored (tokens.jsonc)     unknown   —
+console        claude     api-key-helper  helper gopass             —         —
+anthropic-key  claude,pi  api-key         reference gopass          —         —
+gem-work       gemini     api-key         env GEMINI_KEY_WORK       —         —
+gh             pi         api-key         env COPILOT_GITHUB_TOKEN  —         —
 
 $ agx login list --agent pi
-NAME           AGENTS     KIND     SOURCE                ACCOUNT
-anthropic-key  claude,pi  api-key  reference gopass      —
-gh             pi         api-key  env COPILOT_GITHUB_TOKEN  —
+NAME           AGENTS     KIND     SOURCE                    DETECTED  ACCOUNT
+anthropic-key  claude,pi  api-key  reference gopass          —         —
+gh             pi         api-key  env COPILOT_GITHUB_TOKEN  —         —
 
 $ agx login show --id anthropic-key --agent pi
 name     anthropic-key

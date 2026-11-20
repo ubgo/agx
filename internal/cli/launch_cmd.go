@@ -41,6 +41,7 @@ func addLaunchFlags(cmd *cobra.Command, o *app.LaunchOptions, withDir bool) {
 	f.StringArrayVar(&o.EnvFiles, "env-file", nil, "a dotenv file, relative to the current folder (repeat)")
 	f.StringVar(&o.BeforeRun, "before-run", "", "a script to run first, for this run (relative to the current folder)")
 	f.BoolVar(&o.LiveLogin, "live-login", false, "switch this session's login while it runs (agx live use)")
+	f.BoolVar(&o.AllowAPIKey, "allow-api-key", false, "start even when an oauth-token login's token is an API key (billed per use)")
 	f.StringVar(&o.PoolForce, "pool-force", "", "on a pool login: every key of this run comes from this member, over the pool's rules")
 	addPoolOnlyFlags(f, &o.PoolOnly, "on a pool login: every key of this run comes from this member while its caps allow, else no key (never another member)", "this run")
 	f.BoolVar(&o.DryRun, "dry-run", false, "print every decision with its source; start nothing")

@@ -75,6 +75,13 @@ type LoginCheckRow struct {
 	Detail string `json:"detail"`
 	// Windows are the probed usage windows.
 	Windows []CheckWindow `json:"windows"`
+	// Detected is the kind read from the resolved token's prefix
+	// (oauth-token, api-key, unknown); "" when it did not resolve.
+	Detected login.Detected `json:"detected"`
+	// DetectedMismatch is true when Detected contradicts Kind.
+	DetectedMismatch bool `json:"detected_mismatch"`
+	// DetectedView is the DETECTED cell (DetectedView).
+	DetectedView string `json:"detected_view"`
 
 	// err is the failure behind a failed row, for the command's error.
 	err error
@@ -111,6 +118,13 @@ func (a *App) LoginCheck(ctx context.Context, o LoginCheckOptions) ([]LoginCheck
 
 // checkOne resolves and probes one login.
 func (a *App) checkOne(ctx context.Context, name string, l config.Login, noProbe bool) LoginCheckRow {
+	row := a.checkRow(ctx, name, l, noProbe)
+	row.DetectedView = DetectedView(row.Detected, row.DetectedMismatch)
+	return row
+}
+
+// checkRow resolves, detects and probes one login.
+func (a *App) checkRow(ctx context.Context, name string, l config.Login, noProbe bool) LoginCheckRow {
 	row := LoginCheckRow{Name: name, Kind: l.Kind, Source: a.loginInfo(config.Config{}, name, l).Source, Windows: []CheckWindow{}}
 	if l.Kind == config.KindAPIKeyHelper {
 		row.Resolve, row.Probe, row.Detail = CheckSkipped, CheckSkipped, detailHelper
@@ -126,6 +140,13 @@ func (a *App) checkOne(ctx context.Context, name string, l config.Login, noProbe
 		return row
 	}
 	row.Resolve = CheckOK
+	row.Detected = login.DetectToken(cred.Token)
+	row.DetectedMismatch = login.Mismatch(l.Kind, row.Detected)
+	if err := login.CheckPerUse(name, l, row.Detected, false, true); err != nil {
+		// A launch would refuse it, and probing an API key spends money.
+		row.Probe, row.Detail, row.err = CheckFailed, apperr.As(err).Message, err
+		return row
+	}
 	if noProbe {
 		row.Probe, row.Detail = CheckSkipped, detailNoProbe
 		return row

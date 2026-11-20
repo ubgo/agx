@@ -199,19 +199,19 @@ In config the logins look like this ([`examples/acct-login-manage/config.jsonc`]
 <!-- snippet: examples/acct-login-kinds/session.txt#list -->
 ```sh
 $ agx login list
-NAME           AGENTS     KIND            SOURCE                    ACCOUNT
-carol          claude     oauth-token     reference gopass          —
-derek          claude     oauth-token     command gopass            e@example.com
-pasted         claude     oauth-token     stored (tokens.jsonc)     —
-console        claude     api-key-helper  helper gopass             —
-anthropic-key  claude,pi  api-key         reference gopass          —
-gem-work       gemini     api-key         env GEMINI_KEY_WORK       —
-gh             pi         api-key         env COPILOT_GITHUB_TOKEN  —
+NAME           AGENTS     KIND            SOURCE                    DETECTED  ACCOUNT
+carol          claude     oauth-token     reference gopass          —         —
+derek          claude     oauth-token     command gopass            —         e@example.com
+pasted         claude     oauth-token     stored (tokens.jsonc)     unknown   —
+console        claude     api-key-helper  helper gopass             —         —
+anthropic-key  claude,pi  api-key         reference gopass          —         —
+gem-work       gemini     api-key         env GEMINI_KEY_WORK       —         —
+gh             pi         api-key         env COPILOT_GITHUB_TOKEN  —         —
 
 $ agx login list --agent pi
-NAME           AGENTS     KIND     SOURCE                ACCOUNT
-anthropic-key  claude,pi  api-key  reference gopass      —
-gh             pi         api-key  env COPILOT_GITHUB_TOKEN  —
+NAME           AGENTS     KIND     SOURCE                    DETECTED  ACCOUNT
+anthropic-key  claude,pi  api-key  reference gopass          —         —
+gh             pi         api-key  env COPILOT_GITHUB_TOKEN  —         —
 
 $ agx login show --id anthropic-key --agent pi
 name     anthropic-key
@@ -386,19 +386,100 @@ $ AGX_LOGIN_CLAUDE=dave agx run --agent gemini --dry-run --quiet --json --field 
 ```sh
 $ agx login check --no-probe
 agx: 1 of 5 logins failed: spare
-NAME           KIND            SOURCE                  RESOLVE  PROBE    DETAIL
-carol          oauth-token     reference gopass        ok       skipped  --no-probe
-derek          oauth-token     command gopass          ok       skipped  --no-probe
-console        api-key-helper  helper gopass           skipped  skipped  the agent runs the helper itself; agx never does
-anthropic-key  api-key         reference gopass        ok       skipped  --no-probe
-spare          oauth-token     env SPARE_CLAUDE_TOKEN  failed   skipped  login spare: SPARE_CLAUDE_TOKEN is not set
+NAME           KIND            SOURCE                  RESOLVE  DETECTED  PROBE    DETAIL
+carol          oauth-token     reference gopass        ok       unknown   skipped  --no-probe
+derek          oauth-token     command gopass          ok       unknown   skipped  --no-probe
+console        api-key-helper  helper gopass           skipped  —         skipped  the agent runs the helper itself; agx never does
+anthropic-key  api-key         reference gopass        ok       unknown   skipped  --no-probe
+spare          oauth-token     env SPARE_CLAUDE_TOKEN  failed   —         skipped  login spare: SPARE_CLAUDE_TOKEN is not set
 [exit 3]
 
 $ agx login check --no-probe --id carol --id derek
-NAME   KIND         SOURCE            RESOLVE  PROBE    DETAIL
-carol  oauth-token  reference gopass  ok       skipped  --no-probe
-derek  oauth-token  command gopass    ok       skipped  --no-probe
+NAME   KIND         SOURCE            RESOLVE  DETECTED  PROBE    DETAIL
+carol  oauth-token  reference gopass  ok       unknown   skipped  --no-probe
+derek  oauth-token  command gopass    ok       unknown   skipped  --no-probe
 ```
+
+## Is a login billed per use?
+
+A login's `kind` is a label you write in config, and nothing else checks it: an Anthropic API key filed under `kind: oauth-token` would be billed per use while you think it runs on a plan. agx reads the token's public prefix to say what it really is, and shows only the kind word, never any part of the token:
+
+| Detected | Token | Billing |
+|---|---|---|
+| `oauth-token` | a setup-token (`claude setup-token`) | the account's plan |
+| `api-key` | an Anthropic API key | per use, on the Console account that owns it |
+| `unknown` | anything else (another vendor's key, a gateway token) | agx cannot tell |
+
+`agx login list` shows it in the DETECTED column, with `(mismatch)` when it contradicts the kind. It is read when the token is cheap to get (a pasted token, a plain value, a `${VAR}` reference) or a pool probe recorded it; a gopass or `$(…)` reference shows `—` until you add `--verify`, which resolves every token login (cost X). `agx login show` and `agx login check` show it too:
+
+<!-- snippet: examples/acct-login-detect/session.txt#list -->
+```sh
+$ agx login list
+NAME     AGENTS  KIND         SOURCE                 DETECTED            ACCOUNT
+alice    claude  oauth-token  stored (tokens.jsonc)  oauth-token         —
+bob      claude  oauth-token  stored (tokens.jsonc)  api-key (mismatch)  —
+console  claude  api-key      stored (tokens.jsonc)  api-key             —
+carol    claude  oauth-token  reference gopass       —                   —
+team     claude  pool         pool 2 own, 0 shared   —                   —
+```
+
+<!-- snippet: examples/acct-login-detect/session.txt#check -->
+```sh
+$ agx login check --no-probe
+agx: 1 of 5 logins failed: bob
+NAME     KIND         SOURCE                 RESOLVE  DETECTED            PROBE    DETAIL
+alice    oauth-token  stored (tokens.jsonc)  ok       oauth-token         skipped  --no-probe
+bob      oauth-token  stored (tokens.jsonc)  ok       api-key (mismatch)  failed   login bob holds an API key (billed per use), but its kind is oauth-token
+console  api-key      stored (tokens.jsonc)  ok       api-key             skipped  --no-probe
+carol    oauth-token  reference gopass       ok       unknown             skipped  --no-probe
+team     pool         pool 2 own, 0 shared   skipped  —                   skipped  a pool: its members are checked as logins; agx pool pick shows their usage
+[exit 3]
+```
+
+A login declared `oauth-token` whose token is an API key does not start: `agx run`, `agx new` and `agx resume` refuse it with one line naming the login (code `per-use-key`, exit 125), and so does `agx credential`, the key helper of a live run. A login declared `api-key` starts as before:
+
+<!-- snippet: examples/acct-login-detect/session.txt#refused -->
+```sh
+$ agx run --login bob
+agx: login bob holds an API key (billed per use), but its kind is oauth-token
+  --allow-api-key for one run, or agx config set --key logins.bob.allow_api_key --value true
+[exit 125]
+```
+
+When you really want it, allow it for one run with `--allow-api-key`, or for the login with `allow_api_key: true`:
+
+<!-- snippet: examples/acct-login-detect/session.txt#allow -->
+```sh
+$ agx run --login bob --allow-api-key --dry-run --resolved-secrets --quiet --json --field data.login
+bob
+
+$ agx config set --key logins.bob.allow_api_key --value true
+logins.bob.allow_api_key = true
+
+$ agx login check --no-probe --id bob
+NAME  KIND         SOURCE                 RESOLVE  DETECTED            PROBE    DETAIL
+bob   oauth-token  stored (tokens.jsonc)  ok       api-key (mismatch)  skipped  --no-probe
+```
+
+A pool never picks a member whose token is a per-use API key, unless that member's own `allow_api_key` is set (`--allow-api-key` does not reach pool members). `agx pool pick` lists it with the reason, and the key it was never asked to probe costs nothing:
+
+<!-- snippet: examples/acct-login-detect/session.txt#pool -->
+```sh
+$ agx config set --key logins.bob.allow_api_key --value false
+logins.bob.allow_api_key = false
+
+$ agx pool pick --id team --cached
+Pool: team (claude)
+Use: alice (own)
+soonest weekly reset among usable accounts
+Source: cache (30s old)
+
+Candidates (ready accounts in pick order):
+- alice [own] #1 READY (5h 20%, week 35%, resets in 3 d 0 hr, room 35%)
+- bob [own] skip: token is an API key (billed per use); allow_api_key is off (no windows, reset unknown)
+```
+
+Inside a live or pool session, `agx whoami` names the kind detected in the key the agent got last: `in use:  alice (detected oauth-token)`.
 
 ## Rotating and removing
 
@@ -432,12 +513,12 @@ agx: no terminal: --login-setup runs the setup command, then asks you to paste t
 [exit 2]
 
 $ agx login list
-NAME           AGENTS  KIND            SOURCE                 ACCOUNT
-carol          claude  oauth-token     reference gopass       —
-derek          claude  oauth-token     command gopass         derek@example.com
-console        claude  api-key-helper  helper gopass          —
-anthropic-key  pi      api-key         reference gopass       —
-spare          claude  oauth-token     stored (tokens.jsonc)  —
+NAME           AGENTS  KIND            SOURCE                 DETECTED  ACCOUNT
+carol          claude  oauth-token     reference gopass       —         —
+derek          claude  oauth-token     command gopass         —         derek@example.com
+console        claude  api-key-helper  helper gopass          —         —
+anthropic-key  pi      api-key         reference gopass       —         —
+spare          claude  oauth-token     stored (tokens.jsonc)  unknown   —
 ```
 
 `agx login remove` deletes a login from config and `tokens.jsonc`. It is refused while a profile, agent default or binding uses it; `--cascade` also clears it from those places, which then fall back to the next source (often the home login):

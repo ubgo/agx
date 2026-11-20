@@ -49,6 +49,10 @@ type UsageEntry struct {
 	Reason string `json:"reason,omitempty"`
 	// Windows are the probed windows.
 	Windows []UsageCacheWindow `json:"windows"`
+	// Detected is the kind read from the probed token's prefix
+	// (oauth-token, api-key, unknown); "" when the entry predates it.
+	// Never any part of the token.
+	Detected string `json:"detected,omitempty"`
 }
 
 // UsageCacheWindow is one probed window.

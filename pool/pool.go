@@ -313,6 +313,10 @@ type Reading struct {
 	Status string
 	Short  *Window
 	Week   *Window
+	// PerUseKey is a member declared oauth-token whose token is an API
+	// key (billed per use) and that does not allow it: never picked by
+	// the rules, whatever its usage says.
+	PerUseKey bool
 }
 
 // Options are one selection's inputs besides the config.
@@ -391,6 +395,7 @@ type Result struct {
 // Reasons and notes, as the report prints them.
 const (
 	reasonDisabled  = "disabled in config"
+	reasonPerUseKey = "token is an API key (billed per use); allow_api_key is off"
 	reasonNoReading = "no usage reading"
 	unreadableFmt   = "%s usage is unreadable"
 	noteBadReset    = "weekly reset time is unreadable; treated as unknown"
@@ -559,6 +564,11 @@ func blockReasons(rd Reading, found, enabled bool, caps Caps, shortUnavailableAt
 	}
 	if !found {
 		return append(reasons, reasonNoReading)
+	}
+	if rd.PerUseKey {
+		// The key reason says it all: the status of such an entry only
+		// records that it was never probed.
+		return append(reasons, reasonPerUseKey)
 	}
 	if rd.Status != StatusOK {
 		reasons = append(reasons, "status is "+rd.Status)

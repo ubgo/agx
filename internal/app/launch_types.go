@@ -55,6 +55,11 @@ type LaunchOptions struct {
 	BeforeRun string
 	// LiveLogin is --live-login.
 	LiveLogin bool
+	// AllowAPIKey is --allow-api-key: an oauth-token login whose token is
+	// detected as an API key (billed per use) may start this run (and, on
+	// a live run, be handed out by agx credential). Pool members are not
+	// covered: each needs its own allow_api_key.
+	AllowAPIKey bool
 	// PoolForce is --pool-force: on a pool login, the member every key
 	// request of this run gets, over the pool's rules, force and picker
 	// (kept in live.jsonc; agx live use clears it).
@@ -171,6 +176,8 @@ type LiveStart struct {
 	// configured cap.
 	PoolOnlyShort *float64 `json:"pool_only_short,omitempty"`
 	PoolOnlyWeek  *float64 `json:"pool_only_week,omitempty"`
+	// AllowAPIKey is the run's --allow-api-key.
+	AllowAPIKey bool `json:"allow_api_key,omitempty"`
 }
 
 // only is the run's pin as the pool pick takes it.

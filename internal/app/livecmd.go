@@ -235,6 +235,7 @@ func (a *App) liveCredential(ctx context.Context) (Credential, error) {
 	var (
 		tok      agentio.Token
 		warnings []report.Warning
+		detected login.Detected
 	)
 	if lg.Kind == config.KindPool {
 		// A pool run: pick a member now, by usage, each time the agent
@@ -255,10 +256,15 @@ func (a *App) liveCredential(ctx context.Context) (Credential, error) {
 			}
 			return Credential{Warnings: warnings}, err
 		}
+		detected = login.Detected(rep.Detected)
 	} else {
 		cred, err := login.Credential(ctx, a.exp.Brief(), a.paths, name, lg)
 		if err != nil {
 			return Credential{}, withCheckHint(err, name)
+		}
+		detected = login.DetectToken(cred.Token)
+		if err := login.CheckPerUse(name, lg, detected, st.AllowAPIKey, true); err != nil {
+			return Credential{}, err
 		}
 		tok = cred.Token
 	}
@@ -266,6 +272,7 @@ func (a *App) liveCredential(ctx context.Context) (Credential, error) {
 		s.InUse = inUse
 		s.InUseAt = a.Now()
 		s.NoKey = ""
+		s.InUseDetected = string(detected)
 		return nil
 	}); err != nil {
 		return Credential{Warnings: warnings}, liveErr(err)

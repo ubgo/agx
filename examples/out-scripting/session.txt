@@ -126,12 +126,13 @@ $ agx run --dry-run --quiet --resolved-secrets --json --field data.command.env
 ["set AGX_RUN_ID=20261118-061527-ppg6","set AGX_RUN_AGENT=claude","set AGX_RUN_PROFILE=work","set AGX_RUN_LOGIN=carol","set AGX_RUN_HOME=~/.claude-work","set CLAUDE_CODE_OAUTH_TOKEN=[redacted]","set CLAUDE_CONFIG_DIR=~/.claude-work"]
 
 $ agx login show --id carol
-name     carol
-agents   claude
-kind     oauth-token
-source   plain
-account  —
-users    profile work
+name      carol
+agents    claude
+kind      oauth-token
+source    plain
+detected  unknown
+account   —
+users     profile work
 
 #endregion
 #region decisions

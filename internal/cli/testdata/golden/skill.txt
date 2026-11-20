@@ -14,6 +14,7 @@ agx is one CLI for AI coding agents (Claude Code, OpenAI Codex, Gemini CLI, pi, 
 - **Profiles** name an agent home (`~/.claude-work`) plus launch defaults: `agx run --profile work`.
 - **Logins** run any home on any account: a plan token or API key from a reference (`${gopass:…}`, `$(…)`, `${VAR}`), a pasted value in `tokens.jsonc` (0600), or a key helper. `agx run --login carol`. agx never prints a token, except `agx login token` on request (to a pipe, or with `--reveal`).
 - **Login pools** (Claude Code only): a login of kind `pool` lists your own logins and teammates' shared ones; `agx run --login auto` is a live run in which each key request picks a member by usage (soonest weekly reset first, own accounts almost fully, shared ones up to their caps). `agx pool pick --id auto` shows the pick and why, `agx pool list` and `agx pool show --id auto` the pools and their settings (create and change one with `agx login add --kind pool` and `agx login edit --pool-…`); `--pool-force NAME` forces one member, ignoring its caps; `--pool-only NAME` (on run, new, resume, `pool pick`, `login token` and `live use`) keeps a run on one member with its caps enforced, so it gets no key while that member is over a cap (`--pool-only-short N` / `--pool-only-week N` lower the caps for that run only); `agx live use --id RUN --login NAME` pins a running session and `--login auto` unpins it.
+- **Billed per use?** A login's `kind` is only a label; agx reads the token's public prefix and shows just the kind word: `oauth-token` (setup-token, plan), `api-key` (API key, billed per use) or `unknown`. `agx login list` has a DETECTED column (`--verify` resolves gopass and `$(…)` references, cost X; `(mismatch)` marks a contradiction). A login declared `oauth-token` whose token is an API key is refused at launch and by `agx credential` (code `per-use-key`), and a pool never picks such a member, unless `--allow-api-key` (one run) or `logins.NAME.allow_api_key: true`. `agx whoami`'s `in use:` names the detected kind.
 - **Live login**: `--live-login` makes a Claude session's login switchable while it runs (`agx live use`).
 - **Which account a session is on**: run `! agx whoami` inside Claude (`in use:`, `next:`); Claude's /status only says apiKeyHelper.
 - **Resolution chain**: agent, profile, home, login, binary, folder and args are each decided by the first source that sets them: flags, then `AGX_LOGIN`/`AGX_LOGIN_<AGENT>`, a folder binding (`agx project use`), the profile, the agent defaults, the default profile. `--dry-run` on `run`/`new`/`resume` prints every decision with its source and starts nothing: use it before launching.
@@ -384,6 +385,7 @@ Every login, never a value.
 | Flag | Meaning |
 |---|---|
 | `--agent VALUE` | only logins serving this agent |
+| `--verify` | resolve every token (runs command and plugin references, cost X) to detect its real kind |
 
 ### agx login remove
 
@@ -456,6 +458,7 @@ agx new --name "pglite golang" --profile work
 |---|---|
 | `--add-dir VALUE` | extra folder the agent may access (repeat) (repeatable) |
 | `--agent VALUE` | agent for the default or auto profile |
+| `--allow-api-key` | start even when an oauth-token login's token is an API key (billed per use) |
 | `--auto-login` | pick the stored login with the most headroom (probes, cost Q) |
 | `--auto-profile` | pick the profile with the most headroom (cost N) |
 | `--autonomy VALUE` | default, read-only, ask, accept-edits or full |
@@ -738,6 +741,7 @@ agx resume --picker folder
 |---|---|
 | `--add-dir VALUE` | extra folder the agent may access (repeat) (repeatable) |
 | `--agent VALUE` | agent for the default or auto profile |
+| `--allow-api-key` | start even when an oauth-token login's token is an API key (billed per use) |
 | `--auto-login` | pick the stored login with the most headroom (probes, cost Q) |
 | `--autonomy VALUE` | default, read-only, ask, accept-edits or full |
 | `--before-run VALUE` | a script to run first, for this run (relative to the current folder) |
@@ -786,6 +790,7 @@ agx run --agent codex -- --search
 |---|---|
 | `--add-dir VALUE` | extra folder the agent may access (repeat) (repeatable) |
 | `--agent VALUE` | agent for the default or auto profile |
+| `--allow-api-key` | start even when an oauth-token login's token is an API key (billed per use) |
 | `--auto-login` | pick the stored login with the most headroom (probes, cost Q) |
 | `--auto-profile` | pick the profile with the most headroom (cost N) |
 | `--autonomy VALUE` | default, read-only, ask, accept-edits or full |

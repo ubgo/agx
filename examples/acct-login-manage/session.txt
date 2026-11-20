@@ -1,18 +1,18 @@
 #region check
 $ agx login check --no-probe
 agx: 1 of 5 logins failed: spare
-NAME           KIND            SOURCE                  RESOLVE  PROBE    DETAIL
-carol          oauth-token     reference gopass        ok       skipped  --no-probe
-derek          oauth-token     command gopass          ok       skipped  --no-probe
-console        api-key-helper  helper gopass           skipped  skipped  the agent runs the helper itself; agx never does
-anthropic-key  api-key         reference gopass        ok       skipped  --no-probe
-spare          oauth-token     env SPARE_CLAUDE_TOKEN  failed   skipped  login spare: SPARE_CLAUDE_TOKEN is not set
+NAME           KIND            SOURCE                  RESOLVE  DETECTED  PROBE    DETAIL
+carol          oauth-token     reference gopass        ok       unknown   skipped  --no-probe
+derek          oauth-token     command gopass          ok       unknown   skipped  --no-probe
+console        api-key-helper  helper gopass           skipped  —         skipped  the agent runs the helper itself; agx never does
+anthropic-key  api-key         reference gopass        ok       unknown   skipped  --no-probe
+spare          oauth-token     env SPARE_CLAUDE_TOKEN  failed   —         skipped  login spare: SPARE_CLAUDE_TOKEN is not set
 [exit 3]
 
 $ agx login check --no-probe --id carol --id derek
-NAME   KIND         SOURCE            RESOLVE  PROBE    DETAIL
-carol  oauth-token  reference gopass  ok       skipped  --no-probe
-derek  oauth-token  command gopass    ok       skipped  --no-probe
+NAME   KIND         SOURCE            RESOLVE  DETECTED  PROBE    DETAIL
+carol  oauth-token  reference gopass  ok       unknown   skipped  --no-probe
+derek  oauth-token  command gopass    ok       unknown   skipped  --no-probe
 
 #endregion
 #region use
@@ -67,12 +67,12 @@ agx: no terminal: --login-setup runs the setup command, then asks you to paste t
 [exit 2]
 
 $ agx login list
-NAME           AGENTS  KIND            SOURCE                 ACCOUNT
-carol          claude  oauth-token     reference gopass       —
-derek          claude  oauth-token     command gopass         derek@example.com
-console        claude  api-key-helper  helper gopass          —
-anthropic-key  pi      api-key         reference gopass       —
-spare          claude  oauth-token     stored (tokens.jsonc)  —
+NAME           AGENTS  KIND            SOURCE                 DETECTED  ACCOUNT
+carol          claude  oauth-token     reference gopass       —         —
+derek          claude  oauth-token     command gopass         —         derek@example.com
+console        claude  api-key-helper  helper gopass          —         —
+anthropic-key  pi      api-key         reference gopass       —         —
+spare          claude  oauth-token     stored (tokens.jsonc)  unknown   —
 
 #endregion
 #region remove

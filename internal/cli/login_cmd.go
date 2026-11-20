@@ -20,9 +20,9 @@ import (
 
 // Fields of the login commands' data (help --json).
 var (
-	loginInfoFields   = []string{"data.name", "data.agents", "data.kind", "data.source", "data.source_type", "data.account", "data.provider", "data.users"}
-	loginListFields   = []string{"data.*.name", "data.*.agents", "data.*.kind", "data.*.source", "data.*.source_type", "data.*.account", "data.*.provider", "data.*.users"}
-	loginCheckFields  = []string{"data.*.name", "data.*.kind", "data.*.source", "data.*.resolve", "data.*.probe", "data.*.agent", "data.*.detail", "data.*.windows"}
+	loginInfoFields   = []string{"data.name", "data.agents", "data.kind", "data.source", "data.source_type", "data.account", "data.provider", "data.users", "data.detected", "data.detected_mismatch", "data.detected_view"}
+	loginListFields   = []string{"data.*.name", "data.*.agents", "data.*.kind", "data.*.source", "data.*.source_type", "data.*.account", "data.*.provider", "data.*.users", "data.*.detected", "data.*.detected_mismatch", "data.*.detected_view"}
+	loginCheckFields  = []string{"data.*.name", "data.*.kind", "data.*.source", "data.*.resolve", "data.*.detected", "data.*.detected_mismatch", "data.*.detected_view", "data.*.probe", "data.*.agent", "data.*.detail", "data.*.windows"}
 	loginUseFields    = []string{"data.login", "data.home_login", "data.target", "data.name", "data.line"}
 	loginRemoveFields = []string{"data.name", "data.cleared"}
 	loginChangeFields = append(append([]string{}, loginInfoFields...), "data.changes", "data.changes.*.key", "data.changes.*.from", "data.changes.*.to", "data.written")
@@ -40,17 +40,18 @@ func (c *cliCtx) loginCmd() *cobra.Command {
 func (c *cliCtx) loginListCmd() *cobra.Command {
 	var o app.LoginListOptions
 	cmd := c.newCmd("list", "Every login, never a value", CostRead, func(cmd *cobra.Command, _ []string) (render.Output, error) {
-		rows, err := c.App().LoginList(o)
+		rows, err := c.App().LoginList(cmd.Context(), o)
 		if err != nil {
 			return render.Output{}, err
 		}
 		data, err := render.Encode(rows)
 		return render.Output{Data: data, Table: []render.Column{
 			{Header: "NAME", Key: "name"}, {Header: "AGENTS", Key: "agents"}, {Header: "KIND", Key: "kind"},
-			{Header: "SOURCE", Key: "source"}, {Header: "ACCOUNT", Key: "account"},
+			{Header: "SOURCE", Key: "source"}, {Header: "DETECTED", Key: "detected_view"}, {Header: "ACCOUNT", Key: "account"},
 		}, Empty: "no logins — add one with `agx login add --name NAME --agent AGENT` (see `agx login add --help`)"}, err
 	})
 	cmd.Flags().StringVar((*string)(&o.Agent), "agent", "", "only logins serving this agent")
+	cmd.Flags().BoolVar(&o.Verify, "verify", false, "resolve every token (runs command and plugin references, cost X) to detect its real kind")
 	return fields(cmd, loginListFields...)
 }
 
@@ -58,7 +59,7 @@ func (c *cliCtx) loginListCmd() *cobra.Command {
 func (c *cliCtx) loginShowCmd() *cobra.Command {
 	var o app.LoginShowOptions
 	cmd := c.newCmd("show", "One login: kind, source, account, agents and what uses it", CostRead, func(cmd *cobra.Command, _ []string) (render.Output, error) {
-		info, err := c.App().LoginShow(o)
+		info, err := c.App().LoginShow(cmd.Context(), o)
 		if err != nil {
 			return render.Output{}, err
 		}
@@ -88,6 +89,9 @@ func loginShowText(w io.Writer, info app.LoginInfo) error {
 	line("agents", strings.Join(ids, ", "))
 	line("kind", info.Kind)
 	line("source", info.Source)
+	if info.Detected != "" {
+		line("detected", info.DetectedView)
+	}
 	line("account", info.Account)
 	if info.Provider != "" {
 		line("provider", info.Provider)
@@ -366,7 +370,7 @@ func (c *cliCtx) loginCheckCmd() *cobra.Command {
 		rows, err := c.App().LoginCheck(cmd.Context(), o)
 		out := render.Output{KeepData: rows != nil, Table: []render.Column{
 			{Header: "NAME", Key: "name"}, {Header: "KIND", Key: "kind"}, {Header: "SOURCE", Key: "source"},
-			{Header: "RESOLVE", Key: "resolve", Tone: checkTones}, {Header: "PROBE", Key: "probe", Tone: checkTones}, {Header: "DETAIL", Key: "detail"},
+			{Header: "RESOLVE", Key: "resolve", Tone: checkTones}, {Header: "DETECTED", Key: "detected_view"}, {Header: "PROBE", Key: "probe", Tone: checkTones}, {Header: "DETAIL", Key: "detail"},
 		}}
 		data, eerr := render.Encode(rows)
 		if eerr != nil {

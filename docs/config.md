@@ -370,6 +370,7 @@ Each entry is one named login; [adding a login](logins.md#adding-a-login) shows 
 | `logins.<login>.command` | string | for `api-key-helper`: the command the agent runs |
 | `logins.<login>.account` | string | a display label, such as an email; never verified |
 | `logins.<login>.provider` | string | the model provider, for agents with one variable per provider (pi: `anthropic`, `openai`) |
+| `logins.<login>.allow_api_key` | bool | let an `oauth-token` login whose token is an API key (billed per use) launch, be handed out by `agx credential` and be picked by a pool; default `false` refuses it. See [Is a login billed per use?](logins.md#is-a-login-billed-per-use) |
 | `logins.<login>.pool` | object | for `pool`: the member logins and the selection rules' numbers (below) |
 
 Exactly one of `token`, `stored` and `command` is set, except on a `pool`, which sets none of them and has `pool` instead.

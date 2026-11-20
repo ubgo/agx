@@ -62,6 +62,9 @@ const (
 	CodeFeatureUnavailable Code = "feature-unavailable"
 	// CodeWrongAgent is a login that does not serve the run's agent.
 	CodeWrongAgent Code = "wrong-agent"
+	// CodePerUseKey is a login declared oauth-token whose token is an
+	// API key (billed per use), refused unless allowed.
+	CodePerUseKey Code = "per-use-key"
 	// CodeAutoPick is --auto-profile or --auto-login with no eligible
 	// candidate.
 	CodeAutoPick Code = "auto-pick"

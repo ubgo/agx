@@ -4,18 +4,21 @@ Named logins: plan tokens, API keys, key helpers and login pools. [Logins](../lo
 
 ## agx login list
 
-Every login: kind, source (reference scheme, command, env variable, plain, stored, helper), agents and account. Cost R.
+Every login: kind, source (reference scheme, command, env variable, plain, stored, helper), detected kind, agents and account. Cost R; X with `--verify`.
+
+DETECTED is the kind read from the token's public prefix, whatever the config says: `oauth-token` (a setup-token, billed to the plan), `api-key` (an API key, billed per use) or `unknown` (any other value). A detected kind that contradicts KIND reads `api-key (mismatch)`. It is filled when the token is cheap to read (a pasted token, a plain value, a `${VAR}` reference) or a pool probe recorded it, and is `—` otherwise; `--verify` resolves every token login, running its gopass or `$(…)` reference. Only the kind word is shown, never any part of the token. See [Is a login billed per use?](../logins.md#is-a-login-billed-per-use).
 
 | Flag | Meaning |
 |---|---|
 | `--agent` | only logins that serve this agent |
+| `--verify` | resolve every token login to detect its kind (runs command and plugin references, cost X) |
 
 <!-- runnable -->
 ```sh
 $ agx login list
-NAME      AGENTS  KIND         SOURCE            ACCOUNT
-carol     claude  oauth-token  reference gopass  —
-gem-work  gemini  api-key      reference gopass  —
+NAME      AGENTS  KIND         SOURCE            DETECTED  ACCOUNT
+carol     claude  oauth-token  reference gopass  —         —
+gem-work  gemini  api-key      reference gopass  —         —
 $ agx login list --agent claude --json --field data.*.name
 ["carol"]
 ```
@@ -269,12 +272,12 @@ agx: no terminal: --login-setup runs the setup command, then asks you to paste t
 [exit 2]
 
 $ agx login list
-NAME           AGENTS  KIND            SOURCE                 ACCOUNT
-carol          claude  oauth-token     reference gopass       —
-derek          claude  oauth-token     command gopass         derek@example.com
-console        claude  api-key-helper  helper gopass          —
-anthropic-key  pi      api-key         reference gopass       —
-spare          claude  oauth-token     stored (tokens.jsonc)  —
+NAME           AGENTS  KIND            SOURCE                 DETECTED  ACCOUNT
+carol          claude  oauth-token     reference gopass       —         —
+derek          claude  oauth-token     command gopass         —         derek@example.com
+console        claude  api-key-helper  helper gopass          —         —
+anthropic-key  pi      api-key         reference gopass       —         —
+spare          claude  oauth-token     stored (tokens.jsonc)  unknown   —
 ```
 
 ## agx login remove
@@ -359,7 +362,7 @@ Pitfalls: `--id` and `--home-login` are one choice; the login must serve the pro
 
 ## agx login check
 
-Resolve logins and probe them with a minimal request. Cost X, and Q unless `--no-probe`. Exit 3 when some logins fail, 1 when all do.
+Resolve logins and probe them with a minimal request. Cost X, and Q unless `--no-probe`. Exit 3 when some logins fail, 1 when all do. DETECTED is the kind read from each resolved token's prefix (as in `agx login list`); a login declared `oauth-token` whose token is an API key fails without a probe (`per-use-key`) unless its `allow_api_key` is set.
 
 | Flag | Meaning |
 |---|---|
@@ -376,18 +379,18 @@ Try it (`spare` reads `${SPARE_CLAUDE_TOKEN}`, which is not set; a key helper is
 ```sh
 $ agx login check --no-probe
 agx: 1 of 5 logins failed: spare
-NAME           KIND            SOURCE                  RESOLVE  PROBE    DETAIL
-carol          oauth-token     reference gopass        ok       skipped  --no-probe
-derek          oauth-token     command gopass          ok       skipped  --no-probe
-console        api-key-helper  helper gopass           skipped  skipped  the agent runs the helper itself; agx never does
-anthropic-key  api-key         reference gopass        ok       skipped  --no-probe
-spare          oauth-token     env SPARE_CLAUDE_TOKEN  failed   skipped  login spare: SPARE_CLAUDE_TOKEN is not set
+NAME           KIND            SOURCE                  RESOLVE  DETECTED  PROBE    DETAIL
+carol          oauth-token     reference gopass        ok       unknown   skipped  --no-probe
+derek          oauth-token     command gopass          ok       unknown   skipped  --no-probe
+console        api-key-helper  helper gopass           skipped  —         skipped  the agent runs the helper itself; agx never does
+anthropic-key  api-key         reference gopass        ok       unknown   skipped  --no-probe
+spare          oauth-token     env SPARE_CLAUDE_TOKEN  failed   —         skipped  login spare: SPARE_CLAUDE_TOKEN is not set
 [exit 3]
 
 $ agx login check --no-probe --id carol --id derek
-NAME   KIND         SOURCE            RESOLVE  PROBE    DETAIL
-carol  oauth-token  reference gopass  ok       skipped  --no-probe
-derek  oauth-token  command gopass    ok       skipped  --no-probe
+NAME   KIND         SOURCE            RESOLVE  DETECTED  PROBE    DETAIL
+carol  oauth-token  reference gopass  ok       unknown   skipped  --no-probe
+derek  oauth-token  command gopass    ok       unknown   skipped  --no-probe
 ```
 
 Pitfalls: a probe spends a few tokens of each plan; do not run it in a loop. An API key bills per token and has no plan windows to probe.

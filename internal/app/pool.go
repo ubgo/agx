@@ -156,7 +156,14 @@ type PoolReport struct {
 	Candidates         []PoolCandidate `json:"candidates"`
 	// View is how the human report writes reset times.
 	View TimeView `json:"-"`
+	// Detected is the kind detected in the handed-out member's token
+	// (poolMemberToken only); "" otherwise.
+	Detected string `json:"-"`
 }
+
+// perUseNotProbed is the cached reason of a member skipped as a per-use
+// API key: it was resolved but never probed.
+const perUseNotProbed = "token is an API key (billed per use); not probed"
 
 // warn adds one warning.
 func (r *PoolReport) warn(msg string) { r.Warnings = append(r.Warnings, msg) }
@@ -313,6 +320,7 @@ func (a *App) poolPick(ctx context.Context, name string, lg config.Login, o Pool
 	readings := map[string]pool.Reading{}
 	for m, e := range entries {
 		readings[m] = readingOf(e)
+		readings[m] = withPerUse(readings[m], cfg.Config.Logins[m], e)
 	}
 	res, err := pool.Select(rules, readings, pool.Options{Now: now, Force: o.Force, Only: o.Only.Member, OnlyCaps: o.Only.Caps})
 	if errors.Is(err, pool.ErrForcedMissing) {
@@ -601,6 +609,14 @@ func (a *App) probeMember(ctx context.Context, pr agentio.TokenProber, ag agenti
 		e.Status, e.Reason = string(StatusSecret), apperr.As(err).Message
 		return e
 	}
+	d := login.DetectToken(cred.Token)
+	e.Detected = string(d)
+	if login.PerUseRefused(lg, d, false) {
+		// Probing an API key spends money on the account that owns it,
+		// for a member the rules will skip anyway.
+		e.Status, e.Reason = string(StatusPerToken), perUseNotProbed
+		return e
+	}
 	rctx, cancel := context.WithTimeout(ctx, a.d.Timeout)
 	defer cancel()
 	u, err := pr.TokenUsage(rctx, cred)
@@ -625,6 +641,13 @@ func failureText(e login.UsageEntry) string {
 		return e.Status
 	}
 	return e.Status + ": " + e.Reason
+}
+
+// withPerUse marks a member whose cached token kind is an API key under a
+// login declared oauth-token that does not allow it.
+func withPerUse(r pool.Reading, lg config.Login, e login.UsageEntry) pool.Reading {
+	r.PerUseKey = login.PerUseRefused(lg, login.Detected(e.Detected), false)
+	return r
 }
 
 // readingOf turns a cached entry into the rules' reading: its status
@@ -722,23 +745,62 @@ func quote(s string) string {
 // poolMemberToken picks a pool member and resolves its token (agx
 // credential and agx login token), with a one-run force or pin. The
 // report's warnings go to stderr.
+//
+// The member's token kind is detected as it is resolved: a member
+// declared oauth-token whose token is an API key (billed per use) is
+// never handed out unless its allow_api_key is set. When the cache did
+// not know that yet (an entry from before detection), the kind is
+// recorded there and the pool picks once more, now skipping it; a forced,
+// pinned or picker-chosen member is refused instead.
 func (a *App) poolMemberToken(ctx context.Context, name string, lg config.Login, mode, force string, only PoolOnly) (string, agentio.Token, PoolReport, error) {
-	rep, err := a.poolPick(ctx, name, lg, PoolPickOptions{Force: force, Only: only})
-	if err != nil {
+	for attempt := 0; ; attempt++ {
+		rep, err := a.poolPick(ctx, name, lg, PoolPickOptions{Force: force, Only: only})
+		if err != nil {
+			a.logPoolInto(&rep, lg, mode, err)
+			return "", agentio.Token{}, rep, err
+		}
+		cfg, err := a.Config()
+		if err != nil {
+			return "", agentio.Token{}, rep, err
+		}
+		member := rep.Selected.Name
+		mlg := cfg.Config.Logins[member]
+		cred, err := login.Credential(ctx, a.exp.Brief(), a.paths, member, mlg)
+		if err == nil {
+			d := login.DetectToken(cred.Token)
+			learned := a.noteDetected(ctx, member, d)
+			if login.PerUseRefused(mlg, d, false) {
+				if learned && attempt == 0 && rep.Selected.PickedBy == PickedByRules {
+					continue
+				}
+				err = login.CheckPerUse(member, mlg, d, false, false)
+			}
+			rep.Detected = string(d)
+		}
 		a.logPoolInto(&rep, lg, mode, err)
-		return "", agentio.Token{}, rep, err
+		if err != nil {
+			return member, agentio.Token{}, rep, err
+		}
+		return member, cred.Token, rep, nil
 	}
-	cfg, err := a.Config()
+}
+
+// noteDetected records member's detected token kind in its login-usage
+// cache entry when the entry lacks it or says otherwise, and reports
+// whether it changed. A write failure is dropped: the pick goes on with
+// what it knows.
+func (a *App) noteDetected(ctx context.Context, member string, d login.Detected) bool {
+	cache, err := login.ReadUsageCache(a.paths)
 	if err != nil {
-		return "", agentio.Token{}, rep, err
+		return false
 	}
-	member := rep.Selected.Name
-	cred, err := login.Credential(ctx, a.exp.Brief(), a.paths, member, cfg.Config.Logins[member])
-	a.logPoolInto(&rep, lg, mode, err)
-	if err != nil {
-		return member, agentio.Token{}, rep, err
+	e, ok := cache.Logins[member]
+	if !ok || e.Detected == string(d) {
+		return false
 	}
-	return member, cred.Token, rep, nil
+	e.Detected = string(d)
+	_, err = login.UpdateUsageCache(ctx, a.paths, map[string]login.UsageEntry{member: e})
+	return err == nil
 }
 
 // logPoolInto logs one pick and keeps a log write failure as a warning.

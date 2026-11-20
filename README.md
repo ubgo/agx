@@ -64,10 +64,10 @@ Prebuilt binaries (macOS and Linux on amd64 and arm64, Windows on amd64) are on 
 
 ```sh
 # macOS on Apple Silicon: swap darwin_arm64 for darwin_amd64, linux_amd64 or linux_arm64
-curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.14/agx_v0.4.14_darwin_arm64.tar.gz
-curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.14/checksums.txt
+curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.15/agx_v0.4.15_darwin_arm64.tar.gz
+curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.15/checksums.txt
 shasum -a 256 -c checksums.txt --ignore-missing
-tar -xzf agx_v0.4.14_darwin_arm64.tar.gz agx && sudo mv agx /usr/local/bin/
+tar -xzf agx_v0.4.15_darwin_arm64.tar.gz agx && sudo mv agx /usr/local/bin/
 agx version
 ```
 
@@ -268,6 +268,10 @@ Claude Code, OpenAI Codex, Gemini CLI, pi and opencode are built in, and any oth
 ### Does agx store, print or refresh my OAuth token?
 
 agx never refreshes an OAuth token and prints one only when you ask: `agx login token --id NAME` writes that login's token to stdout for a pipe or an `apiKeyHelper` (refused on a terminal unless you add `--reveal`). Everywhere else token values read `[redacted]` in text, `--json`, `--dry-run`, errors and logs. A login normally holds a reference (`${gopass:…}`, `$(…)` or `${VAR}`) that is resolved only when the agent launches, and the token goes to the agent through its environment, never on its command line. agx stores a token value only when you hand it one: a pasted token (`agx login add --stdin` or the hidden prompt) goes into `~/.agx/tokens.jsonc`, written with mode 0600 and refused when group or others can read it, and a plain value you pass to `--token-ref` is written to config as typed (`agx doctor` lists such logins). See [SECURITY.md](SECURITY.md).
+
+### Is this login billed per use?
+
+`agx login list` says, in its DETECTED column: agx reads the token's public prefix (only the kind word is shown) and reports `oauth-token` for a setup-token billed to a plan, `api-key` for an Anthropic API key billed per use, or `unknown`. A gopass or `$(…)` reference is resolved for this only with `agx login list --verify`. An API key filed under `kind: oauth-token` is marked `(mismatch)`, refused at launch and by the live-login key helper, and never picked by a pool, unless you allow it with `--allow-api-key` for one run or `allow_api_key: true` on the login. See [Is a login billed per use?](docs/logins.md#is-a-login-billed-per-use).
 
 ### Does agx change my agent's settings or homes?
 

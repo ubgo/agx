@@ -2,14 +2,14 @@
 #options env=AGX_TEST_NOW=2026-11-19T10:00:00Z env=ALICE_TOKEN=fake-token-alice env=BOB_TOKEN=fake-token-bob env=CAROL_TOKEN=fake-token-carol env=DEREK_TOKEN=fake-token-derek env=ERIN_TOKEN=fake-token-erin
 #region list
 $ agx login list --agent claude
-NAME   AGENTS  KIND         SOURCE                ACCOUNT
-alice  claude  oauth-token  env ALICE_TOKEN       alice@example.com
-bob    claude  oauth-token  env BOB_TOKEN         bob@example.com
-carol  claude  oauth-token  env CAROL_TOKEN       carol@example.com
-derek  claude  oauth-token  env DEREK_TOKEN       derek@example.com
-erin   claude  oauth-token  env ERIN_TOKEN        erin@example.com
-auto   claude  pool         pool 2 own, 3 shared  —
-picky  claude  pool         pool 2 own, 1 shared  —
+NAME   AGENTS  KIND         SOURCE                DETECTED  ACCOUNT
+alice  claude  oauth-token  env ALICE_TOKEN       unknown   alice@example.com
+bob    claude  oauth-token  env BOB_TOKEN         unknown   bob@example.com
+carol  claude  oauth-token  env CAROL_TOKEN       unknown   carol@example.com
+derek  claude  oauth-token  env DEREK_TOKEN       unknown   derek@example.com
+erin   claude  oauth-token  env ERIN_TOKEN        unknown   erin@example.com
+auto   claude  pool         pool 2 own, 3 shared  —         —
+picky  claude  pool         pool 2 own, 1 shared  —         —
 
 #endregion
 #region pool-list

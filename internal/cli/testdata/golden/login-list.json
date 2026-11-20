@@ -28,7 +28,10 @@
           "name": "/p/client",
           "agent": "claude"
         }
-      ]
+      ],
+      "detected": "",
+      "detected_mismatch": false,
+      "detected_view": "—"
     },
     {
       "name": "plainval",
@@ -39,7 +42,10 @@
       "source": "plain",
       "source_type": "plain",
       "account": "",
-      "users": []
+      "users": [],
+      "detected": "unknown",
+      "detected_mismatch": false,
+      "detected_view": "unknown"
     },
     {
       "name": "derek",
@@ -50,7 +56,10 @@
       "source": "env OSKAR_TOK",
       "source_type": "env",
       "account": "",
-      "users": []
+      "users": [],
+      "detected": "",
+      "detected_mismatch": false,
+      "detected_view": "—"
     },
     {
       "name": "pasted",
@@ -61,7 +70,10 @@
       "source": "stored (tokens.jsonc)",
       "source_type": "stored",
       "account": "",
-      "users": []
+      "users": [],
+      "detected": "unknown",
+      "detected_mismatch": false,
+      "detected_view": "unknown"
     },
     {
       "name": "helper",
@@ -72,7 +84,10 @@
       "source": "helper gopass",
       "source_type": "helper",
       "account": "ops@example.com",
-      "users": []
+      "users": [],
+      "detected": "",
+      "detected_mismatch": false,
+      "detected_view": "—"
     },
     {
       "name": "key",
@@ -83,7 +98,10 @@
       "source": "command op",
       "source_type": "command",
       "account": "",
-      "users": []
+      "users": [],
+      "detected": "",
+      "detected_mismatch": false,
+      "detected_view": "—"
     }
   ],
   "decisions": [],

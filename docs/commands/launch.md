@@ -33,6 +33,7 @@ Start an agent in the current folder (or `--dir`). Cost R, plus N for `--auto-pr
 | `--env-file` | a dotenv file, relative to the current folder (repeat) |
 | `--before-run` | a script to run first, for this run |
 | `--live-login` | make the session's login switchable while it runs |
+| `--allow-api-key` | start even when the login is declared `oauth-token` but its token is an API key (billed per use); without it such a launch is refused (`per-use-key`). Pool members need their own `allow_api_key`. See [Is a login billed per use?](../logins.md#is-a-login-billed-per-use) |
 | `--pool-force` | on a [pool login](../guides/login-pool.md): every key of this run comes from this member, over the pool's rules, force and picker (`agx live use` ends it) |
 | `--pool-only` | on a pool login: every key of this run comes from this member while the pool's rules allow it (its caps, the 5-hour cutoff, enabled, status), and no key while they do not, never another member's; the pool's `force` and picker do not apply. Not with `--pool-force` (exit 125). See [Pin one account but keep its limits](../guides/login-pool.md#pin-one-account-but-keep-its-limits) |
 | `--pool-only-short` | with `--pool-only`: a lower 5-hour cap for that member, for this run only; a value above the member's own cap is refused |
@@ -115,7 +116,7 @@ Create a timestamped session folder under `sessions.root` and start an agent in 
 | `--agent`, `--login`, `--home-login`, `--auto-login`, `--token-ref`, `--token-kind` | as `run` |
 | `--model`, `--prompt`, `--add-dir`, `--autonomy`, `--consent`, `--headless` | as `run` |
 | `--option`, `--setting`, `--settings-delivery` | as `run` |
-| `--env`, `--no-env`, `--env-file`, `--before-run`, `--live-login`, `--pool-force` | as `run` |
+| `--env`, `--no-env`, `--env-file`, `--before-run`, `--live-login`, `--allow-api-key`, `--pool-force` | as `run` |
 | `--pool-only`, `--pool-only-short`, `--pool-only-week` | as `run` |
 | `--dry-run`, `--resolved-secrets` | as `run`; with `--dry-run` no folder is created |
 
@@ -180,7 +181,7 @@ agx asks every configured home whose agent lists conversations whether it stores
 | `--login`, `--home-login`, `--auto-login`, `--token-ref`, `--token-kind` | as `run`: the quota comes from this login, the history from the conversation's home |
 | `--model`, `--prompt`, `--add-dir`, `--autonomy`, `--consent`, `--headless` | as `run` |
 | `--option`, `--setting`, `--settings-delivery` | as `run` |
-| `--env`, `--no-env`, `--env-file`, `--before-run`, `--live-login`, `--pool-force` | as `run` |
+| `--env`, `--no-env`, `--env-file`, `--before-run`, `--live-login`, `--allow-api-key`, `--pool-force` | as `run` |
 | `--pool-only`, `--pool-only-short`, `--pool-only-week` | as `run` |
 | `--dry-run`, `--resolved-secrets` | as `run` |
 | `--` | raw args to the agent |
@@ -259,7 +260,7 @@ $ agx whoami
 session:  not inside a session started by agx (AGX_RUN_ID is not set)
 ```
 
-Inside a session started by agx, it prints the run's id, agent, profile, login and home as `label:  value` lines; `agx whoami --json --field data.login` gives one value for a prompt or status line. In a pool or `--live-login` session it adds `in use:` (the login, or the pool member, whose key the agent got last) and `next:` when the next key request will get another one (a pin, a run's `--pool-force`, or the member the pool picks now from the login-usage cache), and marks a pool login `(pool)`: the only way to see from inside Claude which account it is on, since /status says only apiKeyHelper. A run pinned with `--pool-only` adds `only:  alice (caps enforced)`, and while that member is over a cap `in use:` reads `none (alice over cap: week is 70% (cap 70%))`. The `--json` data also holds `login_kind`, `in_use`, `next`, `only`, `run_dir` (when the run folder exists in this config dir), `live` (the live login state of a `--live-login` or pool run) and `terminal_logins` (the `AGX_LOGIN` variables of this shell).
+Inside a session started by agx, it prints the run's id, agent, profile, login and home as `label:  value` lines; `agx whoami --json --field data.login` gives one value for a prompt or status line. In a pool or `--live-login` session it adds `in use:` (the login, or the pool member, whose key the agent got last) and `next:` when the next key request will get another one (a pin, a run's `--pool-force`, or the member the pool picks now from the login-usage cache), and marks a pool login `(pool)`: the only way to see from inside Claude which account it is on, since /status says only apiKeyHelper. After the first key request `in use:` also names the kind detected in that key, as in `alice (detected oauth-token)`. A run pinned with `--pool-only` adds `only:  alice (caps enforced)`, and while that member is over a cap `in use:` reads `none (alice over cap: week is 70% (cap 70%))`. The `--json` data also holds `login_kind`, `in_use`, `in_use_detected`, `next`, `only`, `run_dir` (when the run folder exists in this config dir), `live` (the live login state of a `--live-login` or pool run) and `terminal_logins` (the `AGX_LOGIN` variables of this shell).
 
 ### Try it: agx whoami
 

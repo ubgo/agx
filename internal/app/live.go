@@ -103,7 +103,7 @@ func (a *App) livePlan(ctx context.Context, o LaunchOptions, res resolve.Result,
 	if err := outranksHelper(o, res, plan.Scrub, src); err != nil {
 		return nil, err
 	}
-	p.Live = &LiveStart{StartLogin: res.Login.Name, Helper: helper}
+	p.Live = &LiveStart{StartLogin: res.Login.Name, Helper: helper, AllowAPIKey: o.AllowAPIKey}
 	if isPool && o.PoolOnly.given() {
 		pl := res.Login.Login.Pool
 		rules, _ := pl.Rules() // the config loaded, so it parses
@@ -296,7 +296,7 @@ func (a *App) writeLiveStart(ctx context.Context, p *LaunchPlan) error {
 		return err
 	}
 	st := live.State{RunID: p.RunID, Agent: string(p.Agent), StartLogin: p.Live.StartLogin, Helper: p.Live.Helper, PoolForce: p.Live.PoolForce,
-		PoolOnly: p.Live.PoolOnly, PoolOnlyShort: p.Live.PoolOnlyShort, PoolOnlyWeek: p.Live.PoolOnlyWeek}
+		PoolOnly: p.Live.PoolOnly, PoolOnlyShort: p.Live.PoolOnlyShort, PoolOnlyWeek: p.Live.PoolOnlyWeek, AllowAPIKey: p.Live.AllowAPIKey}
 	if err := live.Create(p.RunDir, st); err != nil {
 		return apperr.Wrap(err, apperr.CodeIO, apperr.ClassFailure, "write live.jsonc: "+err.Error())
 	}

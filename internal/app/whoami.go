@@ -32,6 +32,9 @@ type Whoami struct {
 	// InUse is the login whose key the agent got last (live runs; for a
 	// pool, the member): what the session is on now. "" = not asked yet.
 	InUse string `json:"in_use"`
+	// InUseDetected is the kind agx credential detected in InUse's token
+	// (oauth-token, api-key, unknown); "" when not recorded.
+	InUseDetected string `json:"in_use_detected"`
 	// Next is the login the agent gets at its next key request when that
 	// differs from InUse: a pin (agx live use), a run's --pool-force, or
 	// the member the pool picks now from the login-usage cache. "" = no
@@ -87,6 +90,9 @@ func (a *App) Whoami() (Whoami, error) {
 		}
 		if w.Live != nil {
 			w.InUse, w.Only = w.Live.InUse, w.Live.PoolOnly
+			if w.InUse != "" {
+				w.InUseDetected = w.Live.InUseDetected
+			}
 			if next := a.nextLogin(cfg.Config.Logins, *w.Live); next != w.InUse {
 				w.Next = next
 			}

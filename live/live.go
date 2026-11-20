@@ -69,6 +69,14 @@ type State struct {
 	// NoKey says why the last key request of a pinned run handed out no
 	// key ("alice over cap: week is 70% (cap 70%)"); "" once one did.
 	NoKey string `json:"no_key,omitempty"`
+	// AllowAPIKey is the run's --allow-api-key: a token login (not a pool
+	// member) declared oauth-token whose token is an API key is handed out
+	// anyway.
+	AllowAPIKey bool `json:"allow_api_key,omitempty"`
+	// InUseDetected is the kind agx credential detected in the key it
+	// last handed out (oauth-token, api-key or unknown); "" = not asked
+	// yet. Never any part of the token.
+	InUseDetected string `json:"in_use_detected,omitempty"`
 }
 
 // Want is the login the next credential request gets: the chosen login,

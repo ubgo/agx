@@ -174,12 +174,13 @@ $ agx run --dry-run --quiet --resolved-secrets --json --field data.command.env
 ["set AGX_RUN_ID=20261118-061527-ppg6","set AGX_RUN_AGENT=claude","set AGX_RUN_PROFILE=work","set AGX_RUN_LOGIN=carol","set AGX_RUN_HOME=~/.claude-work","set CLAUDE_CODE_OAUTH_TOKEN=[redacted]","set CLAUDE_CONFIG_DIR=~/.claude-work"]
 
 $ agx login show --id carol
-name     carol
-agents   claude
-kind     oauth-token
-source   plain
-account  —
-users    profile work
+name      carol
+agents    claude
+kind      oauth-token
+source    plain
+detected  unknown
+account   —
+users     profile work
 ```
 
 ## Step 4: branch on the exit code
@@ -289,6 +290,7 @@ unsupported
 | `binary-not-executable` | the binary was found but cannot run (exit 126 on a launch) |
 | `feature-unavailable` | an option the installed agent version lacks |
 | `wrong-agent` | a login that does not serve the run's agent |
+| `per-use-key` | a login declared `oauth-token` whose token is an API key (billed per use), without `--allow-api-key` or `allow_api_key` |
 | `auto-pick` | `--auto-profile` or `--auto-login` found nothing eligible, or no member of a login pool is usable, or a `--pool-only` member is blocked (`agx pool pick`, `agx login token`, `agx credential`) |
 | `before-run-failed` | the profile's `before_run` script failed or is missing |
 | `folder-gone` | a conversation whose folder no longer exists |

@@ -391,3 +391,21 @@ func TestHours(t *testing.T) {
 		t.Errorf("%s", got)
 	}
 }
+
+// TestPerUseKeyNeverPicked: a member marked PerUseKey (an API key under a
+// login declared oauth-token that does not allow it) is blocked with one
+// reason however low its usage, and the next member is picked.
+func TestPerUseKeyNeverPicked(t *testing.T) {
+	cfg := pool.New([]string{"alice", "bob"}, nil)
+	key := read(1, 1, day)
+	key.PerUseKey = true
+	r, err := pool.Select(cfg, map[string]pool.Reading{"alice": key, "bob": read(40, 60, day)}, pool.Options{Now: now})
+	if err != nil || r.Selected == nil || r.Selected.Name != "bob" {
+		t.Fatalf("selected %+v err %v", r.Selected, err)
+	}
+	for _, c := range r.Candidates {
+		if c.Name == "alice" && (c.Eligible || len(c.Reasons) != 1 || c.Reasons[0] != "token is an API key (billed per use); allow_api_key is off") {
+			t.Fatalf("alice = %+v", c)
+		}
+	}
+}

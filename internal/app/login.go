@@ -75,17 +75,33 @@ type LoginInfo struct {
 	Provider string `json:"provider,omitempty"`
 	// Users are the profiles, agent defaults and bindings that name it.
 	Users []LoginUser `json:"users"`
+	// Detected is the kind read from the token's prefix (oauth-token,
+	// api-key, unknown); "" when the token was not resolved (a command or
+	// plugin reference without --verify and no cached detection, a
+	// helper, a pool, a value that does not resolve). Never any part of
+	// the token.
+	Detected login.Detected `json:"detected"`
+	// DetectedMismatch is true when Detected contradicts Kind.
+	DetectedMismatch bool `json:"detected_mismatch"`
+	// DetectedView is the DETECTED cell: the kind, "(mismatch)" after a
+	// contradiction, "—" when unknown.
+	DetectedView string `json:"detected_view"`
 }
 
 // LoginListOptions are agx login list's flags.
 type LoginListOptions struct {
 	// Agent keeps only logins serving this agent; "" = all.
 	Agent agentio.ID
+	// Verify resolves every token login to detect its kind, running
+	// command and plugin references (cost X). Without it only stored,
+	// plain and ${VAR} values are read, plus kinds a probe cached.
+	Verify bool
 }
 
 // LoginList returns every login, sorted by name (cost R: tokens.jsonc is
-// read only to say whether a stored value exists).
-func (a *App) LoginList(o LoginListOptions) ([]LoginInfo, error) {
+// read only to say whether a stored value exists, and to detect the
+// kind of stored, plain and ${VAR} tokens; cost X with Verify).
+func (a *App) LoginList(ctx context.Context, o LoginListOptions) ([]LoginInfo, error) {
 	cfg, err := a.Config()
 	if err != nil {
 		return nil, err
@@ -96,6 +112,7 @@ func (a *App) LoginList(o LoginListOptions) ([]LoginInfo, error) {
 		}
 	}
 	out := []LoginInfo{}
+	cache, _ := login.ReadUsageCache(a.paths) // unreadable = no cached kinds
 	// The file's order, as v0.3's `login ls` was; the usage table's #
 	// column counts in the same order.
 	for _, name := range cfg.LoginOrder() {
@@ -103,9 +120,43 @@ func (a *App) LoginList(o LoginListOptions) ([]LoginInfo, error) {
 		if o.Agent != "" && !l.Serves(o.Agent) {
 			continue
 		}
-		out = append(out, a.loginInfo(cfg.Config, name, l))
+		info := a.loginInfo(cfg.Config, name, l)
+		a.detectInto(ctx, &info, name, l, o.Verify, cache)
+		out = append(out, info)
 	}
 	return out, nil
+}
+
+// detectInto fills a login's detected kind: from its value when that is
+// cheap to read (stored, plain, ${VAR}) or verify is set, else from the
+// login-usage cache, where a pool probe recorded it.
+func (a *App) detectInto(ctx context.Context, info *LoginInfo, name string, l config.Login, verify bool, cache login.UsageCache) {
+	defer func() { info.DetectedView = DetectedView(info.Detected, info.DetectedMismatch) }()
+	if l.Kind == config.KindPool || l.Kind == config.KindAPIKeyHelper {
+		return
+	}
+	cheap := info.SourceType == login.SourceStored || info.SourceType == login.SourcePlain || info.SourceType == login.SourceEnv
+	if cheap || verify {
+		if cred, err := login.Credential(ctx, a.exp.Brief(), a.paths, name, l); err == nil {
+			info.Detected = login.DetectToken(cred.Token)
+		}
+	}
+	if e, ok := cache.Logins[name]; ok && info.Detected == "" && e.Detected != "" {
+		info.Detected = login.Detected(e.Detected)
+	}
+	info.DetectedMismatch = login.Mismatch(l.Kind, info.Detected)
+}
+
+// DetectedView renders a detected kind for a table cell: "—" when not
+// detected, the kind, and "(mismatch)" when it contradicts the login's kind.
+func DetectedView(d login.Detected, mismatch bool) string {
+	switch {
+	case d == "":
+		return "—"
+	case mismatch:
+		return string(d) + " (mismatch)"
+	}
+	return string(d)
 }
 
 // LoginShowOptions are agx login show's flags.
@@ -117,13 +168,16 @@ type LoginShowOptions struct {
 	Agent agentio.ID
 }
 
-// LoginShow returns one login with its users.
-func (a *App) LoginShow(o LoginShowOptions) (LoginInfo, error) {
+// LoginShow returns one login with its users and, when cheap to read
+// (stored, plain, ${VAR}) or cached by a probe, its detected kind.
+func (a *App) LoginShow(ctx context.Context, o LoginShowOptions) (LoginInfo, error) {
 	cfg, l, err := a.namedLogin(o.ID)
 	if err != nil {
 		return LoginInfo{}, err
 	}
 	info := a.loginInfo(cfg.Config, o.ID, l)
+	cache, _ := login.ReadUsageCache(a.paths) // unreadable = no cached kind
+	a.detectInto(ctx, &info, o.ID, l, false, cache)
 	if o.Agent != "" {
 		if err := a.loginKnownAgent(o.Agent); err != nil {
 			return LoginInfo{}, err

@@ -361,6 +361,19 @@ func (a *App) credential(ctx context.Context, o LaunchOptions, res resolve.Resul
 		}
 		return nil, err
 	}
+	if resolveNow && l.Kind == resolve.LoginNamed {
+		d := login.DetectToken(cred.Token)
+		if err := login.CheckPerUse(l.Name, l.Login, d, o.AllowAPIKey, true); err != nil {
+			if o.DryRun {
+				a.annotateLogin(p, "error: "+apperr.As(err).Message)
+			}
+			return nil, err
+		}
+		if o.DryRun {
+			a.annotateLogin(p, resolvedText+", detected "+string(d))
+		}
+		return &cred, nil
+	}
 	if resolveNow && o.DryRun {
 		a.annotateLogin(p, resolvedText)
 	}

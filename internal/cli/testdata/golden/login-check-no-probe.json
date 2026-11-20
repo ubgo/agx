@@ -11,7 +11,10 @@
       "probe": "skipped",
       "agent": "",
       "detail": "--no-probe",
-      "windows": []
+      "windows": [],
+      "detected": "unknown",
+      "detected_mismatch": false,
+      "detected_view": "unknown"
     },
     {
       "name": "good",
@@ -21,7 +24,10 @@
       "probe": "skipped",
       "agent": "",
       "detail": "--no-probe",
-      "windows": []
+      "windows": [],
+      "detected": "unknown",
+      "detected_mismatch": false,
+      "detected_view": "unknown"
     }
   ],
   "decisions": [],

@@ -1019,6 +1019,9 @@
                 "type": "null"
               }
             ]
+          },
+          "allow_api_key": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false

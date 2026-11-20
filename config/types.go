@@ -270,6 +270,11 @@ type Login struct {
 	Provider string `json:"provider,omitempty"`
 	// Pool is the pool of a kind "pool" login; nil for every other kind.
 	Pool *Pool `json:"pool,omitempty"`
+	// AllowAPIKey lets an oauth-token login whose token is detected as an
+	// API key (sk-ant-api…, billed per use) launch, be handed out by agx
+	// credential and be picked by a pool. Off by default: such a login is
+	// refused because the config says plan billing.
+	AllowAPIKey bool `json:"allow_api_key,omitempty"`
 }
 
 // Pool is logins.<name>.pool: the member logins and the numbers of the
