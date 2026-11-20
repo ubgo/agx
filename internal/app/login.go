@@ -214,7 +214,7 @@ func (a *App) LoginTokenWarn(ctx context.Context, id, poolForce string, only Poo
 		return agentio.Token{}, nil, err
 	}
 	if l.Kind == config.KindPool {
-		_, tok, rep, err := a.poolMemberToken(ctx, id, l, poolModeToken, poolForce, only)
+		_, tok, rep, err := a.poolMemberToken(ctx, id, l, poolModeToken, poolForce, only, "")
 		return tok, rep.StderrWarnings(), err
 	}
 	if poolForce != "" {

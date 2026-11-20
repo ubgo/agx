@@ -1,0 +1,22 @@
+// Pool simulator scenario (task sim; docs/guides/pool-simulator.md).
+{
+  "about": "Two own accounts whose plans the user did not give (drawn from Pro, Max 5x, Max 20x; unknown to the pick).",
+  "seed": 161,
+  "seeds": 12,
+  "own": {
+    "count": [
+      2,
+      2
+    ],
+    "plans": [
+      "unknown"
+    ]
+  },
+  "sessions": {
+    "count": [
+      1,
+      6
+    ],
+    "pattern": "any"
+  }
+}

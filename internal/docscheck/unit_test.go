@@ -414,7 +414,7 @@ func TestKeyPaths(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := map[string]bool{}
-	keyPaths(s, "", got)
+	keyPaths(s, s, "", got)
 	want := map[string]bool{
 		"profiles": true, "profiles.<profile>.home": true, "profiles.<profile>.env": true,
 		"projects": true, "projects.<folder>.<agent>.login": true,

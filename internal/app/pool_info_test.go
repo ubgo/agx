@@ -29,10 +29,10 @@ func TestPoolListAndShow(t *testing.T) {
 	for _, s := range info.Settings {
 		got[s.Key] = s.Value + " " + s.Source
 	}
-	if got[poolKeyKeyTTL] != "30s config" || got[poolKeyLog] != "~/pool.log config" || got[poolKeyMaxAge] != "60s default" || got[poolKeyBorrow] != "48h default" {
+	if got[poolKeyKeyTTL] != "30s pool" || got[poolKeyLog] != "~/pool.log pool" || got[poolKeyMaxAge] != "60s default" || got[poolKeyBorrow] != "48h default" {
 		t.Errorf("settings: %v", got)
 	}
-	if mb := info.Members[0]; mb.Short != 95 || mb.ShortSource != SourceConfig || mb.EnabledSource != SourceDefault {
+	if mb := info.Members[0]; mb.Short != 95 || mb.ShortSource != SourceMember || mb.EnabledSource != SourceDefault {
 		t.Errorf("alice: %+v", mb)
 	}
 	_, err = a.PoolShow(PoolShowOptions{ID: "alice"})
@@ -63,16 +63,20 @@ func TestDurationText(t *testing.T) {
 	}
 }
 
-// TestPoolInfoEverySet: a pool that sets every key reports config for
-// each, a member cap without its own entry comes from the pool's
-// defaults, and an enabled false entry is the member's own.
+// TestPoolInfoEverySet: a pool that sets every key reports pool for
+// each, a shared member cap without its own entry comes from its
+// group's block, else the pool's defaults, an own member's from own_caps
+// else agx's 95/98 (never the pool's defaults), and an enabled false
+// entry is the member's own.
 func TestPoolInfoEverySet(t *testing.T) {
 	f := func(v float64) *float64 { return &v }
 	off, force := false, "bob"
 	lg := config.Login{Kind: config.KindPool, Agents: []agentio.ID{"claude"}, Pool: &config.Pool{
 		Own: []string{"alice"}, Shared: []string{"bob"}, Force: &force, SharedBorrowWindow: "24h",
-		ShortUnavailableAtPercent: f(95), Defaults: config.PoolCaps{Short: f(40), Week: f(60)},
-		Accounts:    map[string]config.PoolAccount{"bob": {Enabled: &off, Week: f(65)}},
+		ShortUnavailableAtPercent: f(95), Defaults: config.PoolCaps{Short: f(40), Week: f(60), WeekRelaxMax: f(90)},
+		Order: "deadline", WeekRelaxWindow: "12h", MaxSessions: intp(2), Sticky: boolp(false), StickyLeaveRatio: f(4),
+		OwnCaps: config.PoolCaps{Week: f(97)}, SharedCaps: config.PoolCaps{Short: f(30)},
+		Accounts:    map[string]config.PoolAccount{"bob": {Enabled: &off, Week: f(65), Capacity: f(5)}},
 		UsageMaxAge: "2m", KeyTTL: "30s", Log: "~/p.log", Picker: &config.PoolPicker{Command: "pk"},
 	}}
 	info := poolInfo("team", lg)
@@ -80,16 +84,32 @@ func TestPoolInfoEverySet(t *testing.T) {
 		t.Errorf("summary: %+v", info.PoolSummary)
 	}
 	for _, s := range info.Settings {
-		want := SourceConfig
-		if s.Key == poolKeyPickerTime {
+		want := SourcePool
+		switch s.Key {
+		case poolKeyPickerTime, poolKeyOwnShort:
 			want = SourceDefault
+		case poolKeyOwnWeek:
+			want = SourceGroup
 		}
 		if s.Source != want {
 			t.Errorf("%s: %s, want %s", s.Key, s.Source, want)
 		}
 	}
 	a, b := info.Members[0], info.Members[1]
-	if a.ShortSource != SourcePoolDefaults || a.Short != 40 || b.Enabled || b.EnabledSource != SourceConfig || b.Week != 65 || b.WeekSource != SourceConfig {
-		t.Errorf("members: %+v %+v", a, b)
+	if a.Short != 95 || a.ShortSource != SourceDefault || a.Week != 97 || a.WeekSource != SourceGroup || a.WeekRelaxMax != 90 || a.WeekRelaxMaxSource != SourcePool ||
+		a.Capacity != 1 || a.CapacitySource != SourceDefault {
+		t.Errorf("own member: %+v", a)
+	}
+	if b.Enabled || b.EnabledSource != SourceMember || b.Week != 65 || b.WeekSource != SourceMember || b.Short != 30 || b.ShortSource != SourceGroup ||
+		b.Capacity != 5 || b.CapacitySource != SourceMember {
+		t.Errorf("shared member: %+v", b)
+	}
+	lg.Pool.SharedCaps = config.PoolCaps{}
+	if c := poolInfo("team", lg).Members[1]; c.Short != 40 || c.ShortSource != SourcePool {
+		t.Errorf("shared member on the pool's defaults: %+v", c)
 	}
 }
+
+// intp and boolp are pointers to v.
+func intp(v int) *int    { return &v }
+func boolp(v bool) *bool { return &v }

@@ -1,0 +1,22 @@
+// Pool simulator scenario (task sim; docs/guides/pool-simulator.md).
+{
+  "about": "One or two own accounts and three to six teammates' accounts; most sessions on a model with its own weekly window (like Fable 5.2's 7d_oi) holding half the 5-hour windows of the all-models week.",
+  "seed": 911,
+  "seeds": 12,
+  "own": {
+    "count": [1, 2],
+    "plans": ["max5", "max20", "unknown"]
+  },
+  "shared": {
+    "count": [3, 6],
+    "plans": ["max5", "max20", "unknown"]
+  },
+  "sessions": {
+    "count": [3, 8],
+    "pattern": "any"
+  },
+  "model": {
+    "share": 0.7,
+    "week_ratio": 4
+  }
+}

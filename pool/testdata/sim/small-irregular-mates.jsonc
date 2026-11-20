@@ -1,0 +1,27 @@
+// Pool simulator scenario (task sim; docs/guides/pool-simulator.md).
+{
+  "about": "Teammates on irregular schedules (any day, any hour, random shifts).",
+  "seed": 241,
+  "seeds": 12,
+  "own": {
+    "count": [
+      1,
+      2
+    ]
+  },
+  "shared": {
+    "count": [
+      2,
+      4
+    ],
+    "mates": [
+      "irregular"
+    ]
+  },
+  "sessions": {
+    "count": [
+      2,
+      5
+    ]
+  }
+}

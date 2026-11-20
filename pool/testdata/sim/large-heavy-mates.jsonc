@@ -1,0 +1,28 @@
+// Pool simulator scenario (task sim; docs/guides/pool-simulator.md).
+{
+  "about": "A large team of heavy-using teammates.",
+  "seed": 331,
+  "seeds": 12,
+  "own": {
+    "count": [
+      2,
+      3
+    ]
+  },
+  "shared": {
+    "count": [
+      8,
+      12
+    ],
+    "mates": [
+      "heavy",
+      "medium"
+    ]
+  },
+  "sessions": {
+    "count": [
+      5,
+      12
+    ]
+  }
+}

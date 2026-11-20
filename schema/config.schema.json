@@ -947,20 +947,43 @@
                     "maximum": 100
                   },
                   "defaults": {
-                    "type": "object",
-                    "properties": {
-                      "short": {
-                        "type": "number",
-                        "minimum": 0,
-                        "maximum": 100
-                      },
-                      "week": {
-                        "type": "number",
-                        "minimum": 0,
-                        "maximum": 100
-                      }
-                    },
-                    "additionalProperties": false
+                    "$ref": "#/$defs/PoolCaps"
+                  },
+                  "own_caps": {
+                    "$ref": "#/$defs/PoolCaps"
+                  },
+                  "shared_caps": {
+                    "$ref": "#/$defs/PoolCaps"
+                  },
+                  "order": {
+                    "type": "string",
+                    "enum": [
+                      "urgency",
+                      "deadline"
+                    ]
+                  },
+                  "week_relax_window": {
+                    "type": "string"
+                  },
+                  "max_sessions": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "sticky": {
+                    "type": "boolean"
+                  },
+                  "sticky_leave_ratio": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "probe_models": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
                   },
                   "accounts": {
                     "type": "object",
@@ -979,6 +1002,15 @@
                         },
                         "enabled": {
                           "type": "boolean"
+                        },
+                        "week_relax_max": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 100
+                        },
+                        "capacity": {
+                          "type": "number",
+                          "minimum": 0
                         }
                       },
                       "additionalProperties": false
@@ -1084,5 +1116,28 @@
       "additionalProperties": false
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "$defs": {
+    "PoolCaps": {
+      "type": "object",
+      "properties": {
+        "short": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "week": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "week_relax_max": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      },
+      "additionalProperties": false
+    }
+  }
 }

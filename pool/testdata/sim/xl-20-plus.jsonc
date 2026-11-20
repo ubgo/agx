@@ -1,0 +1,40 @@
+// Pool simulator scenario (task sim; docs/guides/pool-simulator.md).
+{
+  "about": "Twenty or more members of mixed plans and ten to twenty sessions.",
+  "seed": 361,
+  "seeds": 8,
+  "own": {
+    "count": [
+      2,
+      4
+    ],
+    "plans": [
+      "max5",
+      "max20"
+    ]
+  },
+  "shared": {
+    "count": [
+      18,
+      22
+    ],
+    "plans": [
+      "pro",
+      "max5",
+      "max20"
+    ],
+    "mates": [
+      "light",
+      "medium",
+      "heavy",
+      "irregular",
+      "none"
+    ]
+  },
+  "sessions": {
+    "count": [
+      10,
+      20
+    ]
+  }
+}

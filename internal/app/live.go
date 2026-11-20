@@ -14,7 +14,6 @@ import (
 	"github.com/ubgo/agx/internal/report"
 	"github.com/ubgo/agx/internal/resolve"
 	"github.com/ubgo/agx/live"
-	"github.com/ubgo/agx/pool"
 )
 
 // credentialVerb is the hidden command the live-login helper runs (spec
@@ -104,6 +103,9 @@ func (a *App) livePlan(ctx context.Context, o LaunchOptions, res resolve.Result,
 		return nil, err
 	}
 	p.Live = &LiveStart{StartLogin: res.Login.Name, Helper: helper, AllowAPIKey: o.AllowAPIKey}
+	if isPool {
+		p.Live.Model, p.liveModelSrc = runModel(o, res)
+	}
 	if isPool && o.PoolOnly.given() {
 		pl := res.Login.Login.Pool
 		rules, _ := pl.Rules() // the config loaded, so it parses
@@ -175,10 +177,18 @@ func (a *App) poolPlanNotes(ctx context.Context, o LaunchOptions, res resolve.Re
 	out = append(out,
 		report.Decision{Name: decPool, Value: "key ttl " + ttl.String(), Source: src(pl.KeyTTL != "", "key_ttl")},
 		report.Decision{Name: decPool, Value: "usage max age " + maxAge.String(), Source: src(pl.UsageMaxAge != "", "usage_max_age")},
-		report.Decision{Name: decPool, Value: "shared borrow window " + pool.Hours(rules.BorrowWindow), Source: src(pl.SharedBorrowWindow != "", "shared_borrow_window")},
-		report.Decision{Name: decPool, Value: fmt.Sprintf("5h cutoff %g%%", rules.ShortUnavailableAt), Source: src(pl.ShortUnavailableAtPercent != nil, "short_unavailable_at_percent")},
-		report.Decision{Name: decPool, Value: fmt.Sprintf("default caps 5h %g%%, week %g%%", rules.Defaults.Short, rules.Defaults.Week), Source: src(pl.Defaults.Short != nil || pl.Defaults.Week != nil, "defaults")},
 	)
+	for _, s := range poolRuleSettings(*pl) {
+		out = append(out, report.Decision{Name: decPool, Value: s.Key + " " + s.Value, Source: src(s.Source != SourceDefault, s.Key)})
+	}
+	switch {
+	case p.Live != nil && p.Live.Model != "":
+		out = append(out, report.Decision{Name: decPool, Value: "probe model " + p.Live.Model + " (its per-model windows apply)", Source: p.liveModelSrc})
+	case len(pl.ProbeModels) > 0:
+		out = append(out, report.Decision{Name: decPool, Value: "probe models " + strings.Join(pl.ProbeModels, ", ") + " (their per-model windows apply)", Source: key + ".probe_models"})
+	default:
+		out = append(out, report.Decision{Name: decPool, Value: "probe model: the agent's default (all-models windows only)", Source: "default"})
+	}
 	if len(pl.Accounts) > 0 {
 		out = append(out, report.Decision{Name: decPool, Value: fmt.Sprintf("member entries: %d", len(pl.Accounts)), Source: key + ".accounts"})
 	}
@@ -192,7 +202,11 @@ func (a *App) poolPlanNotes(ctx context.Context, o LaunchOptions, res resolve.Re
 	if p.Live != nil {
 		force = p.Live.PoolForce
 	}
-	rep, err := a.poolPick(ctx, name, lg, PoolPickOptions{Cached: true, Force: force, Only: p.Live.only()})
+	model := ""
+	if p.Live != nil {
+		model = p.Live.Model
+	}
+	rep, err := a.poolPick(ctx, name, lg, PoolPickOptions{Cached: true, Force: force, Only: p.Live.only(), Model: model})
 	if p.Live.only().Member != "" && rep.Selected == nil && len(rep.Candidates) > 0 {
 		// The pin is blocked by the cached usage: say so, not "none".
 		return append(out, report.Decision{Name: decPool, Value: "pick now: none, " + onlyNoKey(p.Live.PoolOnly, rep.Candidates[0].Reasons) + ", from the " + rep.Source + "; no key until it is under its caps", Source: "login-usage cache"})
@@ -295,7 +309,7 @@ func (a *App) writeLiveStart(ctx context.Context, p *LaunchPlan) error {
 	if err := ctxErr(ctx); err != nil {
 		return err
 	}
-	st := live.State{RunID: p.RunID, Agent: string(p.Agent), StartLogin: p.Live.StartLogin, Helper: p.Live.Helper, PoolForce: p.Live.PoolForce,
+	st := live.State{RunID: p.RunID, Agent: string(p.Agent), StartLogin: p.Live.StartLogin, Helper: p.Live.Helper, Model: p.Live.Model, PoolForce: p.Live.PoolForce,
 		PoolOnly: p.Live.PoolOnly, PoolOnlyShort: p.Live.PoolOnlyShort, PoolOnlyWeek: p.Live.PoolOnlyWeek, AllowAPIKey: p.Live.AllowAPIKey}
 	if err := live.Create(p.RunDir, st); err != nil {
 		return apperr.Wrap(err, apperr.CodeIO, apperr.ClassFailure, "write live.jsonc: "+err.Error())

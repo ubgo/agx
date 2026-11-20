@@ -103,7 +103,9 @@ func TestPoolShowSources(t *testing.T) {
 		"force": "off (default)", "defaults.short": "50 (default)", "defaults.week": "70 (default)",
 		"shared_borrow_window": "48h (default)", "short_unavailable_at_percent": "99 (default)",
 		"usage_max_age": "60s (default)", "key_ttl": "60s (default)", "picker.command": "built-in rules (default)",
-		"picker.timeout": "10s (default)", "log": "none (default)",
+		"picker.timeout": "10s (default)", "log": "none (default)", "order": "urgency (default)", "week_relax_window": "24h (default)",
+		"defaults.week_relax_max": "95 (default)", "max_sessions": "4 (default)", "sticky": "true (default)", "sticky_leave_ratio": "3 (default)",
+		"own_caps.short": "95 (default)", "own_caps.week": "98 (default)",
 	} {
 		if got := setting(key); got != want {
 			t.Errorf("auto %s: %q, want %q", key, got, want)
@@ -111,17 +113,19 @@ func TestPoolShowSources(t *testing.T) {
 	}
 	read("team")
 	for key, want := range map[string]string{
-		"force": "bob (config)", "defaults.short": "40 (config)", "shared_borrow_window": "24h (config)",
-		"short_unavailable_at_percent": "95 (config)", "usage_max_age": "2m (config)", "key_ttl": "30s (config)",
-		"picker.command": "my-picker (config)", "picker.timeout": "5s (config)", "log": "~/pool.log (config)",
+		"force": "bob (pool)", "defaults.short": "40 (pool)", "shared_borrow_window": "24h (pool)",
+		"short_unavailable_at_percent": "95 (pool)", "usage_max_age": "2m (pool)", "key_ttl": "30s (pool)",
+		"picker.command": "my-picker (pool)", "picker.timeout": "5s (pool)", "log": "~/pool.log (pool)",
 	} {
 		if got := setting(key); got != want {
 			t.Errorf("team %s: %q, want %q", key, got, want)
 		}
 	}
 	m := env.Data.Members
-	if len(m) != 3 || m[0].Name != "alice" || m[0].ShortSource != "config" || m[0].WeekSource != "defaults" ||
-		m[2].Name != "carol" || m[2].EnabledSource != "config" || m[1].EnabledSource != "default" {
+	// alice is own: her week comes from agx's own default (98), never the
+	// pool's defaults; bob is shared and takes the pool's defaults.
+	if len(m) != 3 || m[0].Name != "alice" || m[0].ShortSource != "member" || m[0].WeekSource != "default" || m[1].ShortSource != "pool" ||
+		m[2].Name != "carol" || m[2].EnabledSource != "member" || m[1].EnabledSource != "default" {
 		t.Errorf("members: %+v", m)
 	}
 }

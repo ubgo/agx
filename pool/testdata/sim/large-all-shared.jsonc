@@ -1,0 +1,22 @@
+// Pool simulator scenario (task sim; docs/guides/pool-simulator.md).
+{
+  "about": "A team pool of eight to fourteen teammates' accounts and no own account, five to fifteen sessions.",
+  "seed": 311,
+  "seeds": 12,
+  "shared": {
+    "count": [
+      8,
+      14
+    ],
+    "plans": [
+      "max5",
+      "max20"
+    ]
+  },
+  "sessions": {
+    "count": [
+      5,
+      15
+    ]
+  }
+}

@@ -4,18 +4,26 @@ own     alice
 shared  bob, carol
 
 [1mMembers (caps in percent):[0m
-- alice [own] enabled [2m(default)[0m, short 98 [2m(config)[0m, week 60 [2m(defaults)[0m
-- bob [shared] enabled [2m(default)[0m, short 40 [2m(defaults)[0m, week 60 [2m(defaults)[0m
-- carol [shared] [33mdisabled[0m [2m(config)[0m, short 40 [2m(defaults)[0m, week 60 [2m(defaults)[0m
+- alice [own] enabled [2m(default)[0m, short 98 [2m(member)[0m, week 98 [2m(default)[0m, week relax max 95 [2m(default)[0m, capacity 1 [2m(default)[0m
+- bob [shared] enabled [2m(default)[0m, short 40 [2m(pool)[0m, week 60 [2m(pool)[0m, week relax max 95 [2m(default)[0m, capacity 1 [2m(default)[0m
+- carol [shared] [33mdisabled[0m [2m(member)[0m, short 40 [2m(pool)[0m, week 60 [2m(pool)[0m, week relax max 95 [2m(default)[0m, capacity 1 [2m(default)[0m
 
 [1mSettings:[0m
-force                         bob [2m(config)[0m
-defaults.short                40 [2m(config)[0m
-defaults.week                 60 [2m(config)[0m
-shared_borrow_window          24h [2m(config)[0m
-short_unavailable_at_percent  95 [2m(config)[0m
-usage_max_age                 2m [2m(config)[0m
-key_ttl                       30s [2m(config)[0m
-picker.command                my-picker [2m(config)[0m
-picker.timeout                5s [2m(config)[0m
-log                           ~/pool.log [2m(config)[0m
+force                         bob [2m(pool)[0m
+order                         urgency [2m(default)[0m
+week_relax_window             24h [2m(default)[0m
+defaults.week_relax_max       95 [2m(default)[0m
+max_sessions                  4 [2m(default)[0m
+sticky                        true [2m(default)[0m
+sticky_leave_ratio            3 [2m(default)[0m
+shared_borrow_window          24h [2m(pool)[0m
+short_unavailable_at_percent  95 [2m(pool)[0m
+own_caps.short                95 [2m(default)[0m
+own_caps.week                 98 [2m(default)[0m
+defaults.short                40 [2m(pool)[0m
+defaults.week                 60 [2m(pool)[0m
+usage_max_age                 2m [2m(pool)[0m
+key_ttl                       30s [2m(pool)[0m
+picker.command                my-picker [2m(pool)[0m
+picker.timeout                5s [2m(pool)[0m
+log                           ~/pool.log [2m(pool)[0m

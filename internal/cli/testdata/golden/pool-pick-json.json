@@ -5,12 +5,78 @@
   "data": {
     "pool": "auto",
     "agent": "claude",
+    "order": "urgency",
+    "settings": [
+      {
+        "key": "order",
+        "value": "urgency",
+        "source": "default"
+      },
+      {
+        "key": "week_relax_window",
+        "value": "24h",
+        "source": "default"
+      },
+      {
+        "key": "defaults.week_relax_max",
+        "value": "95",
+        "source": "default"
+      },
+      {
+        "key": "max_sessions",
+        "value": "4",
+        "source": "default"
+      },
+      {
+        "key": "sticky",
+        "value": "true",
+        "source": "default"
+      },
+      {
+        "key": "sticky_leave_ratio",
+        "value": "3",
+        "source": "default"
+      },
+      {
+        "key": "shared_borrow_window",
+        "value": "48h",
+        "source": "default"
+      },
+      {
+        "key": "short_unavailable_at_percent",
+        "value": "99",
+        "source": "default"
+      },
+      {
+        "key": "own_caps.short",
+        "value": "95",
+        "source": "default"
+      },
+      {
+        "key": "own_caps.week",
+        "value": "98",
+        "source": "default"
+      },
+      {
+        "key": "defaults.short",
+        "value": "50",
+        "source": "default"
+      },
+      {
+        "key": "defaults.week",
+        "value": "70",
+        "source": "default"
+      }
+    ],
+    "probe_models": [],
+    "probe_models_source": "default probe model",
     "selected": {
       "name": "grace",
       "group": "shared",
       "forced": false,
       "picked_by": "rules",
-      "reason": "shared account resets within 48h, before any usable own account; using its room before it is lost",
+      "sessions": 0,
+      "reason": "most room to lose: 44% left under its weekly cap with 37.8h to the reset (1.2%/h to use it all)",
       "warnings": [],
       "weekly_resets_at": "<time>",
       "room_percent": 44
@@ -39,29 +105,13 @@
           "short": 50,
           "week": 70
         },
-        "reasons": [],
-        "notes": [],
-        "source": "cache",
-        "age_seconds": 20
-      },
-      {
-        "name": "ivan",
-        "group": "shared",
-        "state": "ready",
-        "rank": 2,
-        "eligible": true,
-        "enabled": true,
-        "status": "ok",
-        "account": "",
-        "short": 4,
-        "week": 43,
-        "weekly_resets_at": "<time>",
-        "hours_to_reset": 41.8,
-        "room_percent": 27,
-        "caps": {
-          "short": 50,
-          "week": 70
+        "caps_source": {
+          "short": "default",
+          "week": "default"
         },
+        "urgency_percent_per_hour": 1.16,
+        "scoped": [],
+        "sessions": 0,
         "reasons": [],
         "notes": [],
         "source": "cache",
@@ -71,7 +121,7 @@
         "name": "carol",
         "group": "own",
         "state": "ready",
-        "rank": 3,
+        "rank": 2,
         "eligible": true,
         "enabled": true,
         "status": "ok",
@@ -85,6 +135,43 @@
           "short": 99,
           "week": 100
         },
+        "caps_source": {
+          "short": "member",
+          "week": "member"
+        },
+        "urgency_percent_per_hour": 0.71,
+        "scoped": [],
+        "sessions": 0,
+        "reasons": [],
+        "notes": [],
+        "source": "cache",
+        "age_seconds": 20
+      },
+      {
+        "name": "ivan",
+        "group": "shared",
+        "state": "ready",
+        "rank": 3,
+        "eligible": true,
+        "enabled": true,
+        "status": "ok",
+        "account": "",
+        "short": 4,
+        "week": 43,
+        "weekly_resets_at": "<time>",
+        "hours_to_reset": 41.8,
+        "room_percent": 27,
+        "caps": {
+          "short": 50,
+          "week": 70
+        },
+        "caps_source": {
+          "short": "default",
+          "week": "default"
+        },
+        "urgency_percent_per_hour": 0.65,
+        "scoped": [],
+        "sessions": 0,
         "reasons": [],
         "notes": [],
         "source": "cache",
@@ -108,13 +195,20 @@
           "short": 99,
           "week": 100
         },
+        "caps_source": {
+          "short": "member",
+          "week": "member"
+        },
+        "urgency_percent_per_hour": 0.46,
+        "scoped": [],
+        "sessions": 0,
         "reasons": [],
         "notes": [],
         "source": "cache",
         "age_seconds": 20
       },
       {
-        "name": "judy",
+        "name": "frank",
         "group": "shared",
         "state": "waiting",
         "rank": null,
@@ -122,15 +216,22 @@
         "enabled": true,
         "status": "ok",
         "account": "",
-        "short": 41,
-        "week": 44,
+        "short": 0,
+        "week": 15,
         "weekly_resets_at": "<time>",
-        "hours_to_reset": 56.8,
-        "room_percent": 26,
+        "hours_to_reset": 86.8,
+        "room_percent": 55,
         "caps": {
           "short": 50,
           "week": 70
         },
+        "caps_source": {
+          "short": "default",
+          "week": "default"
+        },
+        "urgency_percent_per_hour": 0.63,
+        "scoped": [],
+        "sessions": 0,
         "reasons": [],
         "notes": [
           "shared reset not within 48h while an own account is usable"
@@ -156,6 +257,13 @@
           "short": 50,
           "week": 70
         },
+        "caps_source": {
+          "short": "default",
+          "week": "default"
+        },
+        "urgency_percent_per_hour": 0.46,
+        "scoped": [],
+        "sessions": 0,
         "reasons": [],
         "notes": [
           "shared reset not within 48h while an own account is usable"
@@ -164,7 +272,7 @@
         "age_seconds": 20
       },
       {
-        "name": "frank",
+        "name": "judy",
         "group": "shared",
         "state": "waiting",
         "rank": null,
@@ -172,40 +280,22 @@
         "enabled": true,
         "status": "ok",
         "account": "",
-        "short": 0,
-        "week": 15,
+        "short": 41,
+        "week": 44,
         "weekly_resets_at": "<time>",
-        "hours_to_reset": 86.8,
-        "room_percent": 55,
+        "hours_to_reset": 56.8,
+        "room_percent": 26,
         "caps": {
           "short": 50,
           "week": 70
         },
-        "reasons": [],
-        "notes": [
-          "shared reset not within 48h while an own account is usable"
-        ],
-        "source": "cache",
-        "age_seconds": 20
-      },
-      {
-        "name": "mallory",
-        "group": "shared",
-        "state": "waiting",
-        "rank": null,
-        "eligible": true,
-        "enabled": true,
-        "status": "ok",
-        "account": "",
-        "short": 36,
-        "week": 58,
-        "weekly_resets_at": "<time>",
-        "hours_to_reset": 125.8,
-        "room_percent": 12,
-        "caps": {
-          "short": 50,
-          "week": 70
+        "caps_source": {
+          "short": "default",
+          "week": "default"
         },
+        "urgency_percent_per_hour": 0.46,
+        "scoped": [],
+        "sessions": 0,
         "reasons": [],
         "notes": [
           "shared reset not within 48h while an own account is usable"
@@ -231,6 +321,13 @@
           "short": 50,
           "week": 70
         },
+        "caps_source": {
+          "short": "default",
+          "week": "default"
+        },
+        "urgency_percent_per_hour": 0.44,
+        "scoped": [],
+        "sessions": 0,
         "reasons": [],
         "notes": [
           "shared reset not within 48h while an own account is usable"
@@ -256,6 +353,45 @@
           "short": 50,
           "week": 70
         },
+        "caps_source": {
+          "short": "default",
+          "week": "default"
+        },
+        "urgency_percent_per_hour": 0.42,
+        "scoped": [],
+        "sessions": 0,
+        "reasons": [],
+        "notes": [
+          "shared reset not within 48h while an own account is usable"
+        ],
+        "source": "cache",
+        "age_seconds": 20
+      },
+      {
+        "name": "mallory",
+        "group": "shared",
+        "state": "waiting",
+        "rank": null,
+        "eligible": true,
+        "enabled": true,
+        "status": "ok",
+        "account": "",
+        "short": 36,
+        "week": 58,
+        "weekly_resets_at": "<time>",
+        "hours_to_reset": 125.8,
+        "room_percent": 12,
+        "caps": {
+          "short": 50,
+          "week": 70
+        },
+        "caps_source": {
+          "short": "default",
+          "week": "default"
+        },
+        "urgency_percent_per_hour": 0.1,
+        "scoped": [],
+        "sessions": 0,
         "reasons": [],
         "notes": [
           "shared reset not within 48h while an own account is usable"
@@ -281,6 +417,13 @@
           "short": 99,
           "week": 100
         },
+        "caps_source": {
+          "short": "member",
+          "week": "member"
+        },
+        "urgency_percent_per_hour": 0,
+        "scoped": [],
+        "sessions": 0,
         "reasons": [
           "status is limit-reached",
           "week is 100% (cap 100%)"
@@ -307,6 +450,13 @@
           "short": 50,
           "week": 70
         },
+        "caps_source": {
+          "short": "default",
+          "week": "default"
+        },
+        "urgency_percent_per_hour": 0,
+        "scoped": [],
+        "sessions": 0,
         "reasons": [
           "week is 80% (cap 70%)"
         ],

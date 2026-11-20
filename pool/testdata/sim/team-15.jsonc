@@ -1,0 +1,33 @@
+// Pool simulator scenario (task sim; docs/guides/pool-simulator.md).
+{
+  "about": "An all-shared team pool of fifteen accounts, mixed and unknown plans, five to fifteen sessions.",
+  "seed": 521,
+  "seeds": 12,
+  "gate": true,
+  "shared": {
+    "count": [
+      15,
+      15
+    ],
+    "plans": [
+      "pro",
+      "max5",
+      "max20",
+      "unknown"
+    ],
+    "mates": [
+      "none",
+      "light",
+      "medium",
+      "heavy",
+      "irregular"
+    ]
+  },
+  "sessions": {
+    "count": [
+      5,
+      15
+    ],
+    "pattern": "any"
+  }
+}

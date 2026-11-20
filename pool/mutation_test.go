@@ -61,10 +61,10 @@ var mutants = []mutant{
 	{"stale reset sorts first", "pool/pool.go", "if !c.hasWeekReset || *c.UntilReset < 0 {", "if !c.hasWeekReset {", nil},
 	{"unknown reset sorts first", "pool/pool.go", "return time.Duration(math.MaxInt64)", "return 0", nil},
 	{"unreadable reset counts as a deadline", "pool/pool.go", "if rd.Week.ResetsAt != nil && rd.Week.ResetsAt.IsZero() {", "if false {", nil},
-	{"last of pool picked", "pool/pool.go", "pick := ready[0]", "pick := ready[len(ready)-1]", nil},
+	{"last of pool picked", "pool/rules.go", "for _, c := range list {", "for _, c := range slices.Backward(list) {", nil},
 	{"eligible with one reason", "pool/pool.go", "c.Eligible = len(c.Reasons) == 0", "c.Eligible = len(c.Reasons) <= 1", nil},
 	{"enabled read wrongly", "pool/pool.go", "return !ok || a.Enabled == nil || *a.Enabled", "return ok && a.Enabled != nil && *a.Enabled", nil},
-	{"room ignores the weekly cap", "pool/pool.go", "math.Max(0, c.Caps.Week-rd.Week.Percent)", "math.Max(0, 100-rd.Week.Percent)", nil},
+	{"room ignores the weekly cap", "pool/rules.go", "math.Max(0, c.Caps.Week-rd.Week.Percent)", "math.Max(0, 100-rd.Week.Percent)", nil},
 	{"config force beats --force", "pool/pool.go", "force, by := o.Force, ForcedByFlag\n\tif force == \"\" {\n\t\tforce, by = cfg.Force, ForcedByConfig", "force, by := cfg.Force, ForcedByConfig\n\tif force == \"\" {\n\t\tforce, by = o.Force, ForcedByFlag", nil},
 	{"force ignored", "pool/pool.go", "case force != \"\":", "case false:", nil},
 	{"defaults override account caps (5h)", "pool/pool.go", "caps.Short = *a.Short", "caps.Short = c.Defaults.Short", nil},
@@ -90,7 +90,7 @@ var mutants = []mutant{
 	// --pool-only: one member, its caps enforced.
 	{"only-set ignored", "pool/pool.go", "if o.Only != \"\" {\n\t\tpinned, err := onlyConfig(cfg, o)", "if false {\n\t\tpinned, err := onlyConfig(cfg, o)", nil},
 	{"caps not enforced under only", "pool/pool.go", "{name: {Short: &caps.Short, Week: &caps.Week,", "{name: {Short: ptr(MaxPercent), Week: ptr(MaxPercent),", nil},
-	{"disabled ignored under only", "pool/pool.go", "Week: &caps.Week, Enabled: c.Accounts[name].Enabled}}", "Week: &caps.Week, Enabled: nil}}", nil},
+	{"disabled ignored under only", "pool/pool.go", "Week: &caps.Week, Enabled: c.Accounts[name].Enabled, WeekRelaxMax:", "Week: &caps.Week, Enabled: nil, WeekRelaxMax:", nil},
 	{"config force wins under only", "pool/pool.go", "out.Own, out.Shared, out.Force = nil, nil, \"\"", "out.Own, out.Shared = nil, nil", nil},
 	{"only and force allowed together", "pool/pool.go", "if o.Force != \"\" {\n\t\treturn Config{}, ErrOnlyAndForce", "if false {\n\t\treturn Config{}, ErrOnlyAndForce", nil},
 	{"only allows a non-member", "pool/pool.go", "if !slices.Contains(cfg.Own, o.Only) && !slices.Contains(cfg.Shared, o.Only) {", "if false {", nil},
@@ -99,9 +99,107 @@ var mutants = []mutant{
 	{"tighter caps without only allowed", "pool/pool.go", "} else if o.OnlyCaps.Given() {", "} else if false {", nil},
 	{"picker used under a pin", "internal/app/pool.go", "case lg.Pool.Picker != nil && o.Only.Member == \"\":", "case lg.Pool.Picker != nil:", appPin},
 	{"--pool-only with --pool-force allowed", "internal/app/pool_only.go", "if force != \"\" {\n\t\treturn apperr.Conflict(", "if false {\n\t\treturn apperr.Conflict(", appPin},
-	{"pin dropped by agx credential", "internal/app/livecmd.go", "poolModeCredential, st.PoolForce, only)", "poolModeCredential, st.PoolForce, PoolOnly{})", appPin},
+	{"pin dropped by agx credential", "internal/app/livecmd.go", "poolModeCredential, st.PoolForce, only, f.ID)", "poolModeCredential, st.PoolForce, PoolOnly{}, f.ID)", appPin},
 	{"higher run cap allowed at launch", "internal/app/pool_only.go", "case *c.v > c.cap:", "case false:", appPin},
+	// The rule values (pool/rules.go) and their wiring.
+	{"weekly relax ignored", "pool/rules.go", "cand.Caps.Week = week", "cand.Caps.Week = configured", nil},
+	{"relax not linear", "pool/rules.go", "gone := 1 - until.Seconds()/window.Seconds()", "gone := 1.0", nil},
+	{"stale reset relaxed", "pool/rules.go", "if window <= 0 || until < 0 ||", "if window <= 0 ||", nil},
+	{"relax may lower a higher cap", "pool/rules.go", "until >= window || relaxMax <= capWeek {", "until >= window {", nil},
+	{"relax outside the window", "pool/rules.go", "until >= window || relaxMax", "until >= 10*window || relaxMax", nil},
+	{"member relax max ignored", "pool/rules.go", "if a, ok := c.Accounts[name]; ok && a.WeekRelaxMax != nil {", "if a, ok := c.Accounts[name]; false && ok && a.WeekRelaxMax != nil {", nil},
+	{"group relax max ignored", "pool/rules.go", "if g, ok := c.Groups[c.groupOf(name)]; ok && g.WeekRelaxMax != nil {", "if g, ok := c.Groups[c.groupOf(name)]; false && ok && g.WeekRelaxMax != nil {", nil},
+	{"group caps ignored", "pool/pool.go", "if g, ok := c.Groups[group]; ok {", "if g, ok := c.Groups[GroupUnlisted]; ok {", nil},
+	{"urgency order reversed", "pool/rules.go", "case ua > ub:\n\t\treturn -1", "case ua < ub:\n\t\treturn -1", nil},
+	{"unknown urgency sorts first", "pool/rules.go", "if !c.hasUrgency {\n\t\treturn -1", "if !c.hasUrgency {\n\t\treturn math.MaxFloat64", nil},
+	{"minutes to the reset divide by zero", "pool/rules.go", "math.Max(until.Hours(), minUrgencyHours)", "until.Hours()", nil},
+	{"urgency ignores the relaxed cap", "pool/rules.go", "math.Max(0, c.Caps.Week-rd.Week.Percent)", "math.Max(0, 70-rd.Week.Percent)", nil},
+	{"urgency order ignored", "pool/pool.go", "order := byUrgency", "order := byDeadline", nil},
+	{"deadline order ignored", "pool/pool.go", "if res.Order == OrderDeadline {\n\t\torder = byDeadline", "if false {\n\t\torder = byDeadline", nil},
+	{"no pick per session", "pool/pool.go", "case len(ready) > 0 && o.Only == \"\":", "case false:", nil},
+	{"sticky ignored", "pool/rules.go", "if cfg.Sticky && o.Current != \"\" {", "if false {", nil},
+	{"sticky ignores max_sessions", "pool/rules.go", "(limit == 0 || o.CurrentAhead < limit)", "true", nil},
+	{"sticky keeps a waiting member", "pool/rules.go", "if i := slices.IndexFunc(ready, func(c *Candidate) bool { return c.Name == o.Current });", "if i := slices.IndexFunc(append(ready, waiting...), func(c *Candidate) bool { return c.Name == o.Current });", nil},
+	{"max_sessions ignored", "pool/rules.go", "return limit > 0 && c.Load >= limit", "return false", nil},
+	{"max_sessions exclusive", "pool/rules.go", "c.Load >= limit", "c.Load > limit", nil},
+	{"no overflow to waiting members", "pool/rules.go", "[][]*Candidate{ready, waiting}", "[][]*Candidate{ready}", nil},
+	{"most loaded when all are full", "pool/rules.go", "if c.Load < least.Load {", "if c.Load > least.Load {", nil},
+	{"one-run weekly cap relaxed", "pool/pool.go", "a.WeekRelaxMax = o.OnlyCaps.Week", "a.WeekRelaxMax = nil", nil},
+	{"sticky never leaves", "pool/rules.go", "if !outranked(cfg, ready[0], ready[i]) {", "if true {", nil},
+	{"sticky leave ratio ignored", "pool/rules.go", "return best.urgency >= cfg.StickyLeaveRatio*curUrgency", "return true", nil},
+	{"negative leave ratio allowed", "pool/rules.go", "if c.StickyLeaveRatio < 0 || math.IsNaN(c.StickyLeaveRatio) || math.IsInf(c.StickyLeaveRatio, 0) {", "if false {", nil},
+	{"config leave ratio ignored", "config/pool.go", "c.StickyLeaveRatio = *p.StickyLeaveRatio", "_ = p.StickyLeaveRatio", nil},
+	{"default leave ratio changed", "pool/pool.go", "DefaultStickyLeaveRatio = 3.0", "DefaultStickyLeaveRatio = 0.0", nil},
+	{"capacity ignored", "pool/rules.go", "c.urgency = room * capacity /", "c.urgency = room /", nil},
+	{"unset capacity is not 1", "pool/rules.go", "return *a.Capacity\n\t}\n\treturn 1", "return *a.Capacity\n\t}\n\treturn 2", nil},
+	{"zero capacity allowed", "pool/pool.go", "if a.Capacity != nil && (*a.Capacity <= 0 ||", "if a.Capacity != nil && (*a.Capacity < 0 ||", nil},
+	{"config capacity ignored", "config/pool.go", "WeekRelaxMax: a.WeekRelaxMax, Capacity: a.Capacity}", "WeekRelaxMax: a.WeekRelaxMax}", nil},
+	{"unknown order allowed", "pool/rules.go", "if c.Order != \"\" && !slices.Contains(OrderValues(), string(c.Order)) {", "if false {", nil},
+	{"negative max_sessions allowed", "pool/rules.go", "if c.MaxSessions < 0 {", "if false {", nil},
+	{"bad group allowed", "pool/rules.go", "if g != GroupOwn && g != GroupShared {", "if false {", nil},
+	{"default order changed", "pool/pool.go", "DefaultOrder = OrderUrgency", "DefaultOrder = OrderDeadline", nil},
+	{"default own short cap changed", "pool/pool.go", "DefaultOwnShortCap = 95.0", "DefaultOwnShortCap = 50.0", nil},
+	{"default own week cap changed", "pool/pool.go", "DefaultOwnWeekCap  = 98.0", "DefaultOwnWeekCap  = 70.0", nil},
+	{"own members take the shared defaults", "pool/pool.go", "caps = c.OwnDefaults", "caps = c.Defaults", nil},
+	{"classic preset is not classic", "pool/rules.go", "classic.Order, classic.WeekRelaxWindow, classic.MaxSessions, classic.Sticky, classic.StickyLeaveRatio = OrderDeadline, 0, 0, false, 0", "classic.Order = OrderDeadline", nil},
+	{"default relax window changed", "pool/pool.go", "DefaultWeekRelaxWindow = 24 * time.Hour", "DefaultWeekRelaxWindow = 48 * time.Hour", nil},
+	{"default relax max changed", "pool/pool.go", "DefaultWeekRelaxMax = 95.0", "DefaultWeekRelaxMax = 90.0", nil},
+	{"default max_sessions changed", "pool/pool.go", "DefaultMaxSessions = 4", "DefaultMaxSessions = 3", nil},
+	{"default sticky changed", "pool/pool.go", "DefaultSticky = true", "DefaultSticky = false", nil},
+	{"config order ignored", "config/pool.go", "c.Order = pool.Order(p.Order)", "_ = p.Order", nil},
+	{"empty probe model allowed", "config/pool.go", "if strings.TrimSpace(m) == \"\" {", "if false {", nil},
+	// Per-model windows (pool/scoped.go) and their wiring.
+	{"scoped window ignored", "pool/pool.go", "c.Reasons = append(c.Reasons, scopedReasons(c.Scoped)...)", "_ = scopedReasons", nil},
+	{"scoped cap exclusive", "pool/scoped.go", "case *s.Percent >= s.Cap:", "case *s.Percent > s.Cap:", nil},
+	{"rejected scoped window usable", "pool/scoped.go", "case s.Rejected:", "case false && s.Rejected:", nil},
+	{"stale scoped window blocks", "pool/scoped.go", "s.Stale = until < 0", "s.Stale = false", nil},
+	{"scoped window not relaxed", "pool/scoped.go", "s.Cap = RelaxedWeek(configured, relaxMax, c.WeekRelaxWindow, until)", "s.Cap = configured", nil},
+	{"unreadable scoped window usable", "pool/scoped.go", "out = append(out, fmt.Sprintf(unreadableFmt, s.Name))", "_ = s.Name", nil},
+	{"scoped room ignored", "pool/rules.go", "if s.until != nil && s.Room < room {", "if false {", nil},
+	{"probe model ignored", "internal/app/pool_models.go", "u, err := mp.TokenUsageModel(ctx, cred, model)", "u, err := pr.TokenUsage(ctx, cred)", appModels},
+	{"run model not read", "internal/app/pool.go", "o.Model = st.Model", "_ = st.Model", appModels},
+	{"probe_models ignored", "internal/app/pool_models.go", "return slices.Clone(p.ProbeModels), modelSrcPool", "return nil, modelSrcPool", appModels},
+	{"default profile model ignored", "internal/app/pool_models.go", "return p.Model, modelSrcProfile + names[0]", "return \"\", \"\"", appModels},
+	{"scoped windows not handed to the rules", "internal/app/pool_models.go", "r.Scoped = append(r.Scoped,", "_ = append(r.Scoped,", appModels},
+	{"refused model blocks the pool", "internal/app/pool_models.go", "if errors.Is(err, agentio.ErrModelRefused) {", "if false {", appModels},
+	{"full scoped window limits every model", "internal/app/usage_read.go", "full = full || (w.Scope == \"\" && w.Percent >= percentFull)", "full = full || w.Percent >= percentFull", appModels},
+	{"cache drops other models' windows", "login/usagecache.go", "for k, v := range old.Models {", "for k, v := range map[string]ModelWindows{} {", appModels},
+	{"launch model not recorded", "internal/app/live.go", "p.Live.Model, p.liveModelSrc = runModel(o, res)", "_, p.liveModelSrc = runModel(o, res)", appModels},
+	// The usage history (login/usagehistory.go).
+	{"history gap ignored", "login/usagehistory.go", "(p.At.Sub(last.At) < HistoryMinGap && !resetsChanged(last, p))", "false", loginHistory},
+	{"history age unbounded", "login/usagehistory.go", "cut < len(pts) && p.At.Sub(pts[cut].At) > HistoryMaxAge", "false", loginHistory},
+	{"history count unbounded", "login/usagehistory.go", "cut = max(cut, len(pts)-HistoryMaxPoints)", "_ = HistoryMaxPoints", loginHistory},
+	{"history records failures", "login/usagehistory.go", "if len(e.Windows) == 0 {", "if false {", loginHistory},
+	{"history not written", "login/usagecache.go", "_ = recordHistory(paths, entries)", "_ = entries", loginHistory},
+	// Presets and the reported sources.
+	{"preset writes no order", "internal/app/pool_preset.go", "Order:            str(string(r.Order)),", "Order:            nil,", appPreset},
+	{"group source reported as pool", "internal/app/pool_info.go", "{group.Short, SourceGroup, groupKey + \".short\"}", "{group.Short, SourcePool, groupKey + \".short\"}", appPreset},
+	{"own members show the pool defaults", "internal/app/pool_info.go", "\t\t\tdef = pool.DefaultOwnShortCap\n\t\t} else {", "\t\t\tdef = pool.DefaultOwnShortCap\n\t\t}\n\t\t{", appPreset},
+	{"config max_sessions ignored", "config/pool.go", "c.MaxSessions = *p.MaxSessions", "_ = p.MaxSessions", nil},
+	{"config group caps ignored", "config/pool.go", "c.Groups[g] = pool.GroupCaps{Short: gc.Short, Week: gc.Week, WeekRelaxMax: gc.WeekRelaxMax}", "_ = gc", nil},
+	{"live runs not counted", "internal/app/pool.go", "sel.Load, sel.Current, sel.CurrentAhead = a.poolLoad(name, lg, o.RunID, now, rep.warn)", "_, _, _ = a.poolLoad(name, lg, o.RunID, now, rep.warn)", appRules},
+	{"idle runs counted", "internal/app/pool.go", "if now.Sub(st.InUseAt) <= activeRunTTLs*ttl {", "if true {", appRules},
+	{"credential run not passed", "internal/app/livecmd.go", "poolModeCredential, st.PoolForce, only, f.ID)", "poolModeCredential, st.PoolForce, only, \"\")", appRules},
+	// The simulator's regression: the defaults must keep their gains.
+	{"spread off in the simulated pool", "pool/rules.go", "full := func(c *Candidate) bool { return limit > 0 && c.Load >= limit }", "full := func(c *Candidate) bool { return false }", simRegression},
+	{"relax off in the simulated pool", "pool/pool.go", "if found {\n\t\tcfg.relax(c, rd, now)", "if found {\n\t\t_ = cfg.relax", simRegression},
+	{"per-model windows off in the simulated pool", "internal/poolsim/policy.go", "if pp.blind || !s.Scoped {", "if true {", simRegression},
 }
+
+// appRules runs the internal/app tests of the session rules.
+var appRules = []string{"-run", "PoolSessions|PoolClassic", "./internal/app/"}
+
+// appModels runs the internal/app tests of per-model windows.
+var appModels = []string{"-run", "PoolProbeModel|PoolFable|PoolRunModel", "./internal/app/"}
+
+// appPreset runs the internal/app tests of presets and sources.
+var appPreset = []string{"-run", "PoolPreset|PoolInfo|PoolListAndShow", "./internal/app/"}
+
+// loginHistory runs the usage history tests.
+var loginHistory = []string{"-run", "History", "./login/"}
+
+// simRegression runs the simulator's regression of the shipped rules.
+var simRegression = []string{"-run", "SimGate|PolicyMatchesPool", "./internal/poolsim/"}
 
 // TestMutation runs every mutant and fails unless each is caught.
 func TestMutation(t *testing.T) {

@@ -47,8 +47,17 @@ type UsageEntry struct {
 	Status string `json:"status"`
 	// Reason is the failure's short text; "" when it answered.
 	Reason string `json:"reason,omitempty"`
-	// Windows are the probed windows.
+	// Windows are the probed windows: the all-models ones and the
+	// per-model ones of Model.
 	Windows []UsageCacheWindow `json:"windows"`
+	// Model is the model the probe asked with ("" = the agent's default
+	// probe model): a per-model window shows only for its own model.
+	Model string `json:"model,omitempty"`
+	// Models are the per-model windows by the model whose probe returned
+	// them, each with its probe time, kept across probes with other
+	// models (an empty list records that the model has none). Key "" is
+	// the default probe model.
+	Models map[string]ModelWindows `json:"models,omitempty"`
 	// Detected is the kind read from the probed token's prefix
 	// (oauth-token, api-key, unknown); "" when the entry predates it.
 	// Never any part of the token.
@@ -63,6 +72,54 @@ type UsageCacheWindow struct {
 	Scope    string     `json:"scope,omitempty"`
 	Percent  float64    `json:"percent"`
 	ResetsAt *time.Time `json:"resets_at,omitempty"`
+	// ID is the vendor's name of the window ("5h", "7d", "7d_oi").
+	ID string `json:"id,omitempty"`
+	// Status is the vendor's status of the window ("allowed",
+	// "rejected"); "" when it gave none.
+	Status string `json:"status,omitempty"`
+	// Binding is true when the vendor named it the window that limits
+	// the account now.
+	Binding bool `json:"binding,omitempty"`
+}
+
+// ModelWindows are the per-model windows one model's probe returned.
+type ModelWindows struct {
+	ProbedAt time.Time          `json:"probed_at"`
+	Windows  []UsageCacheWindow `json:"windows"`
+}
+
+// ScopedOnly are the windows of ws limited to one model.
+func ScopedOnly(ws []UsageCacheWindow) []UsageCacheWindow {
+	out := []UsageCacheWindow{}
+	for _, w := range ws {
+		if w.Scope != "" {
+			out = append(out, w)
+		}
+	}
+	return out
+}
+
+// WithModel is e after a probe with model e.Model: its per-model windows
+// are recorded under that model, beside the ones old kept for other
+// models (same agent only).
+func (e UsageEntry) WithModel(old UsageEntry, hasOld bool) UsageEntry {
+	models := map[string]ModelWindows{}
+	if hasOld && old.Agent == e.Agent {
+		for k, v := range old.Models {
+			models[k] = v
+		}
+	}
+	for k, v := range e.Models {
+		models[k] = v
+	}
+	if len(e.Windows) > 0 {
+		models[e.Model] = ModelWindows{ProbedAt: e.ProbedAt, Windows: ScopedOnly(e.Windows)}
+	}
+	e.Models = models
+	if len(e.Models) == 0 {
+		e.Models = nil
+	}
+	return e
 }
 
 // ReadUsageCache reads the cache. A missing file is an empty cache; an
@@ -112,7 +169,8 @@ func UpdateUsageCache(ctx context.Context, paths config.Paths, entries map[strin
 	defer func() { _ = lk.Close() }() // the OS drops the lock with the descriptor anyway
 	c, _ := ReadUsageCache(paths)     // a broken cache is replaced, not fatal
 	for name, e := range entries {
-		c.Logins[name] = e
+		old, hasOld := c.Logins[name]
+		c.Logins[name] = e.WithModel(old, hasOld)
 	}
 	b, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {
@@ -121,6 +179,9 @@ func UpdateUsageCache(ctx context.Context, paths config.Paths, entries map[strin
 	if err := atomicfile.Write(file, append(b, '\n'), atomicfile.Options{Mode: config.TokensFileMode}); err != nil {
 		return UsageCache{}, err
 	}
+	// The history rides on the same write and lock; it only helps later
+	// calibration, so its failure never fails the cache.
+	_ = recordHistory(paths, entries)
 	return c, nil
 }
 

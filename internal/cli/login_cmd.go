@@ -204,6 +204,9 @@ func (c *cliCtx) loginEditCmd() *cobra.Command {
 type poolSettingFlags struct {
 	capShort, capWeek, disable, enable                        []string
 	defShort, defWeek, cutoff, borrow, maxAge, keyTTL, picker string
+	// The rule flags.
+	order, relaxWindow, maxSessions, sticky, defRelax, leaveRatio      string
+	capRelax, groupShort, groupWeek, groupRelax, capacity, probeModels []string
 }
 
 // addPoolSettingFlags declares the pool setting flags add and edit share.
@@ -213,13 +216,25 @@ func addPoolSettingFlags(cmd *cobra.Command, ps *poolSettingFlags) {
 	f.StringArrayVar(&ps.capWeek, "pool-cap-week", nil, "a member's own weekly cap: NAME=PERCENT; NAME= removes it (repeat)")
 	f.StringArrayVar(&ps.disable, "pool-disable", nil, "leave a member out of the pool: enabled false (repeat)")
 	f.StringArrayVar(&ps.enable, "pool-enable", nil, "take a disabled member back (repeat)")
-	f.StringVar(&ps.defShort, "pool-default-short", "", "the 5-hour cap of members without their own, in percent (empty: default 50)")
-	f.StringVar(&ps.defWeek, "pool-default-week", "", "the weekly cap of members without their own, in percent (empty: default 70)")
+	f.StringVar(&ps.defShort, "pool-default-short", "", "the 5-hour cap of shared members without their own, in percent (empty: default 50)")
+	f.StringVar(&ps.defWeek, "pool-default-week", "", "the weekly cap of shared members without their own, in percent (empty: default 70)")
 	f.StringVar(&ps.cutoff, "pool-short-cutoff", "", "the 5-hour safety cutoff for every member, in percent (empty: default 99)")
 	f.StringVar(&ps.borrow, "pool-borrow-window", "", "a shared member goes first when its weekly reset is this close, like 48h (empty: default 48h)")
 	f.StringVar(&ps.maxAge, "pool-usage-max-age", "", "how old the usage cache may be before members are probed again, like 60s (empty: default 60s)")
 	f.StringVar(&ps.keyTTL, "pool-key-ttl", "", "how long the agent keeps a key before it asks again, like 60s (empty: default 60s)")
 	f.StringVar(&ps.picker, "pool-picker", "", "a shell command that picks the member instead of the built-in rules (empty removes it)")
+	f.StringVar(&ps.order, "pool-order", "", "how the pool ranks its members: urgency (the most room to lose per hour first) or deadline (the soonest weekly reset first) (empty: default urgency)")
+	f.StringVar(&ps.relaxWindow, "pool-week-relax-window", "", "a member's weekly cap rises to its relax max over this long before its reset, like 24h; 0s = never (empty: default 24h)")
+	f.StringVar(&ps.maxSessions, "pool-max-sessions", "", "how many sessions one member takes before the next is used; 0 = no limit (empty: default 4)")
+	f.StringVar(&ps.sticky, "pool-sticky", "", "keep a session on its member while it is still in the pool: true or false (empty: default true)")
+	f.StringVar(&ps.leaveRatio, "pool-sticky-leave-ratio", "", "a sticky session leaves its member when another is at least this many times as urgent; 0 = never (empty: default 3)")
+	f.StringVar(&ps.defRelax, "pool-default-week-relax", "", "the weekly cap members reach at their reset, in percent (empty: default 95)")
+	f.StringArrayVar(&ps.capRelax, "pool-cap-week-relax", nil, "a member's own weekly cap at its reset: NAME=PERCENT; NAME= removes it (repeat)")
+	f.StringArrayVar(&ps.capacity, "pool-capacity", nil, "a member's plan size relative to the others (only ratios matter), so its room counts for more work: NAME=N; NAME= removes it (repeat)")
+	f.StringArrayVar(&ps.groupShort, "pool-group-cap-short", nil, "the 5-hour cap of a group's members without their own: own=PERCENT or shared=PERCENT; GROUP= removes it (repeat)")
+	f.StringArrayVar(&ps.groupWeek, "pool-group-cap-week", nil, "the weekly cap of a group's members without their own: own=PERCENT or shared=PERCENT; GROUP= removes it (repeat)")
+	f.StringArrayVar(&ps.probeModels, "pool-probe-model", nil, "a model to probe the members with when a session's own model is unknown, so its per-model weekly window applies (repeat; '' removes probe_models)")
+	f.StringArrayVar(&ps.groupRelax, "pool-group-cap-week-relax", nil, "the weekly cap a group's members reach at their reset: own=PERCENT or shared=PERCENT; GROUP= removes it (repeat)")
 }
 
 // settings returns the flags that were given; an empty value is kept
@@ -245,6 +260,16 @@ func (ps *poolSettingFlags) settings(cmd *cobra.Command) app.PoolSettings {
 	s.ShortCutoff, s.BorrowWindow = one("pool-short-cutoff", ps.cutoff), one("pool-borrow-window", ps.borrow)
 	s.UsageMaxAge, s.KeyTTL = one("pool-usage-max-age", ps.maxAge), one("pool-key-ttl", ps.keyTTL)
 	s.Picker = one("pool-picker", ps.picker)
+	s.Rules = app.PoolRuleSettings{
+		Order: one("pool-order", ps.order), WeekRelaxWindow: one("pool-week-relax-window", ps.relaxWindow),
+		MaxSessions: one("pool-max-sessions", ps.maxSessions), Sticky: one("pool-sticky", ps.sticky),
+		StickyLeaveRatio: one("pool-sticky-leave-ratio", ps.leaveRatio),
+		DefaultWeekRelax: one("pool-default-week-relax", ps.defRelax), CapWeekRelax: list("pool-cap-week-relax", ps.capRelax),
+		Capacity:      list("pool-capacity", ps.capacity),
+		GroupCapShort: list("pool-group-cap-short", ps.groupShort), GroupCapWeek: list("pool-group-cap-week", ps.groupWeek),
+		GroupCapWeekRelax: list("pool-group-cap-week-relax", ps.groupRelax),
+		ProbeModels:       list("pool-probe-model", ps.probeModels),
+	}
 	return s
 }
 

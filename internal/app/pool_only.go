@@ -137,25 +137,24 @@ func InUseText(inUse, noKey, empty string) string {
 
 // onlyDecisions are a pinned launch's dry-run lines: the pin and the
 // member's effective caps, each with its source (the run's flag, the
-// member's own entry, the pool's defaults, or agx's default).
+// member's own entry, its group's block, the pool's defaults, or agx's
+// default).
 func onlyDecisions(key string, pl *config.Pool, rules pool.Config, o PoolOnly) []report.Decision {
 	caps, _ := rules.Tightened(o.Member, o.Caps) // checkPoolOnly passed
-	acct := pl.Accounts[o.Member]
-	src := func(flag string, tight, own, def *float64, sub string) string {
-		switch {
-		case tight != nil:
+	g := groupOf(pl, o.Member)
+	src := func(flag string, tight *float64, which string) string {
+		if tight != nil {
 			return flag
-		case own != nil:
-			return key + ".accounts." + o.Member + "." + sub
-		case def != nil:
-			return key + ".defaults." + sub
+		}
+		if _, _, cfgKey := memberValue(*pl, o.Member, g, which); cfgKey != "" {
+			return key + "." + cfgKey
 		}
 		return SourceDefault
 	}
 	return []report.Decision{
 		{Name: decPool, Value: "pick: only " + OnlyText(o.Member) + " for every key of this run", Source: flagPoolOnly},
-		{Name: decPool, Value: fmt.Sprintf("%s 5h cap %g%%", o.Member, caps.Short), Source: src(flagPoolOnlyShort, o.Caps.Short, acct.Short, pl.Defaults.Short, "short")},
-		{Name: decPool, Value: fmt.Sprintf("%s week cap %g%%", o.Member, caps.Week), Source: src(flagPoolOnlyWeek, o.Caps.Week, acct.Week, pl.Defaults.Week, "week")},
+		{Name: decPool, Value: fmt.Sprintf("%s 5h cap %g%%", o.Member, caps.Short), Source: src(flagPoolOnlyShort, o.Caps.Short, memberShort)},
+		{Name: decPool, Value: fmt.Sprintf("%s week cap %g%%", o.Member, caps.Week), Source: src(flagPoolOnlyWeek, o.Caps.Week, memberWeek)},
 	}
 }
 

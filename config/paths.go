@@ -24,6 +24,9 @@ const (
 	// the last probe of each login-pool member (it holds account labels,
 	// so it is written 0600).
 	LoginUsageFileName = "login-usage.jsonc"
+	// LoginUsageHistoryFileName is the bounded history of the probes'
+	// readings beside the cache (0600, like it).
+	LoginUsageHistoryFileName = "login-usage-history.jsonc"
 )
 
 // Environment variables that choose the config dir, first match wins
@@ -59,6 +62,11 @@ type Paths struct {
 // LoginUsage is the login-usage cache file of this config dir.
 func (p Paths) LoginUsage() string {
 	return filepath.Join(p.Dir, CacheDirName, LoginUsageFileName)
+}
+
+// LoginUsageHistory is the login-usage history file of this config dir.
+func (p Paths) LoginUsageHistory() string {
+	return filepath.Join(p.Dir, CacheDirName, LoginUsageHistoryFileName)
 }
 
 // Lookup reads one environment variable; injected so nothing here reads

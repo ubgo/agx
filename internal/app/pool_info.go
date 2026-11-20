@@ -14,23 +14,31 @@ import (
 // editing a pool stay on agx login add --kind pool and agx login edit
 // --pool-…: a pool is a login kind.
 
-// Where a pool setting's value comes from (PoolSetting.Source).
+// Where a pool value comes from (PoolSetting.Source, PoolMember's
+// *_source): agx's documented default, a pool-wide key of the pool's
+// block (defaults.* included), a group's block (own_caps, shared_caps)
+// or the member's own entry (accounts.NAME).
 const (
-	// SourceConfig is a value the pool's block in config sets.
-	SourceConfig = "config"
-	// SourceDefault is agx's documented default for an omitted key.
 	SourceDefault = "default"
-	// SourcePoolDefaults is a member cap taken from the pool's defaults
-	// key, which config sets (the member has no entry of its own for it).
-	SourcePoolDefaults = "defaults"
+	SourcePool    = "pool"
+	SourceGroup   = "group"
+	SourceMember  = "member"
 )
 
 // Pool setting keys, as the pool block in config names them, so a key in
 // agx pool show is the one agx config set and the docs use.
 const (
 	poolKeyForce        = "force"
+	poolKeyOrder        = "order"
+	poolKeyRelaxWindow  = "week_relax_window"
+	poolKeyRelaxMax     = "defaults.week_relax_max"
+	poolKeyMaxSessions  = "max_sessions"
+	poolKeySticky       = "sticky"
+	poolKeyStickyLeave  = "sticky_leave_ratio"
 	poolKeyDefaultShort = "defaults.short"
 	poolKeyDefaultWeek  = "defaults.week"
+	poolKeyOwnShort     = "own_caps.short"
+	poolKeyOwnWeek      = "own_caps.week"
 	poolKeyBorrow       = "shared_borrow_window"
 	poolKeyCutoff       = "short_unavailable_at_percent"
 	poolKeyMaxAge       = "usage_max_age"
@@ -39,6 +47,11 @@ const (
 	poolKeyPickerTime   = "picker.timeout"
 	poolKeyLog          = "log"
 )
+
+// poolRuleKeys are the settings that decide the pick (agx pool pick and a
+// launch's dry run show them): the rule values and the group defaults.
+var poolRuleKeys = []string{poolKeyOrder, poolKeyRelaxWindow, poolKeyRelaxMax, poolKeyMaxSessions, poolKeySticky, poolKeyStickyLeave,
+	poolKeyBorrow, poolKeyCutoff, poolKeyOwnShort, poolKeyOwnWeek, poolKeyDefaultShort, poolKeyDefaultWeek}
 
 // Words of an off setting: no force, no picker, no log.
 const (
@@ -60,25 +73,29 @@ type PoolSummary struct {
 }
 
 // PoolSetting is one pool setting: its config key, its value as config
-// writes it, and where the value comes from (config or default).
+// writes it, and where the value comes from (default or pool).
 type PoolSetting struct {
 	Key    string `json:"key"`
 	Value  string `json:"value"`
 	Source string `json:"source"`
 }
 
-// PoolMember is one member with the caps and enabled state it gets: its
-// own accounts entry (config), else the pool's defaults (defaults), else
-// agx's defaults (default).
+// PoolMember is one member with the values it gets, each with its
+// source: its own accounts entry (member), its group's block (group),
+// the pool's defaults key (pool), else agx's default (default).
 type PoolMember struct {
-	Name          string     `json:"name"`
-	Group         pool.Group `json:"group"`
-	Enabled       bool       `json:"enabled"`
-	EnabledSource string     `json:"enabled_source"`
-	Short         float64    `json:"short"`
-	ShortSource   string     `json:"short_source"`
-	Week          float64    `json:"week"`
-	WeekSource    string     `json:"week_source"`
+	Name               string     `json:"name"`
+	Group              pool.Group `json:"group"`
+	Enabled            bool       `json:"enabled"`
+	EnabledSource      string     `json:"enabled_source"`
+	Short              float64    `json:"short"`
+	ShortSource        string     `json:"short_source"`
+	Week               float64    `json:"week"`
+	WeekSource         string     `json:"week_source"`
+	WeekRelaxMax       float64    `json:"week_relax_max"`
+	WeekRelaxMaxSource string     `json:"week_relax_max_source"`
+	Capacity           float64    `json:"capacity"`
+	CapacitySource     string     `json:"capacity_source"`
 }
 
 // PoolInfo is agx pool show's result.
@@ -162,82 +179,176 @@ func nonNil(s []string) []string {
 // copied into agx config set.
 func poolInfo(name string, lg config.Login) PoolInfo {
 	p := poolOf(lg)
-	info := PoolInfo{PoolSummary: poolSummary(name, lg), Members: []PoolMember{}}
-	defShort, defShortSrc := capOr(p.Defaults.Short, pool.DefaultShortCap)
-	defWeek, defWeekSrc := capOr(p.Defaults.Week, pool.DefaultWeekCap)
+	info := PoolInfo{PoolSummary: poolSummary(name, lg), Members: []PoolMember{}, Settings: poolSettings(p)}
 	for _, m := range p.Own {
-		info.Members = append(info.Members, poolMember(p, m, pool.GroupOwn, defShort, defShortSrc, defWeek, defWeekSrc))
+		info.Members = append(info.Members, poolMember(p, m, pool.GroupOwn))
 	}
 	for _, m := range p.Shared {
-		info.Members = append(info.Members, poolMember(p, m, pool.GroupShared, defShort, defShortSrc, defWeek, defWeekSrc))
+		info.Members = append(info.Members, poolMember(p, m, pool.GroupShared))
 	}
+	return info
+}
+
+// poolSettings is every pool-wide setting with its effective value and
+// source, in the order agx pool show prints them.
+func poolSettings(p config.Pool) []PoolSetting {
+	var out []PoolSetting
 	add := func(key, value, src string) {
-		info.Settings = append(info.Settings, PoolSetting{Key: key, Value: value, Source: src})
+		out = append(out, PoolSetting{Key: key, Value: value, Source: src})
 	}
 	addDuration := func(key, v string, def time.Duration) {
 		value, src := durationOr(v, def)
 		add(key, value, src)
 	}
+	addPercent := func(key string, v *float64, def float64) {
+		value, src := capOr(v, def)
+		add(key, percentText(value), src)
+	}
 	force, forceSrc := poolOffForce, SourceDefault
 	if p.Force != nil {
-		force, forceSrc = *p.Force, SourceConfig
+		force, forceSrc = *p.Force, SourcePool
 	}
 	add(poolKeyForce, force, forceSrc)
-	add(poolKeyDefaultShort, percentText(defShort), defShortSrc)
-	add(poolKeyDefaultWeek, percentText(defWeek), defWeekSrc)
+	order, orderSrc := string(pool.DefaultOrder), SourceDefault
+	if p.Order != "" {
+		order, orderSrc = p.Order, SourcePool
+	}
+	add(poolKeyOrder, order, orderSrc)
+	addDuration(poolKeyRelaxWindow, p.WeekRelaxWindow, pool.DefaultWeekRelaxWindow)
+	addPercent(poolKeyRelaxMax, p.Defaults.WeekRelaxMax, pool.DefaultWeekRelaxMax)
+	sessions, sessionsSrc := strconv.Itoa(pool.DefaultMaxSessions), SourceDefault
+	if p.MaxSessions != nil {
+		sessions, sessionsSrc = strconv.Itoa(*p.MaxSessions), SourcePool
+	}
+	add(poolKeyMaxSessions, sessions, sessionsSrc)
+	sticky, stickySrc := strconv.FormatBool(pool.DefaultSticky), SourceDefault
+	if p.Sticky != nil {
+		sticky, stickySrc = strconv.FormatBool(*p.Sticky), SourcePool
+	}
+	add(poolKeySticky, sticky, stickySrc)
+	addPercent(poolKeyStickyLeave, p.StickyLeaveRatio, pool.DefaultStickyLeaveRatio)
 	addDuration(poolKeyBorrow, p.SharedBorrowWindow, pool.DefaultBorrowWindow)
-	cutoff, cutoffSrc := capOr(p.ShortUnavailableAtPercent, pool.DefaultShortUnavailableAt)
-	add(poolKeyCutoff, percentText(cutoff), cutoffSrc)
+	addPercent(poolKeyCutoff, p.ShortUnavailableAtPercent, pool.DefaultShortUnavailableAt)
+	ownShort, ownShortSrc := groupCapOr(p.OwnCaps.Short, pool.DefaultOwnShortCap)
+	add(poolKeyOwnShort, percentText(ownShort), ownShortSrc)
+	ownWeek, ownWeekSrc := groupCapOr(p.OwnCaps.Week, pool.DefaultOwnWeekCap)
+	add(poolKeyOwnWeek, percentText(ownWeek), ownWeekSrc)
+	addPercent(poolKeyDefaultShort, p.Defaults.Short, pool.DefaultShortCap)
+	addPercent(poolKeyDefaultWeek, p.Defaults.Week, pool.DefaultWeekCap)
 	addDuration(poolKeyMaxAge, p.UsageMaxAge, config.DefaultUsageMaxAge)
 	addDuration(poolKeyKeyTTL, p.KeyTTL, config.DefaultKeyTTL)
 	picker, pickerSrc, timeout, timeoutSrc := poolOffPicker, SourceDefault, durationText(config.DefaultPickerTimeout), SourceDefault
 	if p.Picker != nil {
-		picker, pickerSrc = p.Picker.Command, SourceConfig
+		picker, pickerSrc = p.Picker.Command, SourcePool
 		timeout, timeoutSrc = durationOr(p.Picker.Timeout, config.DefaultPickerTimeout)
 	}
 	add(poolKeyPicker, picker, pickerSrc)
 	add(poolKeyPickerTime, timeout, timeoutSrc)
 	logPath, logSrc := poolOffLog, SourceDefault
 	if p.Log != "" {
-		logPath, logSrc = p.Log, SourceConfig
+		logPath, logSrc = p.Log, SourcePool
 	}
 	add(poolKeyLog, logPath, logSrc)
-	return info
+	return out
 }
 
-// poolMember is member m's caps and enabled state, each with its source.
-func poolMember(p config.Pool, m string, g pool.Group, defShort float64, defShortSrc string, defWeek float64, defWeekSrc string) PoolMember {
-	pm := PoolMember{Name: m, Group: g, Enabled: true, EnabledSource: SourceDefault,
-		Short: defShort, ShortSource: memberCapSource(defShortSrc), Week: defWeek, WeekSource: memberCapSource(defWeekSrc)}
-	acc, ok := p.Accounts[m]
-	if !ok {
-		return pm
+// poolRuleSettings are the settings of poolRuleKeys, in that order.
+func poolRuleSettings(p config.Pool) []PoolSetting {
+	all := poolSettings(p)
+	out := make([]PoolSetting, 0, len(poolRuleKeys))
+	for _, k := range poolRuleKeys {
+		for _, s := range all {
+			if s.Key == k {
+				out = append(out, s)
+			}
+		}
 	}
-	if acc.Enabled != nil {
-		pm.Enabled, pm.EnabledSource = *acc.Enabled, SourceConfig
+	return out
+}
+
+// groupCapOr is an own_caps value, or the own default.
+func groupCapOr(v *float64, def float64) (float64, string) {
+	if v != nil {
+		return *v, SourceGroup
 	}
-	if acc.Short != nil {
-		pm.Short, pm.ShortSource = *acc.Short, SourceConfig
+	return def, SourceDefault
+}
+
+// Member value keys (memberValue).
+const (
+	memberShort    = "short"
+	memberWeek     = "week"
+	memberRelaxMax = "week_relax_max"
+	memberCapacity = "capacity"
+)
+
+// memberValue is one of member m's values (memberShort, memberWeek,
+// memberRelaxMax, memberCapacity) with its source and the config key
+// that sets it ("" for agx's default): accounts.m, then the group's
+// block, then the pool's defaults, then agx's default (own members
+// default to 95/98, which defaults does not change).
+func memberValue(p config.Pool, m string, g pool.Group, key string) (float64, string, string) {
+	acct := p.Accounts[m]
+	groupKey, group := "shared_caps", p.SharedCaps
+	if g == pool.GroupOwn {
+		groupKey, group = "own_caps", p.OwnCaps
 	}
-	if acc.Week != nil {
-		pm.Week, pm.WeekSource = *acc.Week, SourceConfig
+	type level struct {
+		v        *float64
+		src, cfg string
+	}
+	var levels []level
+	var def float64
+	switch key {
+	case memberShort:
+		levels = []level{{acct.Short, SourceMember, "accounts." + m + ".short"}, {group.Short, SourceGroup, groupKey + ".short"}}
+		def = pool.DefaultShortCap
+		if g == pool.GroupOwn {
+			def = pool.DefaultOwnShortCap
+		} else {
+			levels = append(levels, level{p.Defaults.Short, SourcePool, "defaults.short"})
+		}
+	case memberWeek:
+		levels = []level{{acct.Week, SourceMember, "accounts." + m + ".week"}, {group.Week, SourceGroup, groupKey + ".week"}}
+		def = pool.DefaultWeekCap
+		if g == pool.GroupOwn {
+			def = pool.DefaultOwnWeekCap
+		} else {
+			levels = append(levels, level{p.Defaults.Week, SourcePool, "defaults.week"})
+		}
+	case memberRelaxMax:
+		levels = []level{{acct.WeekRelaxMax, SourceMember, "accounts." + m + ".week_relax_max"}, {group.WeekRelaxMax, SourceGroup, groupKey + ".week_relax_max"},
+			{p.Defaults.WeekRelaxMax, SourcePool, "defaults.week_relax_max"}}
+		def = pool.DefaultWeekRelaxMax
+	default:
+		levels = []level{{acct.Capacity, SourceMember, "accounts." + m + ".capacity"}}
+		def = 1
+	}
+	for _, l := range levels {
+		if l.v != nil {
+			return *l.v, l.src, l.cfg
+		}
+	}
+	return def, SourceDefault, ""
+}
+
+// poolMember is member m's values and enabled state, each with its source.
+func poolMember(p config.Pool, m string, g pool.Group) PoolMember {
+	pm := PoolMember{Name: m, Group: g, Enabled: true, EnabledSource: SourceDefault}
+	pm.Short, pm.ShortSource, _ = memberValue(p, m, g, memberShort)
+	pm.Week, pm.WeekSource, _ = memberValue(p, m, g, memberWeek)
+	pm.WeekRelaxMax, pm.WeekRelaxMaxSource, _ = memberValue(p, m, g, memberRelaxMax)
+	pm.Capacity, pm.CapacitySource, _ = memberValue(p, m, g, memberCapacity)
+	if acc, ok := p.Accounts[m]; ok && acc.Enabled != nil {
+		pm.Enabled, pm.EnabledSource = *acc.Enabled, SourceMember
 	}
 	return pm
 }
 
-// memberCapSource is where a member without its own cap gets it: the
-// pool's defaults key when config sets it, else agx's default.
-func memberCapSource(defaultsSrc string) string {
-	if defaultsSrc == SourceConfig {
-		return SourcePoolDefaults
-	}
-	return SourceDefault
-}
-
-// capOr is a percent the config sets, or the default.
+// capOr is a number the pool's block sets, or the default.
 func capOr(v *float64, def float64) (float64, string) {
 	if v != nil {
-		return *v, SourceConfig
+		return *v, SourcePool
 	}
 	return def, SourceDefault
 }
@@ -246,7 +357,7 @@ func capOr(v *float64, def float64) (float64, string) {
 // the same way ("48h", "60s").
 func durationOr(v string, def time.Duration) (string, string) {
 	if v != "" {
-		return v, SourceConfig
+		return v, SourcePool
 	}
 	return durationText(def), SourceDefault
 }

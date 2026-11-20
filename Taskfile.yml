@@ -69,6 +69,11 @@ tasks:
     cmds:
       - go test -tags mutation -count=1 -timeout 30m -run TestMutation -v ./pool/
 
+  sim:
+    desc: Run the login-pool simulator over pool/testdata/sim (every scenario, every strategy, the knob sweeps) and write pool/testdata/sim/RESULTS.md; a few minutes. Flags after -- (task sim -- -scenario small-mixed) print to stdout instead
+    cmds:
+      - '{{if .CLI_ARGS}}go run ./internal/poolsim/cmd/poolsim {{.CLI_ARGS}}{{else}}go run ./internal/poolsim/cmd/poolsim -sweep > pool/testdata/sim/RESULTS.md{{end}}'
+
   schema:
     desc: Regenerate schema/config.schema.json from the config types (internal/docscheck)
     cmds:

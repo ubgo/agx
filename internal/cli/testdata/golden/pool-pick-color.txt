@@ -1,18 +1,20 @@
-[2mPool: auto (claude)[0m
+[2mPool: auto (claude, order urgency)[0m
 [1mUse: grace (shared)[0m
-shared account resets within 48h, before any usable own account; using its room before it is lost
+most room to lose: 44% left under its weekly cap with 37.8h to the reset (1.2%/h to use it all)
 [2mSource: cache (20s old)[0m
+[2mProbe model: the agent's default (all-models windows only)[0m
+Rules: order urgency [2m(default)[0m, week_relax_window 24h [2m(default)[0m, defaults.week_relax_max 95 [2m(default)[0m, max_sessions 4 [2m(default)[0m, sticky true [2m(default)[0m, sticky_leave_ratio 3 [2m(default)[0m, shared_borrow_window 48h [2m(default)[0m, short_unavailable_at_percent 99 [2m(default)[0m, own_caps.short 95 [2m(default)[0m, own_caps.week 98 [2m(default)[0m, defaults.short 50 [2m(default)[0m, defaults.week 70 [2m(default)[0m
 
 [1mCandidates (ready accounts in pick order):[0m
-- grace [shared] [34m#1 READY[0m (5h 0%, week 26%, resets in 1 d 13 hr, room 44%)
-- ivan [shared] [34m#2 READY[0m (5h 4%, week 43%, resets in 1 d 17 hr, room 27%)
-- carol [own] [34m#3 READY[0m (5h 1%, week 59%, resets in 2 d 9 hr, room 41%)
-- alice [own] [34m#4 READY[0m (week 29%, resets in 6 d 11 hr, room 71%)
-- judy [shared] [33mWAIT[0m (5h 41%, week 44%, resets in 2 d 8 hr, room 26%)[2m (shared reset not within 48h while an own account is usable)[0m
-- heidi [shared] [33mWAIT[0m (5h 0%, week 33%, resets in 3 d 8 hr, room 37%)[2m (shared reset not within 48h while an own account is usable)[0m
-- frank [shared] [33mWAIT[0m (5h 0%, week 15%, resets in 3 d 14 hr, room 55%)[2m (shared reset not within 48h while an own account is usable)[0m
-- mallory [shared] [33mWAIT[0m (5h 36%, week 58%, resets in 5 d 5 hr, room 12%)[2m (shared reset not within 48h while an own account is usable)[0m
-- erin [shared] [33mWAIT[0m (5h 6%, week 3%, resets in 6 d 8 hr, room 67%)[2m (shared reset not within 48h while an own account is usable)[0m
-- derek [shared] [33mWAIT[0m (5h 0%, week 1%, resets in 6 d 21 hr, room 69%)[2m (shared reset not within 48h while an own account is usable)[0m
-- bob [own] [31mskip: status is limit-reached; week is 100% (cap 100%)[0m (5h 0%, week 100%, resets in 23 hr 50 min, room 0%)
-- niaj [shared] [31mskip: week is 80% (cap 70%)[0m (week 80%, resets in 4 d 13 hr, room 0%)
+- grace [shared] [34m#1 READY[0m (5h 0%, week 26%, resets in 1 d 13 hr, room 44%, caps 50/70 (default), needs 1.16%/h)
+- carol [own] [34m#2 READY[0m (5h 1%, week 59%, resets in 2 d 9 hr, room 41%, caps 99/100 (member), needs 0.71%/h)
+- ivan [shared] [34m#3 READY[0m (5h 4%, week 43%, resets in 1 d 17 hr, room 27%, caps 50/70 (default), needs 0.65%/h)
+- alice [own] [34m#4 READY[0m (week 29%, resets in 6 d 11 hr, room 71%, caps 99/100 (member), needs 0.46%/h)
+- frank [shared] [33mWAIT[0m (5h 0%, week 15%, resets in 3 d 14 hr, room 55%, caps 50/70 (default), needs 0.63%/h)[2m (shared reset not within 48h while an own account is usable)[0m
+- heidi [shared] [33mWAIT[0m (5h 0%, week 33%, resets in 3 d 8 hr, room 37%, caps 50/70 (default), needs 0.46%/h)[2m (shared reset not within 48h while an own account is usable)[0m
+- judy [shared] [33mWAIT[0m (5h 41%, week 44%, resets in 2 d 8 hr, room 26%, caps 50/70 (default), needs 0.46%/h)[2m (shared reset not within 48h while an own account is usable)[0m
+- erin [shared] [33mWAIT[0m (5h 6%, week 3%, resets in 6 d 8 hr, room 67%, caps 50/70 (default), needs 0.44%/h)[2m (shared reset not within 48h while an own account is usable)[0m
+- derek [shared] [33mWAIT[0m (5h 0%, week 1%, resets in 6 d 21 hr, room 69%, caps 50/70 (default), needs 0.42%/h)[2m (shared reset not within 48h while an own account is usable)[0m
+- mallory [shared] [33mWAIT[0m (5h 36%, week 58%, resets in 5 d 5 hr, room 12%, caps 50/70 (default), needs 0.1%/h)[2m (shared reset not within 48h while an own account is usable)[0m
+- bob [own] [31mskip: status is limit-reached; week is 100% (cap 100%)[0m (5h 0%, week 100%, resets in 23 hr 50 min, room 0%, caps 99/100 (member))
+- niaj [shared] [31mskip: week is 80% (cap 70%)[0m (week 80%, resets in 4 d 13 hr, room 0%, caps 50/70 (default))

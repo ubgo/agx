@@ -1,0 +1,21 @@
+// Pool simulator scenario (task sim; docs/guides/pool-simulator.md).
+{
+  "about": "One own Pro account and one session: the 5-hour window runs out daily.",
+  "seed": 111,
+  "seeds": 12,
+  "own": {
+    "count": [
+      1,
+      1
+    ],
+    "plans": [
+      "pro"
+    ]
+  },
+  "sessions": {
+    "count": [
+      1,
+      1
+    ]
+  }
+}

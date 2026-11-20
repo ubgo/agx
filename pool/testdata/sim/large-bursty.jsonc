@@ -1,0 +1,25 @@
+// Pool simulator scenario (task sim; docs/guides/pool-simulator.md).
+{
+  "about": "A large team with eight to sixteen sessions that work in bursts.",
+  "seed": 351,
+  "seeds": 12,
+  "own": {
+    "count": [
+      2,
+      3
+    ]
+  },
+  "shared": {
+    "count": [
+      8,
+      12
+    ]
+  },
+  "sessions": {
+    "count": [
+      8,
+      16
+    ],
+    "pattern": "bursty"
+  }
+}

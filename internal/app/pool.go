@@ -18,6 +18,7 @@ import (
 	"github.com/ubgo/agx/internal/apperr"
 	"github.com/ubgo/agx/internal/report"
 	"github.com/ubgo/agx/internal/run"
+	"github.com/ubgo/agx/live"
 	"github.com/ubgo/agx/login"
 	"github.com/ubgo/agx/pool"
 )
@@ -91,6 +92,14 @@ type PoolPickOptions struct {
 	Only PoolOnly
 	// Now replaces the clock (--now, for reading old caches); zero = now.
 	Now time.Time
+	// Model is the model the session uses, which the members are probed
+	// with (pool_models.go): agx pool pick --model, or the run's recorded
+	// model; "" = the pool's probe_models, else the agent's default.
+	Model string
+	// RunID is the live run asking for a key (agx credential); "" for a
+	// pick outside a run. Sticky keeps that run on its member, and
+	// max_sessions counts the other runs on each member.
+	RunID string
 }
 
 // PoolSelection is the member to use and why.
@@ -104,6 +113,10 @@ type PoolSelection struct {
 	Only bool `json:"only,omitempty"`
 	// PickedBy is rules, force, picker or only.
 	PickedBy string `json:"picked_by"`
+	// Sticky is true when the run stayed on its member.
+	Sticky bool `json:"sticky,omitempty"`
+	// Sessions is how many other live runs use the member.
+	Sessions int `json:"sessions"`
 	// Reason is one sentence: what chose it.
 	Reason string `json:"reason"`
 	// Warnings are the rules a forced or picker-chosen member breaks.
@@ -132,18 +145,47 @@ type PoolCandidate struct {
 	HoursToReset *float64  `json:"hours_to_reset"`
 	RoomPercent  *float64  `json:"room_percent"`
 	Caps         pool.Caps `json:"caps"`
-	Reasons      []string  `json:"reasons"`
-	Notes        []string  `json:"notes"`
+	// CapsSource says where each cap comes from: member, group, pool
+	// (defaults) or default.
+	CapsSource CapSources `json:"caps_source"`
+	// WeekCapConfigured is the configured weekly cap when caps.week is
+	// relaxed above it near the reset; nil otherwise.
+	WeekCapConfigured *float64 `json:"week_cap_configured,omitempty"`
+	// UrgencyPercentPerHour is room ÷ hours to the reset times the
+	// capacity, the urgency order's key; nil when unknown.
+	UrgencyPercentPerHour *float64 `json:"urgency_percent_per_hour,omitempty"`
+	// Scoped are the member's per-model windows of the probe models,
+	// each an extra weekly cap ([] = none).
+	Scoped []pool.ScopedState `json:"scoped"`
+	// Sessions is how many other live runs use the member.
+	Sessions int      `json:"sessions"`
+	Reasons  []string `json:"reasons"`
+	Notes    []string `json:"notes"`
 	// Source is "live agx result", "cache" or "no reading"; AgeSeconds
 	// is a cached reading's age.
 	Source     string   `json:"source"`
 	AgeSeconds *float64 `json:"age_seconds"`
 }
 
+// CapSources are where a member's 5-hour and weekly caps come from.
+type CapSources struct {
+	Short string `json:"short"`
+	Week  string `json:"week"`
+}
+
 // PoolReport is agx pool pick's result.
 type PoolReport struct {
 	Pool  string `json:"pool"`
 	Agent string `json:"agent"`
+	// Order is how the pool ranked its members: urgency or deadline.
+	Order pool.Order `json:"order"`
+	// Settings are the rule values in effect, each with its source.
+	Settings []PoolSetting `json:"settings"`
+	// ProbeModels are the models the members were probed with and whose
+	// per-model windows apply ([] = the agent's default probe model);
+	// ProbeModelsSource says why (pool_models.go).
+	ProbeModels       []string `json:"probe_models"`
+	ProbeModelsSource string   `json:"probe_models_source"`
 	// Selected is nil when no member is usable.
 	Selected *PoolSelection `json:"selected"`
 	// Source sums up where the usage came from: "live agx result",
@@ -256,7 +298,7 @@ func (a *App) notAPool(cmd, name string, lg config.Login) string {
 // poolPick reads the members' usage and decides. The error is nil only
 // when a member was selected.
 func (a *App) poolPick(ctx context.Context, name string, lg config.Login, o PoolPickOptions) (PoolReport, error) {
-	rep := PoolReport{Pool: name, Warnings: []string{}, Candidates: []PoolCandidate{}}
+	rep := PoolReport{Pool: name, Warnings: []string{}, Candidates: []PoolCandidate{}, Settings: []PoolSetting{}, ProbeModels: []string{}}
 	if lg.Pool == nil || len(lg.Agents) != 1 {
 		return rep, apperr.Failure(apperr.CodeConfig, "login "+name+" is a pool without a pool block or one agent (agx config check)")
 	}
@@ -282,6 +324,8 @@ func (a *App) poolPick(ctx context.Context, name string, lg config.Login, o Pool
 	}
 	rep.Agent, rep.Now, rep.ShortUnavailableAt = string(ag.ID()), now, rules.ShortUnavailableAt
 	rep.BorrowWindowHours = rules.BorrowWindow.Hours()
+	rep.Order = rules.Rules().Order
+	rep.Settings = poolRuleSettings(*lg.Pool)
 
 	if err := checkPoolOnly(name, lg.Pool, rules, o.Only, o.Force, false); err != nil {
 		// A refused flag is not a pick: no report to print.
@@ -309,20 +353,31 @@ func (a *App) poolPick(ctx context.Context, name string, lg config.Login, o Pool
 		read = append(read, force)
 	}
 
+	if o.Model == "" && o.RunID != "" {
+		if st, err := live.Read(run.Dir(a.paths.Runs, o.RunID)); err == nil {
+			o.Model = st.Model
+		}
+	}
+	models, modelsSrc := a.poolModels(cfg.Config, lg.Pool, ag, o)
+	rep.ProbeModels, rep.ProbeModelsSource = nonNil(models), modelsSrc
 	cache, cerr := login.ReadUsageCache(a.paths)
 	if cerr != nil {
 		rep.warn("login-usage cache: " + cerr.Error())
 	}
-	entries, sources, err := a.poolReadings(ctx, cfg.Config, ag, read, cache, maxAge, o.Cached, now, rep.warn)
+	entries, sources, err := a.poolReadings(ctx, cfg.Config, ag, read, models, cache, maxAge, o.Cached, now, rep.warn)
 	if err != nil {
 		return rep, err
 	}
 	readings := map[string]pool.Reading{}
 	for m, e := range entries {
-		readings[m] = readingOf(e)
+		readings[m] = readingOf(e, models)
 		readings[m] = withPerUse(readings[m], cfg.Config.Logins[m], e)
 	}
-	res, err := pool.Select(rules, readings, pool.Options{Now: now, Force: o.Force, Only: o.Only.Member, OnlyCaps: o.Only.Caps})
+	sel := pool.Options{Now: now, Force: o.Force, Only: o.Only.Member, OnlyCaps: o.Only.Caps}
+	if rules.MaxSessions > 0 || rules.Sticky {
+		sel.Load, sel.Current, sel.CurrentAhead = a.poolLoad(name, lg, o.RunID, now, rep.warn)
+	}
+	res, err := pool.Select(rules, readings, sel)
 	if errors.Is(err, pool.ErrForcedMissing) {
 		return rep, apperr.Failure(apperr.CodeNotFound, fmt.Sprintf("forced login %s has no usage reading (run without --cached)", force))
 	}
@@ -330,7 +385,16 @@ func (a *App) poolPick(ctx context.Context, name string, lg config.Login, o Pool
 		return rep, apperr.Wrap(err, apperr.CodeAutoPick, apperr.ClassFailure, err.Error())
 	}
 	for _, c := range res.Candidates {
-		rep.Candidates = append(rep.Candidates, candidateOf(c, cfg.Config.Logins[c.Name].Account, sources[c.Name]))
+		pc := candidateOf(c, cfg.Config.Logins[c.Name].Account, sources[c.Name])
+		_, pc.CapsSource.Short, _ = memberValue(*lg.Pool, c.Name, c.Group, memberShort)
+		_, pc.CapsSource.Week, _ = memberValue(*lg.Pool, c.Name, c.Group, memberWeek)
+		if c.Name == o.Only.Member && o.Only.Caps.Short != nil {
+			pc.CapsSource.Short = flagPoolOnlyShort
+		}
+		if c.Name == o.Only.Member && o.Only.Caps.Week != nil {
+			pc.CapsSource.Week = flagPoolOnlyWeek
+		}
+		rep.Candidates = append(rep.Candidates, pc)
 	}
 	rep.Source = sourceSummary(sources)
 	switch s := res.Selected; {
@@ -374,6 +438,7 @@ func (a *App) checkForce(c config.Config, force string, agent agentio.ID) error 
 // selectionOf copies the rules' selection.
 func selectionOf(s *pool.Selection, by string) *PoolSelection {
 	return &PoolSelection{Name: s.Name, Group: s.Group, Forced: s.Forced, Only: s.Only, PickedBy: by, Reason: s.Reason,
+		Sticky: s.Sticky, Sessions: s.Load,
 		Warnings: append([]string{}, s.Warnings...), WeeklyResetsAt: s.WeeklyResetsAt, RoomPercent: s.Room}
 }
 
@@ -383,6 +448,10 @@ func candidateOf(c pool.Candidate, account string, src memberSource) PoolCandida
 		Name: c.Name, Group: c.Group, State: c.State, Eligible: c.Eligible, Enabled: c.Enabled, Status: c.Status,
 		Account: account, Short: c.Short, Week: c.Week, WeeklyResetsAt: c.WeeklyResetsAt, RoomPercent: c.Room,
 		Caps: c.Caps, Reasons: c.Reasons, Notes: c.Notes, Source: sourceNone,
+		WeekCapConfigured: c.WeekCapConfigured, UrgencyPercentPerHour: c.Urgency, Sessions: c.Load, Scoped: c.Scoped,
+	}
+	if pc.Scoped == nil {
+		pc.Scoped = []pool.ScopedState{}
 	}
 	if c.Rank > 0 {
 		r := c.Rank
@@ -529,11 +598,12 @@ type memberSource struct {
 }
 
 // poolReadings returns a usage entry per member in names: the cache when
-// it is younger than maxAge (or with cached, any age), else a probe.
-// Members are probed in parallel; a probe that fails for a passing reason
+// it is younger than maxAge for every model in models (or with cached,
+// any age), else a probe per model it lacks (pool_models.go). Members
+// are probed in parallel; a probe that fails for a passing reason
 // (network, 429 without usage, an unexpected answer) falls back to the
 // cached entry with a warning, and the new answers are written back.
-func (a *App) poolReadings(ctx context.Context, c config.Config, ag agentio.Agent, names []string, cache login.UsageCache,
+func (a *App) poolReadings(ctx context.Context, c config.Config, ag agentio.Agent, names, models []string, cache login.UsageCache,
 	maxAge time.Duration, cached bool, now time.Time, warn func(string)) (map[string]login.UsageEntry, map[string]memberSource, error) {
 	entries := map[string]login.UsageEntry{}
 	sources := map[string]memberSource{}
@@ -541,34 +611,55 @@ func (a *App) poolReadings(ctx context.Context, c config.Config, ag agentio.Agen
 		entries[m] = e
 		sources[m] = memberSource{label: sourceCache, age: now.Sub(e.ProbedAt)}
 	}
-	var probe []string
+	keys := probeKeys(models)
+	modelOf := map[string]string{}
+	for i, k := range keys {
+		modelOf[k] = k
+		if len(models) > 0 {
+			modelOf[k] = models[i]
+		}
+	}
+	type job struct{ member, key string }
+	var jobs []job
 	for _, m := range names {
 		e, ok := cache.Logins[m]
 		ok = ok && e.Agent == string(ag.ID())
 		switch {
 		case cached && ok:
 			fromCache(m, e)
+			continue
 		case cached:
-		case ok && now.Sub(e.ProbedAt) < maxAge && !e.ProbedAt.After(now):
+			continue
+		}
+		var stale []string
+		for _, k := range keys {
+			if !ok || !freshFor(e, k, maxAge, now) {
+				stale = append(stale, k)
+			}
+		}
+		if len(stale) == 0 {
 			fromCache(m, e)
-		default:
-			probe = append(probe, m)
+			continue
+		}
+		for _, k := range stale {
+			jobs = append(jobs, job{m, k})
 		}
 	}
-	if len(probe) == 0 {
+	if len(jobs) == 0 {
 		return entries, sources, nil
 	}
 	pr, ok := agentio.TokenProberOf(ag)
 	if !ok {
 		return nil, nil, apperr.Unsupported(fmt.Sprintf("%s cannot probe a login's usage (%s)", ag.ID(), usageUnsupportedReason(ag, agentio.CapTokenProber, reasonNoProbe)))
 	}
-	probed := make([]login.UsageEntry, len(probe))
+	probed := make([]login.UsageEntry, len(jobs))
+	notes := make([]string, len(jobs))
 	var wg sync.WaitGroup
-	for i, m := range probe {
+	for i, j := range jobs {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			probed[i] = a.probeMember(ctx, pr, ag, m, c.Logins[m], now)
+			probed[i], notes[i] = a.probeMember(ctx, pr, ag, j.member, c.Logins[j.member], now, modelOf[j.key])
 		}()
 	}
 	wg.Wait()
@@ -576,23 +667,43 @@ func (a *App) poolReadings(ctx context.Context, c config.Config, ag agentio.Agen
 		return nil, nil, err
 	}
 	fresh := map[string]login.UsageEntry{}
-	for i, m := range probe {
-		e := probed[i]
+	failed := map[string]bool{}
+	for i, j := range jobs {
+		e, m := probed[i], j.member
+		if notes[i] != "" {
+			warn(m + ": " + notes[i])
+		}
 		old, hasOld := cache.Logins[m]
-		if passingFailure(RowStatus(e.Status)) && hasOld && old.Agent == string(ag.ID()) {
-			warn(fmt.Sprintf("probe of %s failed (%s); using its cached usage from %s ago", m, failureText(e), roundAge(now.Sub(old.ProbedAt))))
-			fromCache(m, old)
+		hasOld = hasOld && old.Agent == string(ag.ID())
+		if passingFailure(RowStatus(e.Status)) {
+			failed[m] = true
+			if _, done := entries[m]; !done && hasOld {
+				warn(fmt.Sprintf("probe of %s failed (%s); using its cached usage from %s ago", m, failureText(e), roundAge(now.Sub(old.ProbedAt))))
+				fromCache(m, old)
+			} else if !done {
+				entries[m], sources[m] = e, memberSource{label: sourceLive}
+			}
 			continue
 		}
-		entries[m] = e
-		sources[m] = memberSource{label: sourceLive}
-		if !passingFailure(RowStatus(e.Status)) {
-			// A failed request is not an answer: caching it would block
-			// the member until max age passes instead of asking again.
-			fresh[m] = e
+		// A member probed with several models keeps every model's
+		// windows: each answer is merged over the last.
+		base, hasBase := fresh[m]
+		if !hasBase {
+			base, hasBase = old, hasOld
+		}
+		merged := e.WithModel(base, hasBase)
+		fresh[m] = merged
+		entries[m], sources[m] = merged, memberSource{label: sourceLive}
+	}
+	for m := range failed {
+		if e, ok := fresh[m]; ok {
+			// One model's probe answered: its entry stands.
+			entries[m], sources[m] = e, memberSource{label: sourceLive}
 		}
 	}
 	if len(fresh) > 0 {
+		// A failed request is not an answer: caching it would block the
+		// member until max age passes instead of asking again.
 		if _, err := login.UpdateUsageCache(ctx, a.paths, fresh); err != nil {
 			warn("login-usage cache not written: " + apperr.Text(err))
 		}
@@ -600,14 +711,16 @@ func (a *App) poolReadings(ctx context.Context, c config.Config, ag agentio.Agen
 	return entries, sources, nil
 }
 
-// probeMember resolves one member's token and probes it once (cost Q,
-// plus X for a reference that runs a command). The token is never kept.
-func (a *App) probeMember(ctx context.Context, pr agentio.TokenProber, ag agentio.Agent, name string, lg config.Login, now time.Time) login.UsageEntry {
-	e := login.UsageEntry{Agent: string(ag.ID()), Account: lg.Account, ProbedAt: now, Windows: []login.UsageCacheWindow{}}
+// probeMember resolves one member's token and probes it once with model
+// (cost Q, plus X for a reference that runs a command), returning the
+// entry and a note when the probe fell back to the default model. The
+// token is never kept.
+func (a *App) probeMember(ctx context.Context, pr agentio.TokenProber, ag agentio.Agent, name string, lg config.Login, now time.Time, model string) (login.UsageEntry, string) {
+	e := login.UsageEntry{Agent: string(ag.ID()), Account: lg.Account, ProbedAt: now, Windows: []login.UsageCacheWindow{}, Model: modelKey(model)}
 	cred, err := login.Credential(ctx, a.exp.Brief(), a.paths, name, lg)
 	if err != nil {
 		e.Status, e.Reason = string(StatusSecret), apperr.As(err).Message
-		return e
+		return e, ""
 	}
 	d := login.DetectToken(cred.Token)
 	e.Detected = string(d)
@@ -615,18 +728,22 @@ func (a *App) probeMember(ctx context.Context, pr agentio.TokenProber, ag agenti
 		// Probing an API key spends money on the account that owns it,
 		// for a member the rules will skip anyway.
 		e.Status, e.Reason = string(StatusPerToken), perUseNotProbed
-		return e
+		return e, ""
 	}
 	rctx, cancel := context.WithTimeout(ctx, a.d.Timeout)
 	defer cancel()
-	u, err := pr.TokenUsage(rctx, cred)
+	u, note, err := probeWithModel(rctx, pr, cred, model)
+	if note != "" {
+		e.Model = ""
+	}
 	var r UsageRow
 	setUsage(&r, u, err, SourceProbe)
 	e.Status, e.Reason = string(r.Status), r.Reason
 	for _, w := range r.Windows {
-		e.Windows = append(e.Windows, login.UsageCacheWindow{Class: w.Class, Scope: w.Scope, Percent: w.Percent, ResetsAt: w.ResetsAt})
+		e.Windows = append(e.Windows, login.UsageCacheWindow{Class: w.Class, Scope: w.Scope, Percent: w.Percent, ResetsAt: w.ResetsAt,
+			ID: w.ID, Status: w.Status, Binding: w.Binding})
 	}
-	return e
+	return e, note
 }
 
 // passingFailure is a probe failure that says nothing about the account
@@ -647,31 +764,6 @@ func failureText(e login.UsageEntry) string {
 // login declared oauth-token that does not allow it.
 func withPerUse(r pool.Reading, lg config.Login, e login.UsageEntry) pool.Reading {
 	r.PerUseKey = login.PerUseRefused(lg, login.Detected(e.Detected), false)
-	return r
-}
-
-// readingOf turns a cached entry into the rules' reading: its status
-// ("limit-reached" blocks by itself, as in the usage table) and the
-// first all-usage short and weekly windows (a per-model window does not
-// decide whether the account can take a request).
-func readingOf(e login.UsageEntry) pool.Reading {
-	r := pool.Reading{Status: e.Status}
-	for _, w := range e.Windows {
-		if w.Scope != "" {
-			continue
-		}
-		win := &pool.Window{Percent: w.Percent, ResetsAt: w.ResetsAt}
-		switch w.Class {
-		case agentio.WindowShort.String():
-			if r.Short == nil {
-				r.Short = win
-			}
-		case agentio.WindowWeek.String():
-			if r.Week == nil {
-				r.Week = win
-			}
-		}
-	}
 	return r
 }
 
@@ -709,9 +801,11 @@ const (
 )
 
 // poolLog appends one line per pick to the pool's log when it sets one:
-// time, mode, pool, pick (null when none), group, who picked, source, and
-// the error's first words when it failed. Login names and agx's own words
-// only, never a token. A write failure is a warning in the result.
+// time, mode, pool, pick (null when none), group, who picked, source, the
+// picked member's usage in percent (5h, week and each per-model window)
+// with the probe models, and the error's first words when it failed.
+// Login names, numbers and agx's own words only, never a token. A write
+// failure is a warning in the result.
 func (a *App) poolLog(lg config.Login, mode string, rep PoolReport, pickErr error) []report.Warning {
 	if lg.Pool == nil || lg.Pool.Log == "" {
 		return nil
@@ -723,6 +817,12 @@ func (a *App) poolLog(lg config.Login, mode string, rep PoolReport, pickErr erro
 	}
 	line := fmt.Sprintf("%s mode=%s pool=%s picked=%s group=%s forced=%t by=%s source=%q",
 		a.Now().UTC().Format(time.RFC3339), mode, quote(rep.Pool), picked, group, forced, by, rep.Source)
+	if usage := pickedUsage(rep); usage != "" {
+		line += " usage=" + quote(usage)
+	}
+	if len(rep.ProbeModels) > 0 {
+		line += " models=" + quote(strings.Join(rep.ProbeModels, ","))
+	}
 	if pickErr != nil {
 		line += " error=" + quote(trimTo(apperr.As(pickErr).Message, maxLogError))
 	}
@@ -730,6 +830,33 @@ func (a *App) poolLog(lg config.Login, mode string, rep PoolReport, pickErr erro
 		return []report.Warning{{Code: WarnPool, Message: "pool log " + a.tilde(path) + ": " + err.Error()}}
 	}
 	return nil
+}
+
+// pickedUsage is the picked member's usage for the log: "5h=12 week=40
+// fable_week=33" (whole percents; a window the reading lacks is left
+// out); "" with no pick.
+func pickedUsage(rep PoolReport) string {
+	if rep.Selected == nil {
+		return ""
+	}
+	for _, c := range rep.Candidates {
+		if c.Name != rep.Selected.Name {
+			continue
+		}
+		var parts []string
+		pct := func(label string, v *float64) {
+			if v != nil {
+				parts = append(parts, fmt.Sprintf("%s=%.0f", label, math.Round(*v)))
+			}
+		}
+		pct("5h", c.Short)
+		pct("week", c.Week)
+		for _, w := range c.Scoped {
+			pct(strings.ReplaceAll(w.Name, " ", "_"), w.Percent)
+		}
+		return strings.Join(parts, " ")
+	}
+	return ""
 }
 
 // maxLogError bounds the error text in a log line.
@@ -752,9 +879,9 @@ func quote(s string) string {
 // not know that yet (an entry from before detection), the kind is
 // recorded there and the pool picks once more, now skipping it; a forced,
 // pinned or picker-chosen member is refused instead.
-func (a *App) poolMemberToken(ctx context.Context, name string, lg config.Login, mode, force string, only PoolOnly) (string, agentio.Token, PoolReport, error) {
+func (a *App) poolMemberToken(ctx context.Context, name string, lg config.Login, mode, force string, only PoolOnly, runID string) (string, agentio.Token, PoolReport, error) {
 	for attempt := 0; ; attempt++ {
-		rep, err := a.poolPick(ctx, name, lg, PoolPickOptions{Force: force, Only: only})
+		rep, err := a.poolPick(ctx, name, lg, PoolPickOptions{Force: force, Only: only, RunID: runID})
 		if err != nil {
 			a.logPoolInto(&rep, lg, mode, err)
 			return "", agentio.Token{}, rep, err
@@ -808,4 +935,53 @@ func (a *App) logPoolInto(rep *PoolReport, lg config.Login, mode string, err err
 	for _, w := range a.poolLog(lg, mode, *rep, err) {
 		rep.warn(w.Message)
 	}
+}
+
+// activeRunTTLs is how many key_ttls a run may go without asking for a
+// key and still count as a session on its member: a busy run asks every
+// key_ttl, an idle or ended one stops asking.
+const activeRunTTLs = 2
+
+// poolLoad reads the live runs of pool name (max_sessions, sticky): how many
+// runs other than runID use each member now (they asked within
+// activeRunTTLs key_ttls), runID's own member, and how many of the runs
+// on that member started before runID (run ids begin with their start
+// time, so they compare in start order). A run folder that cannot be
+// read is skipped; a runs folder that cannot be read is one warning and
+// no load.
+func (a *App) poolLoad(name string, lg config.Login, runID string, now time.Time, warn func(string)) (map[string]int, string, int) {
+	folders, err := run.List(a.paths.Runs)
+	if err != nil {
+		warn("live runs: " + err.Error() + "; sessions per member not counted")
+		return nil, "", 0
+	}
+	ttl, _ := lg.Pool.TTL() // Rules checked it
+	members := lg.Pool.Members()
+	type seat struct {
+		id, member string
+	}
+	var seats []seat
+	current := ""
+	for _, f := range folders {
+		st, err := live.Read(f.Dir)
+		if err != nil || st.Want() != name || !slices.Contains(members, st.InUse) {
+			continue
+		}
+		if f.ID == runID {
+			current = st.InUse
+			continue
+		}
+		if now.Sub(st.InUseAt) <= activeRunTTLs*ttl {
+			seats = append(seats, seat{f.ID, st.InUse})
+		}
+	}
+	load := map[string]int{}
+	ahead := 0
+	for _, s := range seats {
+		load[s.member]++
+		if s.member == current && s.id < runID {
+			ahead++
+		}
+	}
+	return load, current, ahead
 }

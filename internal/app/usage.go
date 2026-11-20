@@ -205,6 +205,15 @@ type UsageWindow struct {
 	ResetsAt *time.Time `json:"resets_at,omitempty"`
 	// Reset is ResetsAt in the --tz zone ("Tue 3 Nov 14:00").
 	Reset string `json:"reset,omitempty"`
+	// ID is the vendor's name of the window ("5h", "7d", "7d_oi"); ""
+	// when the source names none.
+	ID string `json:"id,omitempty"`
+	// Status is the vendor's status of the window ("allowed",
+	// "rejected"); "" when the source gives none.
+	Status string `json:"status,omitempty"`
+	// Binding is true when the vendor names it the window that limits
+	// the account now.
+	Binding bool `json:"binding,omitempty"`
 }
 
 // UsagePlan is what --plan adds to a home row.

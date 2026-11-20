@@ -1,0 +1,48 @@
+// Pool simulator scenario (task sim; docs/guides/pool-simulator.md).
+{
+  "about": "Seeded sample of mixed pools: one to five own and one to twenty teammates' accounts, any plan and teammate profile, one to fifteen sessions.",
+  "seed": 731,
+  "seeds": 24,
+  "own": {
+    "count": [
+      1,
+      5
+    ],
+    "plans": [
+      "pro",
+      "max5",
+      "max20",
+      "unknown"
+    ]
+  },
+  "shared": {
+    "count": [
+      1,
+      20
+    ],
+    "plans": [
+      "pro",
+      "max5",
+      "max20",
+      "unknown"
+    ],
+    "mates": [
+      "none",
+      "light",
+      "medium",
+      "heavy",
+      "irregular"
+    ]
+  },
+  "sessions": {
+    "count": [
+      1,
+      15
+    ],
+    "duty": [
+      0.3,
+      0.8
+    ],
+    "pattern": "any"
+  }
+}

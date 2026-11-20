@@ -155,7 +155,7 @@ func TestConfigSetRefused(t *testing.T) {
 func TestConfigSetUnknownKeyHint(t *testing.T) {
 	a, _ := fixtureApp(t, setConfig, nil, nil)
 	_, err := a.ConfigSet(context.Background(), "logins.auto.pool.accounts.alice.shrot", "1")
-	if e := apperr.As(err); e == nil || e.Hint != "keys: short, week, enabled" {
+	if e := apperr.As(err); e == nil || e.Hint != "keys: short, week, enabled, week_relax_max, capacity" {
 		t.Errorf("hint: %v", err)
 	}
 }

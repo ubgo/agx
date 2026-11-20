@@ -124,10 +124,12 @@ func TestPoolPickPlainShape(t *testing.T) {
 	r := f.Run("pool", "pick", "--id", "auto")
 	lines := strings.Split(r.Stdout, "\n")
 	want := []string{
-		"Pool: auto (claude)",
+		"Pool: auto (claude, order urgency)",
 		"Use: grace (shared)",
-		"shared account resets within 48h, before any usable own account; using its room before it is lost",
+		"most room to lose: 44% left under its weekly cap with 37.8h to the reset (1.2%/h to use it all)",
 		"Source: cache (20s old)",
+		"Probe model: the agent's default (all-models windows only)",
+		"Rules: order urgency (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 70 (default)",
 		"",
 		"Candidates (ready accounts in pick order):",
 	}
@@ -136,8 +138,8 @@ func TestPoolPickPlainShape(t *testing.T) {
 			t.Fatalf("line %d: %q, want %q\n%s", i+1, lines[i], w, r.Stdout)
 		}
 	}
-	if !strings.HasPrefix(lines[6], "- grace [shared] #1 READY (5h 0%, week 26%, resets in ") || !strings.HasSuffix(lines[6], ", room 44%)") {
-		t.Errorf("first candidate %q", lines[6])
+	if !strings.HasPrefix(lines[8], "- grace [shared] #1 READY (5h 0%, week 26%, resets in ") || !strings.HasSuffix(lines[8], ", room 44%, caps 50/70 (default), needs 1.16%/h)") {
+		t.Errorf("first candidate %q", lines[8])
 	}
 	if !strings.Contains(r.Stdout, "- bob [own] skip: status is limit-reached; week is 100% (cap 100%) (5h 0%, week 100%, resets in ") {
 		t.Errorf("bob line missing:\n%s", r.Stdout)
@@ -181,7 +183,7 @@ func TestPoolPickNoneUsable(t *testing.T) {
 	cfg = strings.Replace(cfg, `"accounts": { "alice": { "short": 99, "week": 100 }, "bob": { "short": 99, "week": 100 }, "carol": { "short": 99, "week": 100 } }`, `"accounts": { "bob": { "short": 99, "week": 100 } }`, 1)
 	f.WriteConfig(cfg)
 	r := f.Run("pool", "pick", "--id", "auto")
-	if r.Code != 1 || !strings.HasPrefix(r.Stdout, "Pool: auto (claude)\nNo configured account is currently usable.\n") || !strings.Contains(r.Stderr, "pool auto: no member is usable") {
+	if r.Code != 1 || !strings.HasPrefix(r.Stdout, "Pool: auto (claude, order urgency)\nNo configured account is currently usable.\n") || !strings.Contains(r.Stderr, "pool auto: no member is usable") {
 		t.Errorf("exit %d\n%s\n%s", r.Code, r.Stdout, r.Stderr)
 	}
 }

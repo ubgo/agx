@@ -1,0 +1,29 @@
+// Pool simulator scenario (task sim; docs/guides/pool-simulator.md).
+{
+  "about": "Seeded sample of solo pools: one to three own accounts of any plan (or unknown), one to eight sessions, steady or bursty.",
+  "seed": 701,
+  "seeds": 24,
+  "own": {
+    "count": [
+      1,
+      3
+    ],
+    "plans": [
+      "pro",
+      "max5",
+      "max20",
+      "unknown"
+    ]
+  },
+  "sessions": {
+    "count": [
+      1,
+      8
+    ],
+    "duty": [
+      0.3,
+      0.8
+    ],
+    "pattern": "any"
+  }
+}

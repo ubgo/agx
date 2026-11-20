@@ -23,9 +23,13 @@
         "enabled": true,
         "enabled_source": "default",
         "short": 98,
-        "short_source": "config",
-        "week": 60,
-        "week_source": "defaults"
+        "short_source": "member",
+        "week": 98,
+        "week_source": "default",
+        "week_relax_max": 95,
+        "week_relax_max_source": "default",
+        "capacity": 1,
+        "capacity_source": "default"
       },
       {
         "name": "bob",
@@ -33,71 +37,119 @@
         "enabled": true,
         "enabled_source": "default",
         "short": 40,
-        "short_source": "defaults",
+        "short_source": "pool",
         "week": 60,
-        "week_source": "defaults"
+        "week_source": "pool",
+        "week_relax_max": 95,
+        "week_relax_max_source": "default",
+        "capacity": 1,
+        "capacity_source": "default"
       },
       {
         "name": "carol",
         "group": "shared",
         "enabled": false,
-        "enabled_source": "config",
+        "enabled_source": "member",
         "short": 40,
-        "short_source": "defaults",
+        "short_source": "pool",
         "week": 60,
-        "week_source": "defaults"
+        "week_source": "pool",
+        "week_relax_max": 95,
+        "week_relax_max_source": "default",
+        "capacity": 1,
+        "capacity_source": "default"
       }
     ],
     "settings": [
       {
         "key": "force",
         "value": "bob",
-        "source": "config"
+        "source": "pool"
       },
       {
-        "key": "defaults.short",
-        "value": "40",
-        "source": "config"
+        "key": "order",
+        "value": "urgency",
+        "source": "default"
       },
       {
-        "key": "defaults.week",
-        "value": "60",
-        "source": "config"
+        "key": "week_relax_window",
+        "value": "24h",
+        "source": "default"
+      },
+      {
+        "key": "defaults.week_relax_max",
+        "value": "95",
+        "source": "default"
+      },
+      {
+        "key": "max_sessions",
+        "value": "4",
+        "source": "default"
+      },
+      {
+        "key": "sticky",
+        "value": "true",
+        "source": "default"
+      },
+      {
+        "key": "sticky_leave_ratio",
+        "value": "3",
+        "source": "default"
       },
       {
         "key": "shared_borrow_window",
         "value": "24h",
-        "source": "config"
+        "source": "pool"
       },
       {
         "key": "short_unavailable_at_percent",
         "value": "95",
-        "source": "config"
+        "source": "pool"
+      },
+      {
+        "key": "own_caps.short",
+        "value": "95",
+        "source": "default"
+      },
+      {
+        "key": "own_caps.week",
+        "value": "98",
+        "source": "default"
+      },
+      {
+        "key": "defaults.short",
+        "value": "40",
+        "source": "pool"
+      },
+      {
+        "key": "defaults.week",
+        "value": "60",
+        "source": "pool"
       },
       {
         "key": "usage_max_age",
         "value": "2m",
-        "source": "config"
+        "source": "pool"
       },
       {
         "key": "key_ttl",
         "value": "30s",
-        "source": "config"
+        "source": "pool"
       },
       {
         "key": "picker.command",
         "value": "my-picker",
-        "source": "config"
+        "source": "pool"
       },
       {
         "key": "picker.timeout",
         "value": "5s",
-        "source": "config"
+        "source": "pool"
       },
       {
         "key": "log",
         "value": "~/pool.log",
-        "source": "config"
+        "source": "pool"
       }
     ]
   },

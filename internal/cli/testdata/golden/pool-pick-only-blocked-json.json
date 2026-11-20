@@ -5,6 +5,71 @@
   "data": {
     "pool": "auto",
     "agent": "claude",
+    "order": "urgency",
+    "settings": [
+      {
+        "key": "order",
+        "value": "urgency",
+        "source": "default"
+      },
+      {
+        "key": "week_relax_window",
+        "value": "24h",
+        "source": "default"
+      },
+      {
+        "key": "defaults.week_relax_max",
+        "value": "95",
+        "source": "default"
+      },
+      {
+        "key": "max_sessions",
+        "value": "4",
+        "source": "default"
+      },
+      {
+        "key": "sticky",
+        "value": "true",
+        "source": "default"
+      },
+      {
+        "key": "sticky_leave_ratio",
+        "value": "3",
+        "source": "default"
+      },
+      {
+        "key": "shared_borrow_window",
+        "value": "48h",
+        "source": "default"
+      },
+      {
+        "key": "short_unavailable_at_percent",
+        "value": "99",
+        "source": "default"
+      },
+      {
+        "key": "own_caps.short",
+        "value": "95",
+        "source": "default"
+      },
+      {
+        "key": "own_caps.week",
+        "value": "98",
+        "source": "default"
+      },
+      {
+        "key": "defaults.short",
+        "value": "50",
+        "source": "default"
+      },
+      {
+        "key": "defaults.week",
+        "value": "70",
+        "source": "default"
+      }
+    ],
+    "probe_models": [],
+    "probe_models_source": "default probe model",
     "selected": null,
     "source": "cache (20s old)",
     "now": "<time>",
@@ -30,6 +95,13 @@
           "short": 50,
           "week": 43
         },
+        "caps_source": {
+          "short": "default",
+          "week": "--pool-only-week"
+        },
+        "urgency_percent_per_hour": 0,
+        "scoped": [],
+        "sessions": 0,
         "reasons": [
           "week is 43% (cap 43%)"
         ],

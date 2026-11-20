@@ -2,6 +2,23 @@
 
 All notable changes to agx are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and agx uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.16] - 2026-11-20
+
+### Changed
+
+- Login pools have no strategy mode: every rule is a pool key with a default, and the defaults are the pool simulator's recommendation across solo users, small and large teams: `order` `urgency` (the member with the most room to lose per hour first, room weighed by `capacity`; `deadline` = the soonest weekly reset first), `week_relax_window` `24h` and `week_relax_max` 95 (a member's weekly cap rises to 95 over the last day before its reset; the 5-hour cap never rises), `max_sessions` 4 (each session gets its own pick, a member takes four before the next one is used), `sticky` `true` with `sticky_leave_ratio` 3, `shared_borrow_window` `48h`. The `strategy` key and `--pool-strategy` are gone (an unknown key now); `--pool-order` sets the order.
+- Own members without `own_caps` or a member entry default to 5h 95% and week 98%; `defaults` is the caps of shared members (50/70).
+- `agx pool show` lists every value in effect with its source (`default`, `pool`, `group` or `member`), members with their `week_relax_max` and `capacity`; `agx pool pick` prints the order, a `Rules:` line, each member's caps with their source and its urgency, and a run's dry run lists the rule values.
+- A probe's per-model window at 100% no longer marks the login `limit-reached`: only the all-models windows do.
+
+### Added
+
+- `agx pool preset --name recommended|classic --id POOL [--dry-run]` writes a named set of rule values into the pool's block through the comment-keeping editor: `recommended` is the defaults, `classic` the rules before this release (soonest reset first, no relax, every session on one pick). Each value is an ordinary key afterwards.
+- Per-model weekly windows. agx reads every `anthropic-ratelimit-unified-<window>` header of a probe (agentio v0.1.2, `claude` v0.1.3), so Fable 5.2's own weekly window (`7d_oi`) and any future one are seen with their status and `representative-claim`. A pool probes with the session's model: the run's `--model`, profile `model` or Claude's own setting (recorded in `live.jsonc` at launch), else the new `probe_models` key (`--pool-probe-model`), else the default profile's model; `agx pool pick --model` stands in for a run. Each per-model window is an extra weekly cap for that model's sessions with the same cap and relax rules, a rejected one blocks the member for that model until its reset, and the room is the least over the windows; `agx pool pick` shows them (`fable week 80%`) and names the probe model. A model the API refuses falls back to the default probe with a warning. The usage cache keeps each model's windows.
+- Usage history: every answered probe adds a point (time, probe model, each window's percent and reset) to `~/.agx/cache/login-usage-history.jsonc`, at most one per member every 10 minutes, 8 days and 1200 points kept, with no extra API call. The pool log line adds the picked member's usage (`usage="5h=12 week=40 fable_week=61"`) and the probe models.
+- `agx usage --json` windows carry `id`, `status` and `binding` when the source gives them.
+- The pool simulator models per-model weeks (scenario key `model`, scenarios `fable-heavy-solo`, in the gate, and `fable-heavy-team`; `REC-blind` shows the 429s reading them saves), and its reference `A` is the `classic` preset written as config. Guide [How the pool chooses](docs/guides/pool-rules.md): the rules in order, every key and default, the presets, per-model windows, the usage history and the 60% shared weekly cap for heavy-use teams.
+
 ## [0.4.15] - 2026-11-20
 
 ### Added

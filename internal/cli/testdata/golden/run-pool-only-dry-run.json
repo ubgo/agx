@@ -25,15 +25,55 @@
   },
   {
     "source": "default",
-    "value": "shared borrow window 48h"
+    "value": "order urgency"
   },
   {
     "source": "default",
-    "value": "5h cutoff 99%"
+    "value": "week_relax_window 24h"
   },
   {
     "source": "default",
-    "value": "default caps 5h 50%, week 70%"
+    "value": "defaults.week_relax_max 95"
+  },
+  {
+    "source": "default",
+    "value": "max_sessions 4"
+  },
+  {
+    "source": "default",
+    "value": "sticky true"
+  },
+  {
+    "source": "default",
+    "value": "sticky_leave_ratio 3"
+  },
+  {
+    "source": "default",
+    "value": "shared_borrow_window 48h"
+  },
+  {
+    "source": "default",
+    "value": "short_unavailable_at_percent 99"
+  },
+  {
+    "source": "default",
+    "value": "own_caps.short 95"
+  },
+  {
+    "source": "default",
+    "value": "own_caps.week 98"
+  },
+  {
+    "source": "default",
+    "value": "defaults.short 50"
+  },
+  {
+    "source": "default",
+    "value": "defaults.week 70"
+  },
+  {
+    "source": "default",
+    "value": "probe model: the agent's default (all-models windows only)"
   },
   {
     "source": "config logins.auto.pool.accounts",
