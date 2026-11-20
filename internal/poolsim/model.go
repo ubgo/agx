@@ -60,6 +60,9 @@ type Account struct {
 	Group pool.Group
 	// Plan is the account's plan (pro, max5, max20), for the report.
 	Plan string
+	// CapacityKnown is false for a plan the user did not tell agx: the
+	// picker sees capacity 0 (unknown).
+	CapacityKnown bool
 	// Capacity scales the account's limits: 1 is the standard plan, 2
 	// is twice the room (a bigger plan burns half the percent).
 	Capacity float64

@@ -71,11 +71,12 @@ Add a login. Cost W (X with `--login-setup`). Guide: [Adding a login](../logins.
 | `--pool-picker` | a shell command that picks the member instead of the built-in rules; empty removes the picker |
 | `--pool-strategy` | the rules that pick: `deadline` (soonest weekly reset first, one pick for every session) or `expiring` (weekly caps rise near the reset, most room to lose per hour first, a pick per session); empty: default `deadline` |
 | `--pool-week-relax-window` | `expiring`: a member's weekly cap rises to its relax max over this long before its reset, like `24h`; `0s` never; empty: default `24h` |
-| `--pool-max-sessions` | `expiring`: how many sessions one member takes before the next is used; `0` no limit; empty: default 3 |
+| `--pool-max-sessions` | `expiring`: how many sessions one member takes before the next is used; `0` no limit; empty: default 4 |
 | `--pool-sticky` | `expiring`: keep a session on its member while it is still in the pool, `true` or `false`; empty: default `true` |
-| `--pool-sticky-leave-ratio` | `expiring`: a sticky session leaves its member when another member is at least this many times as urgent; `0` never; empty: default 0 |
+| `--pool-sticky-leave-ratio` | `expiring`: a sticky session leaves its member when another member is at least this many times as urgent; `0` never; empty: default 3 |
 | `--pool-default-week-relax` | `expiring`: the weekly cap members reach at their reset, in percent; empty: default 95 |
 | `--pool-cap-week-relax` | `expiring`: a member's own weekly cap at its reset, `NAME=PERCENT`; `NAME=` removes it (repeat) |
+| `--pool-capacity` | `expiring`: a member's plan size relative to the others (only ratios matter: Pro 1, Max 5x 5, Max 20x 20), so its room counts for more work, `NAME=N`; `NAME=` removes it (repeat) |
 | `--pool-group-cap-short` | the 5-hour cap of a group's members without their own, `own=PERCENT` or `shared=PERCENT`; `GROUP=` removes it (repeat) |
 | `--pool-group-cap-week` | the weekly cap of a group's members without their own, `own=PERCENT` or `shared=PERCENT`; `GROUP=` removes it (repeat) |
 | `--pool-group-cap-week-relax` | `expiring`: the weekly cap a group's members reach at their reset, `own=PERCENT` or `shared=PERCENT`; `GROUP=` removes it (repeat) |
@@ -189,11 +190,12 @@ Rotate or change a login. Every profile, default and binding that uses it keeps 
 | `--pool-picker` | a shell command that picks the member instead of the built-in rules; empty removes the picker |
 | `--pool-strategy` | the rules that pick: `deadline` (soonest weekly reset first, one pick for every session) or `expiring` (weekly caps rise near the reset, most room to lose per hour first, a pick per session); empty: default `deadline` |
 | `--pool-week-relax-window` | `expiring`: a member's weekly cap rises to its relax max over this long before its reset, like `24h`; `0s` never; empty: default `24h` |
-| `--pool-max-sessions` | `expiring`: how many sessions one member takes before the next is used; `0` no limit; empty: default 3 |
+| `--pool-max-sessions` | `expiring`: how many sessions one member takes before the next is used; `0` no limit; empty: default 4 |
 | `--pool-sticky` | `expiring`: keep a session on its member while it is still in the pool, `true` or `false`; empty: default `true` |
-| `--pool-sticky-leave-ratio` | `expiring`: a sticky session leaves its member when another member is at least this many times as urgent; `0` never; empty: default 0 |
+| `--pool-sticky-leave-ratio` | `expiring`: a sticky session leaves its member when another member is at least this many times as urgent; `0` never; empty: default 3 |
 | `--pool-default-week-relax` | `expiring`: the weekly cap members reach at their reset, in percent; empty: default 95 |
 | `--pool-cap-week-relax` | `expiring`: a member's own weekly cap at its reset, `NAME=PERCENT`; `NAME=` removes it (repeat) |
+| `--pool-capacity` | `expiring`: a member's plan size relative to the others (only ratios matter: Pro 1, Max 5x 5, Max 20x 20), so its room counts for more work, `NAME=N`; `NAME=` removes it (repeat) |
 | `--pool-group-cap-short` | the 5-hour cap of a group's members without their own, `own=PERCENT` or `shared=PERCENT`; `GROUP=` removes it (repeat) |
 | `--pool-group-cap-week` | the weekly cap of a group's members without their own, `own=PERCENT` or `shared=PERCENT`; `GROUP=` removes it (repeat) |
 | `--pool-group-cap-week-relax` | `expiring`: the weekly cap a group's members reach at their reset, `own=PERCENT` or `shared=PERCENT`; `GROUP=` removes it (repeat) |

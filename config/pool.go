@@ -61,7 +61,7 @@ func (p Pool) Rules() (pool.Config, error) {
 	if len(p.Accounts) > 0 {
 		c.Accounts = make(map[string]pool.Account, len(p.Accounts))
 		for name, a := range p.Accounts {
-			c.Accounts[name] = pool.Account{Short: a.Short, Week: a.Week, Enabled: a.Enabled, WeekRelaxMax: a.WeekRelaxMax}
+			c.Accounts[name] = pool.Account{Short: a.Short, Week: a.Week, Enabled: a.Enabled, WeekRelaxMax: a.WeekRelaxMax, Capacity: a.Capacity}
 		}
 	}
 	if err := p.strategyRules(&c); err != nil {

@@ -103,7 +103,7 @@ func Run(sc Scenario, st Strategy) Metrics {
 			ac.weekMate, ac.shortMate = a.Week, a.Short
 		}
 		accts[i] = ac
-		members[i] = Member{Name: a.Name, Group: a.Group, Capacity: a.Capacity}
+		members[i] = Member{Name: a.Name, Group: a.Group, Capacity: knownCapacity(a)}
 	}
 	steps := int(sc.Horizon / sc.Step)
 	stepH := sc.Step.Hours()

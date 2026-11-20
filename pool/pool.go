@@ -78,16 +78,17 @@ const (
 	DefaultWeekRelaxMax = 95.0
 	// DefaultMaxSessions is how many sessions one member takes before
 	// the next is used (expiring strategy); 0 = no limit.
-	DefaultMaxSessions = 3
+	DefaultMaxSessions = 4
 	// DefaultSticky keeps a session on its member while that member is
 	// still in the pool (expiring strategy).
 	DefaultSticky = true
 	// DefaultStickyLeaveRatio lets a sticky session leave its member
 	// when the most urgent member's urgency is at least this many times
-	// its own (expiring strategy); 0 = never (the simulator: leaving
-	// helps a short-of-quota solo pool at low week ratios and costs
-	// switches everywhere else).
-	DefaultStickyLeaveRatio = 0.0
+	// its own (expiring strategy); 0 = never. The simulator: without it
+	// a small pool short of quota keeps draining an account that resets
+	// later (up to half again today's cost when a week holds few 5-hour
+	// windows); 3 bounds that for a few more switches.
+	DefaultStickyLeaveRatio = 3.0
 )
 
 // Strategy names the rules Select applies.
@@ -198,6 +199,11 @@ type Account struct {
 	// WeekRelaxMax is the weekly cap this member reaches at its reset
 	// (expiring strategy); its cap or lower = never relaxed.
 	WeekRelaxMax *float64
+	// Capacity is the member's plan size relative to the others (any
+	// unit: only ratios matter); nil = 1. The expiring strategy weighs
+	// a member's room by it, so a bigger plan's percent counts for
+	// more work.
+	Capacity *float64
 }
 
 // GroupCaps are the caps of a group's members without their own entry;
@@ -301,6 +307,9 @@ func (c Config) Validate() error {
 				return fmt.Errorf("pool: accounts.%s.%s %v is outside 0..100", name, p.label, *p.v)
 			}
 		}
+		if a.Capacity != nil && (*a.Capacity <= 0 || math.IsNaN(*a.Capacity) || math.IsInf(*a.Capacity, 0)) {
+			return fmt.Errorf("pool: accounts.%s.capacity %v is not a number above 0", name, *a.Capacity)
+		}
 	}
 	return c.validateGroups()
 }
@@ -377,7 +386,7 @@ func (c Config) only(name string, caps Caps) Config {
 		out.Shared = []string{name}
 	}
 	relax := c.RelaxMaxFor(name)
-	out.Accounts = map[string]Account{name: {Short: &caps.Short, Week: &caps.Week, Enabled: c.Accounts[name].Enabled, WeekRelaxMax: &relax}}
+	out.Accounts = map[string]Account{name: {Short: &caps.Short, Week: &caps.Week, Enabled: c.Accounts[name].Enabled, WeekRelaxMax: &relax, Capacity: c.Accounts[name].Capacity}}
 	return out
 }
 
@@ -675,7 +684,7 @@ func candidate(cfg Config, name string, g Group, order int, rd Reading, found bo
 		c.inWindow = g == GroupShared && until >= 0 && until <= cfg.BorrowWindow
 	}
 	if cfg.strategy() == StrategyExpiring {
-		setUrgency(c, rd)
+		setUrgency(c, rd, cfg.CapacityFor(name))
 	}
 	return c
 }

@@ -307,6 +307,10 @@ func (p *poolPlan) planAccounts(cur config.Pool, members []string, s PoolSetting
 	if err != nil {
 		return err
 	}
+	capacities, err := parseCapacities(s.Strategy.Capacity, members, p.login)
+	if err != nil {
+		return err
+	}
 	for _, f := range []struct {
 		flag  string
 		names []string
@@ -346,6 +350,11 @@ func (p *poolPlan) planAccounts(cur config.Pool, members []string, s PoolSetting
 	for _, m := range relaxes {
 		a := touch(m.name)
 		a.WeekRelaxMax = m.cap
+		next[m.name] = a
+	}
+	for _, m := range capacities {
+		a := touch(m.name)
+		a.Capacity = m.cap
 		next[m.name] = a
 	}
 	off := false
@@ -390,6 +399,7 @@ func (p *poolPlan) planAccount(name string, old, next config.PoolAccount) {
 	p.change(label(keyPoolShort), optPercent(old.Short), optPercent(next.Short), numberEdit(keyPoolShort, next.Short))
 	p.change(label(keyPoolWeek), optPercent(old.Week), optPercent(next.Week), numberEdit(keyPoolWeek, next.Week))
 	p.change(label(keyPoolWeekRelaxMax), optPercent(old.WeekRelaxMax), optPercent(next.WeekRelaxMax), numberEdit(keyPoolWeekRelaxMax, next.WeekRelaxMax))
+	p.change(label(keyPoolCapacity), optPercent(old.Capacity), optPercent(next.Capacity), numberEdit(keyPoolCapacity, next.Capacity))
 	enabledEdit := setTo(entry(keyPoolEnabled), false)
 	switch {
 	case empty:
@@ -402,7 +412,7 @@ func (p *poolPlan) planAccount(name string, old, next config.PoolAccount) {
 
 // accountEmpty reports a member entry with nothing in it.
 func accountEmpty(a config.PoolAccount) bool {
-	return a.Short == nil && a.Week == nil && a.Enabled == nil && a.WeekRelaxMax == nil
+	return a.Short == nil && a.Week == nil && a.Enabled == nil && a.WeekRelaxMax == nil && a.Capacity == nil
 }
 
 // enabledText is a member's effective enabled (omitted = true).

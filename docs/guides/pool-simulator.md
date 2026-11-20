@@ -36,7 +36,7 @@ When there is more quota than your sessions want, waste is the same under every 
 ## The model
 
 - **Windows.** Each account resets its week at its own time every seven days. The 5-hour window starts with the first use after the previous one ended and lasts five hours, independent of the weekly reset.
-- **Plans.** Pro, Max 5x and Max 20x: the same work burns five times the percent on Pro and a quarter of it on Max 20x.
+- **Plans.** Pro, Max 5x and Max 20x: the same work burns five times the percent on Pro and a quarter of it on Max 20x. A plan can also be unknown: a real plan is drawn, but the pick is not told (as for a user who sets no `capacity`).
 - **Your sessions.** A busy session burns 12% of a Max 5x 5-hour window an hour; a full 5-hour window is an eighth of a week. Sessions are busy in 15-minute spells, steady or in shared bursts.
 - **Teammates.** On a shared account a teammate works on their own schedule (light, medium, heavy or irregular; or none at all), whatever the pool does.
 - **Limits.** When a step would pass 100%, everyone on the account gets the same share of what is left; your refused part is a 429, the teammate's a lockout.
@@ -52,15 +52,15 @@ A scenario is one file in `pool/testdata/sim/`, JSONC, unknown keys refused. Eac
   "seed": 901,           // the first seed
   "seeds": 12,           // how many runs
   "gate": false,         // true: part of the go test gate (record its baseline with -update)
-  "own": { "count": [2, 2], "plans": ["max5", "max20"] },
+  "own": { "count": [2, 2], "plans": ["max5", "max20"] },   // pro, max5, max20 or unknown
   "shared": { "count": [3, 3], "mates": ["irregular"] },  // light, medium, heavy, irregular, none
   "resets": "random",    // random, spread or bunched
-  "sessions": { "count": [2, 5], "duty": [0.5, 0.7], "pattern": "steady", "hours": [8, 2], "utc_offset": "0s" },
+  "sessions": { "count": [2, 5], "duty": [0.5, 0.7], "pattern": "steady", "hours": [8, 2], "utc_offset": "0s" },  // pattern: steady, bursty or any
   "caps": { "own": { "short": 95, "week": 98 }, "shared": { "short": 50, "week": 70 } }
 }
 ```
 
-`count` and `duty` are `[min, max]` ranges drawn per seed; `plans` and `mates` are drawn per member. Omit `own` or `shared` for an all-shared or all-own pool. `accounts` replaces both with fixed members (`name`, `group`, `plan`, `week`, `short`, `reset_hours`, `mate`) for a recorded pool; use made-up names. The group in the report (solo, small team, large team) follows from the members unless `group` says otherwise.
+`count` and `duty` are `[min, max]` ranges drawn per seed; `plans` and `mates` are drawn per member. Omit `own` or `shared` for an all-shared or all-own pool. `accounts` replaces both with fixed members (`name`, `group`, `plan`, `week`, `short`, `reset_hours`, `mate`) for a recorded pool; use made-up names. The group in the report follows from the members unless `group` says otherwise: solo (own accounts only), small team (up to six teammates' accounts and no own), large team (seven or more teammates' accounts and no own), mixed (both). A file with wide ranges and many seeds is a sampler: the `sample-*` files draw many pool shapes per group.
 
 ## Related
 

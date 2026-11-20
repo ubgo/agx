@@ -312,14 +312,14 @@ type Pool struct {
 	// = never).
 	WeekRelaxWindow string `json:"week_relax_window,omitempty"`
 	// MaxSessions (expiring) is how many sessions one member takes before
-	// the next is used (default 3; 0 = no limit).
+	// the next is used (default 4; 0 = no limit).
 	MaxSessions *int `json:"max_sessions,omitempty"`
 	// Sticky (expiring) keeps a session on its member while that member
 	// is still in the pool (default true).
 	Sticky *bool `json:"sticky,omitempty"`
 	// StickyLeaveRatio (expiring): a sticky session leaves its member
 	// when the most urgent member's urgency is at least this many times
-	// its own (default 0 = never).
+	// its own (default 3; 0 = never).
 	StickyLeaveRatio *float64 `json:"sticky_leave_ratio,omitempty"`
 	// Accounts are per-member caps and enabled false, keyed by member.
 	Accounts map[string]PoolAccount `json:"accounts,omitempty"`
@@ -369,6 +369,10 @@ type PoolAccount struct {
 	// WeekRelaxMax is the weekly cap this member reaches at its reset
 	// (expiring strategy); its weekly cap or lower = never relaxed.
 	WeekRelaxMax *float64 `json:"week_relax_max,omitempty"`
+	// Capacity is the member's plan size relative to the others' (only
+	// ratios matter; omitted = 1): the expiring strategy weighs its room
+	// by it.
+	Capacity *float64 `json:"capacity,omitempty"`
 }
 
 // Members are the pool's own then shared logins, in config order.

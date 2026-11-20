@@ -36,7 +36,13 @@ const (
 	PlanPro   = "pro"
 	PlanMax5  = "max5"
 	PlanMax20 = "max20"
+	// PlanUnknown draws a real plan from the three but tells the picker
+	// nothing (a user who did not say).
+	PlanUnknown = "unknown"
 )
+
+// knownPlans are the plans PlanUnknown draws from.
+var knownPlans = []string{PlanPro, PlanMax5, PlanMax20}
 
 // planCapacity is each plan's room relative to Max 5x.
 var planCapacity = map[string]float64{PlanPro: 0.2, PlanMax5: 1, PlanMax20: 4}
@@ -54,10 +60,11 @@ const (
 // working.
 var mateBurn = map[string]float64{MateLight: 6, MateMedium: 12, MateHeavy: 24, MateIrregular: 15}
 
-// Session patterns.
+// Session patterns: PatternAny draws steady or bursty per seed.
 const (
 	PatternSteady = "steady"
 	PatternBursty = "bursty"
+	PatternAny    = "any"
 )
 
 // Reset layouts.
@@ -67,17 +74,20 @@ const (
 	ResetsBunched = "bunched"
 )
 
-// Groups of the report: who the pool belongs to, by its members.
+// Groups of the report, by the pool's members: solo (own accounts
+// only), small and large team (teammates' accounts only, up to six
+// and seven or more), mixed (both).
 const (
 	GroupSolo      = "solo"
 	GroupSmallTeam = "small-team"
 	GroupLargeTeam = "large-team"
+	GroupMixed     = "mixed"
 )
 
 // GroupOrder is the report's group order.
-var GroupOrder = []string{GroupSolo, GroupSmallTeam, GroupLargeTeam}
+var GroupOrder = []string{GroupSolo, GroupSmallTeam, GroupLargeTeam, GroupMixed}
 
-// smallTeamMax is the most members a pool with teammates may have and
+// smallTeamMax is the most members an all-shared pool may have and
 // still count as a small team.
 const smallTeamMax = 6
 
@@ -280,7 +290,7 @@ func (f File) check() error {
 			return fmt.Errorf("count %v is not [min, max]", m.Count)
 		}
 		for _, p := range m.Plans {
-			if _, ok := planCapacity[p]; !ok {
+			if _, ok := planCapacity[p]; !ok && p != PlanUnknown {
 				return fmt.Errorf("unknown plan %q", p)
 			}
 		}
@@ -302,14 +312,14 @@ func (f File) check() error {
 		return fmt.Errorf("resets %q is not random, spread or bunched", f.Resets)
 	}
 	switch f.Sessions.Pattern {
-	case "", PatternSteady, PatternBursty:
+	case "", PatternSteady, PatternBursty, PatternAny:
 	default:
-		return fmt.Errorf("pattern %q is not steady or bursty", f.Sessions.Pattern)
+		return fmt.Errorf("pattern %q is not steady, bursty or any", f.Sessions.Pattern)
 	}
 	switch f.Group {
-	case "", GroupSolo, GroupSmallTeam, GroupLargeTeam:
+	case "", GroupSolo, GroupSmallTeam, GroupLargeTeam, GroupMixed:
 	default:
-		return fmt.Errorf("group %q is not solo, small-team or large-team", f.Group)
+		return fmt.Errorf("group %q is not solo, small-team, large-team or mixed", f.Group)
 	}
 	if _, err := f.offset(); err != nil {
 		return err
@@ -358,7 +368,9 @@ func (f File) group() string {
 	switch {
 	case shared == 0:
 		return GroupSolo
-	case own+shared <= smallTeamMax:
+	case own > 0:
+		return GroupMixed
+	case shared <= smallTeamMax:
 		return GroupSmallTeam
 	}
 	return GroupLargeTeam
@@ -406,7 +418,12 @@ const (
 	drawSessions
 	drawDuty
 	drawBand
+	drawPattern
+	drawRealPlan
 )
+
+// anyBursty is the share of PatternAny seeds that are bursty.
+const anyBursty = 0.5
 
 // Weekly use so far at the start, as the part of a full week the
 // account's pace would reach: own and shared accounts.
@@ -452,7 +469,7 @@ func (f File) make(seed uint64) Scenario {
 	sc.Load = Load{
 		Sessions: pickInt(seed, 0, drawSessions, f.Sessions.Count), Burn: defaultSessionBurn,
 		Duty: pickFloat(seed, 0, drawDuty, duty), UTCOffset: offset, ActiveStart: hours[0], ActiveEnd: hours[1],
-		Bursty: f.Sessions.Pattern == PatternBursty,
+		Bursty: f.Sessions.Pattern == PatternBursty || (f.Sessions.Pattern == PatternAny && draw(seed, 0, drawPattern) < anyBursty),
 	}
 	if len(f.Accounts) > 0 {
 		for i, a := range f.Accounts {
@@ -480,8 +497,12 @@ func (f File) make(seed uint64) Scenario {
 		}
 		h = math.Mod(h, WeekPeriod.Hours())
 		plan := pickOne(seed, i, drawPlan, spec.Plans, []string{PlanMax5})
+		known := plan != PlanUnknown
+		if !known {
+			plan = pickOne(seed, i, drawRealPlan, knownPlans, nil)
+		}
 		a := Account{
-			Name: names[i], Group: group, Plan: plan, Capacity: planCapacity[plan],
+			Name: names[i], Group: group, Plan: plan, Capacity: planCapacity[plan], CapacityKnown: known,
 			WeekResetAt: sc.Start.Add(time.Duration(h * float64(time.Hour))),
 		}
 		rate := ownWeekRate
@@ -506,7 +527,7 @@ func (f File) fixed(seed uint64, i int, x Fixed) Account {
 		plan = PlanMax5
 	}
 	a := Account{
-		Name: x.Name, Group: x.Group, Plan: plan, Capacity: planCapacity[plan], Week: x.Week,
+		Name: x.Name, Group: x.Group, Plan: plan, Capacity: planCapacity[plan], CapacityKnown: true, Week: x.Week,
 		WeekResetAt: fileStart.Add(time.Duration(x.ResetHours * float64(time.Hour))),
 	}
 	if x.Short > 0 {

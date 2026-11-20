@@ -27,11 +27,12 @@ const (
 	flagPoolGroupCapShort     = "--pool-group-cap-short"
 	flagPoolGroupCapWeek      = "--pool-group-cap-week"
 	flagPoolGroupCapWeekRelax = "--pool-group-cap-week-relax"
+	flagPoolCapacity          = "--pool-capacity"
 )
 
 // poolStrategyFlagsText names the strategy flags in "nothing to change".
 const poolStrategyFlagsText = flagPoolStrategy + ", " + flagPoolWeekRelaxWindow + ", " + flagPoolMaxSessions + ", " + flagPoolSticky + ", " + flagPoolStickyLeaveRatio + ", " +
-	flagPoolDefaultWeekRelax + ", " + flagPoolCapWeekRelax + ", " + flagPoolGroupCapShort + ", " + flagPoolGroupCapWeek + ", " + flagPoolGroupCapWeekRelax
+	flagPoolDefaultWeekRelax + ", " + flagPoolCapWeekRelax + ", " + flagPoolCapacity + ", " + flagPoolGroupCapShort + ", " + flagPoolGroupCapWeek + ", " + flagPoolGroupCapWeekRelax
 
 // Keys the strategy flags write inside logins.<name>.pool.
 const (
@@ -41,6 +42,7 @@ const (
 	keyPoolSticky          = "sticky"
 	keyPoolStickyLeave     = "sticky_leave_ratio"
 	keyPoolWeekRelaxMax    = "week_relax_max"
+	keyPoolCapacity        = "capacity"
 	keyPoolOwnCaps         = "own_caps"
 	keyPoolSharedCaps      = "shared_caps"
 )
@@ -61,6 +63,8 @@ type PoolStrategySettings struct {
 	DefaultWeekRelax *string
 	// CapWeekRelax sets accounts.NAME.week_relax_max: NAME=N.
 	CapWeekRelax []string
+	// Capacity sets accounts.NAME.capacity: NAME=N, N above 0.
+	Capacity []string
 	// GroupCapShort, GroupCapWeek and GroupCapWeekRelax set own_caps or
 	// shared_caps: GROUP=N (own or shared); GROUP= removes the key.
 	GroupCapShort     []string
@@ -71,7 +75,7 @@ type PoolStrategySettings struct {
 // given reports any strategy flag.
 func (s PoolStrategySettings) given() bool {
 	return s.Strategy != nil || s.WeekRelaxWindow != nil || s.MaxSessions != nil || s.Sticky != nil || s.StickyLeaveRatio != nil ||
-		s.DefaultWeekRelax != nil || s.CapWeekRelax != nil || s.GroupCapShort != nil || s.GroupCapWeek != nil || s.GroupCapWeekRelax != nil
+		s.DefaultWeekRelax != nil || s.CapWeekRelax != nil || s.Capacity != nil || s.GroupCapShort != nil || s.GroupCapWeek != nil || s.GroupCapWeekRelax != nil
 }
 
 // planStrategy plans the strategy, max_sessions, sticky and the group
@@ -174,4 +178,32 @@ func (p *poolPlan) planGroupCaps(cur config.Pool, s PoolStrategySettings) error 
 		}
 	}
 	return nil
+}
+
+// parseCapacities reads repeated NAME=N values of --pool-capacity: a
+// member and a number above 0 (NAME= removes the member's capacity).
+func parseCapacities(in []string, members []string, poolName string) ([]memberEdit, error) {
+	var out []memberEdit
+	for _, kv := range in {
+		name, v, ok := strings.Cut(kv, capSep)
+		if !ok || name == "" {
+			return nil, apperr.Usage(fmt.Sprintf("%s %q: use NAME=N (the member's plan size relative to the others, above 0; NAME= removes it)", flagPoolCapacity, kv))
+		}
+		if err := checkMember(flagPoolCapacity+" "+kv, name, members, poolName); err != nil {
+			return nil, err
+		}
+		if slices.ContainsFunc(out, func(m memberEdit) bool { return m.name == name }) {
+			return nil, apperr.Usage(fmt.Sprintf("%s %s is given twice", flagPoolCapacity, name))
+		}
+		m := memberEdit{name: name}
+		if v != "" {
+			n, err := strconv.ParseFloat(v, 64)
+			if err != nil || n <= 0 || math.IsNaN(n) || math.IsInf(n, 0) {
+				return nil, apperr.Usage(fmt.Sprintf("%s %s: %s is not a number above 0", flagPoolCapacity, kv, v))
+			}
+			m.cap = &n
+		}
+		out = append(out, m)
+	}
+	return out, nil
 }

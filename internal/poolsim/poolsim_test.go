@@ -65,7 +65,7 @@ func TestScenarioFiles(t *testing.T) {
 	gens := loadAll(t)
 	groups := map[string]int{}
 	var minMembers, maxMembers, maxSessions = 99, 0, 0
-	allOwn, allShared, bursty, noMates := false, false, false, false
+	allOwn, allShared, bursty, noMates, unknownPlan := false, false, false, false, false
 	plans := map[string]bool{}
 	for _, g := range gens {
 		groups[g.Group]++
@@ -79,6 +79,7 @@ func TestScenarioFiles(t *testing.T) {
 					t.Errorf("%s: account %q is not a made-up name", g.Name, a.Name)
 				}
 				plans[a.Plan] = true
+				unknownPlan = unknownPlan || !a.CapacityKnown
 				if a.Group == pool.GroupOwn {
 					own++
 				}
@@ -97,9 +98,9 @@ func TestScenarioFiles(t *testing.T) {
 			t.Errorf("group %s has %d scenarios, want 3 or more", grp, groups[grp])
 		}
 	}
-	if minMembers != 1 || maxMembers < 20 || maxSessions < 15 || !allOwn || !allShared || !bursty || !noMates || len(plans) != 3 {
-		t.Errorf("range: members %d..%d, sessions up to %d, all-own %v, all-shared %v, bursty %v, no teammates %v, plans %v",
-			minMembers, maxMembers, maxSessions, allOwn, allShared, bursty, noMates, plans)
+	if minMembers != 1 || maxMembers < 20 || maxSessions < 15 || !allOwn || !allShared || !bursty || !noMates || len(plans) != 3 || !unknownPlan {
+		t.Errorf("range: members %d..%d, sessions up to %d, all-own %v, all-shared %v, bursty %v, no teammates %v, plans %v, unknown plan %v",
+			minMembers, maxMembers, maxSessions, allOwn, allShared, bursty, noMates, plans, unknownPlan)
 	}
 }
 
@@ -107,14 +108,19 @@ func TestScenarioFiles(t *testing.T) {
 // for the recommendation make exactly the picks of the shipped code, so
 // the tables measure what agx does.
 func TestPolicyMatchesPool(t *testing.T) {
-	for _, name := range []string{"solo-3-mixed-plans", "small-all-shared", "large-mixed", "snapshot-12-busy"} {
+	for _, name := range []string{"solo-3-mixed-plans", "small-all-shared", "large-mixed", "snapshot-12-busy", "mixed-1-2", "team-6"} {
 		gen := WithSeeds(scenario(t, name), 2)
-		sums := Evaluate(gen, []Strategy{policy("A", "", Today()), RealToday(), policy("REC", "", Recommended()), RealRecommended()}, DefaultWeights)
+		w := Recommended()
+		w.Weighted = true
+		sums := Evaluate(gen, []Strategy{policy("A", "", Today()), RealToday(), policy("REC", "", Recommended()), RealRecommended(), policy("REC+W", "", w), RealWeighted()}, DefaultWeights)
 		if !reflect.DeepEqual(sums[0].Mean, sums[1].Mean) {
 			t.Errorf("%s: Policy A %+v\nvs pool %+v", name, sums[0].Mean, sums[1].Mean)
 		}
 		if !reflect.DeepEqual(sums[2].Mean, sums[3].Mean) {
 			t.Errorf("%s: Policy REC %+v\nvs pool %+v", name, sums[2].Mean, sums[3].Mean)
+		}
+		if !reflect.DeepEqual(sums[4].Mean, sums[5].Mean) {
+			t.Errorf("%s: Policy REC+W %+v\nvs pool %+v", name, sums[4].Mean, sums[5].Mean)
 		}
 	}
 }
@@ -150,6 +156,9 @@ const (
 	wasteSlack   = 0.2
 	servedSlack  = 0.002
 	lockoutSlack = 0.15
+	// switchSlack: a one-tier pool switches almost never under deadline,
+	// and sticky_leave_ratio may add a few switches there.
+	switchSlack = 1.0
 )
 
 // TestSimGate is the regression gate (go test, task check): the shipped
@@ -164,20 +173,24 @@ func TestSimGate(t *testing.T) {
 		t.Skip("simulates weeks")
 	}
 	got := map[string]map[string]gateMetrics{}
+	gated := map[string]bool{}
 	for _, g := range loadAll(t) {
 		if !g.Gate {
 			continue
 		}
+		gated[g.Group] = true
 		gen := WithSeeds(WithTiming(g, gateStep, DefaultLag), gateSeeds)
 		sums := Evaluate(gen, []Strategy{RealToday(), RealRecommended()}, DefaultWeights)
 		got[g.Name] = map[string]gateMetrics{string(pool.StrategyDeadline): of(sums[0].Mean), string(pool.StrategyExpiring): of(sums[1].Mean)}
 		a, r := sums[0].Mean, sums[1].Mean
-		if r.WasteTotal > a.WasteTotal+wasteSlack || r.Served < a.Served-servedSlack || r.LockoutHours > a.LockoutHours+lockoutSlack || r.Switches > a.Switches {
+		if r.WasteTotal > a.WasteTotal+wasteSlack || r.Served < a.Served-servedSlack || r.LockoutHours > a.LockoutHours+lockoutSlack || r.Switches > a.Switches+switchSlack {
 			t.Errorf("%s: expiring %+v loses to deadline %+v", g.Name, of(r), of(a))
 		}
 	}
-	if len(got) == 0 {
-		t.Fatal("no gate scenarios")
+	for _, grp := range GroupOrder {
+		if !gated[grp] {
+			t.Errorf("no gate scenario in group %s", grp)
+		}
 	}
 	if *update {
 		b, err := json.MarshalIndent(got, "", "  ")

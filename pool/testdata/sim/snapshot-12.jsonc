@@ -1,7 +1,6 @@
 // Pool simulator scenario (task sim; docs/guides/pool-simulator.md).
 {
   "about": "A recorded 12-member pool (3 own at 95/98, 9 shared; names replaced, numbers kept), ten sessions busy 30% of the time.",
-  "group": "large-team",
   "seed": 401,
   "seeds": 12,
   "accounts": [

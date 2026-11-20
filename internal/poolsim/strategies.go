@@ -17,7 +17,7 @@ func Today() Policy {
 func members(sc Scenario) []Member {
 	out := make([]Member, len(sc.Accounts))
 	for i, a := range sc.Accounts {
-		out[i] = Member{Name: a.Name, Group: a.Group, Capacity: a.Capacity}
+		out[i] = Member{Name: a.Name, Group: a.Group, Capacity: knownCapacity(a)}
 	}
 	return out
 }
@@ -60,10 +60,9 @@ const (
 	idleShort     = 80.0
 	idleActiveFor = 2 * time.Hour
 	paceSlack     = 10.0
-	spreadPer     = 3
+	spreadPer     = 4
 	stickMargin   = 0.0
-	stickRatio    = 0.0
-	leaveRatio    = 3.0
+	stickRatio    = 3.0
 )
 
 // Overrides are caps a sweep sets instead of the scenario's (0 = the
@@ -118,25 +117,25 @@ func Strategies() []Strategy {
 		policy("E", "use-it-or-lose-it: room / hours to reset, own and shared ranked together", from(Today(), flat)),
 		policy("E2", "A with use-it-or-lose-it order inside the borrow tiers", from(Today(), urgency)),
 		policy("F", "A + own accounts paced (10% slack), ahead = last resort", from(Today(), pace)),
-		policy("G", "A + spread: at most 3 busy sessions per account", from(Today(), spread)),
+		policy("G", "A + spread: at most 4 busy sessions per account", from(Today(), spread)),
 		policy("H", "A + sticky: stay while usable and in the first tier", from(Today(), stick)),
 		policy("REC", "recommended: C + E2 + G + H", rec),
 		policy("REC-C", "REC without the weekly relax", from(rec, func(p *Policy) { p.Relax = WeekRelax{} })),
 		policy("REC-E2", "REC with soonest-reset order", from(rec, func(p *Policy) { p.Order = OrderReset })),
 		policy("REC-G", "REC without spread", from(rec, func(p *Policy) { p.Spread = 0 })),
 		policy("REC-H", "REC without sticky", from(rec, func(p *Policy) { p.Stick = Hysteresis{} })),
-		policy("REC+L", "REC with sticky sessions leaving for a member 3 times as urgent", from(rec, func(p *Policy) { p.Stick.Ratio = leaveRatio })),
+		policy("REC-L", "REC with sticky sessions that never leave for a more urgent member", from(rec, func(p *Policy) { p.Stick.Ratio = 0 })),
 		policy("REC+B", "REC + urgent tier", from(rec, urgent)),
 		policy("REC+D", "REC + idle 5h cap", from(rec, idle)),
 		policy("REC+F", "REC + own pacing", from(rec, pace)),
 		policy("REC+W", "REC ranking by room in work (plan size known)", from(rec, func(p *Policy) { p.Weighted = true })),
-		RealToday(), RealRecommended(),
+		RealToday(), RealRecommended(), RealWeighted(),
 	}
 }
 
 // Recommended is the recommended policy: the configured caps and
 // tiers, the weekly cap rising to 95 over the last 24h before the
-// reset, use-it-or-lose-it order, at most 3 busy sessions per account,
+// reset, use-it-or-lose-it order, at most 4 busy sessions per account,
 // and sessions kept on their account while it is usable and in the
 // first tier.
 func Recommended() Policy {
@@ -161,4 +160,32 @@ func RealToday() Strategy {
 // at its defaults, to check it against the Policy's REC.
 func RealRecommended() Strategy {
 	return Strategy{Name: "REC-real", About: "pool.Select, expiring strategy at its defaults", New: func(sc Scenario) Picker { return NewPoolRules(RecommendedConfig(sc)) }}
+}
+
+// knownCapacity is what a picker may know of an account's plan size:
+// its capacity when the user told agx, else 0 (unknown).
+func knownCapacity(a Account) float64 {
+	if !a.CapacityKnown {
+		return 0
+	}
+	return a.Capacity
+}
+
+// WeightedConfig is RecommendedConfig with each member's capacity set
+// where the scenario's user knows the plan (accounts.NAME.capacity).
+func WeightedConfig(sc Scenario) pool.Config {
+	c := RecommendedConfig(sc)
+	c.Accounts = map[string]pool.Account{}
+	for _, a := range sc.Accounts {
+		if capacity := knownCapacity(a); capacity > 0 {
+			c.Accounts[a.Name] = pool.Account{Capacity: &capacity}
+		}
+	}
+	return c
+}
+
+// RealWeighted runs the real pool.Select with the expiring strategy and
+// the known plan sizes as capacities, to check it against REC+W.
+func RealWeighted() Strategy {
+	return Strategy{Name: "REC+W-real", About: "pool.Select, expiring with capacities where plans are known", New: func(sc Scenario) Picker { return NewPoolRules(WeightedConfig(sc)) }}
 }

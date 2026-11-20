@@ -88,6 +88,7 @@ var poolValueKeys = []struct {
 	{[]string{"accounts", "*", "week"}, SchemaNumber, true},
 	{[]string{"accounts", "*", "enabled"}, SchemaBoolean, false},
 	{[]string{"accounts", "*", "week_relax_max"}, SchemaNumber, true},
+	{[]string{"accounts", "*", "capacity"}, SchemaNumber, false},
 	{[]string{"own_caps", "short"}, SchemaNumber, true},
 	{[]string{"own_caps", "week"}, SchemaNumber, true},
 	{[]string{"own_caps", "week_relax_max"}, SchemaNumber, true},

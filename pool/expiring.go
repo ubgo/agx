@@ -107,6 +107,15 @@ func (c Config) RelaxMaxFor(name string) float64 {
 	return c.WeekRelaxMax
 }
 
+// CapacityFor is member name's capacity (Account.Capacity), 1 when not
+// set.
+func (c Config) CapacityFor(name string) float64 {
+	if a, ok := c.Accounts[name]; ok && a.Capacity != nil {
+		return *a.Capacity
+	}
+	return 1
+}
+
 // RelaxedWeek is a weekly cap capWeek relaxed toward relaxMax over the
 // last window before a reset that is until away: linear from capWeek at
 // window to relaxMax at the reset. Outside the window, with a passed
@@ -137,14 +146,14 @@ func (c Config) relax(cand *Candidate, rd Reading, now time.Time) {
 }
 
 // setUrgency sets the candidate's room ÷ hours to its reset (percent
-// per hour) from the unrounded room; it stays unset when the room or a
+// per hour, times the member's capacity) from the unrounded room; it stays unset when the room or a
 // future reset is unknown. Urgency shows it rounded; the order uses the
 // exact value.
-func setUrgency(c *Candidate, rd Reading) {
+func setUrgency(c *Candidate, rd Reading, capacity float64) {
 	if !readable(rd.Week) || !c.hasWeekReset || *c.UntilReset < 0 {
 		return
 	}
-	c.urgency = math.Max(0, c.Caps.Week-rd.Week.Percent) / math.Max(c.UntilReset.Hours(), minUrgencyHours)
+	c.urgency = math.Max(0, c.Caps.Week-rd.Week.Percent) * capacity / math.Max(c.UntilReset.Hours(), minUrgencyHours)
 	c.hasUrgency = true
 	c.Urgency = ptr(math.Round(c.urgency*100) / 100)
 }

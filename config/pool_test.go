@@ -124,10 +124,10 @@ func TestPoolMembersOrder(t *testing.T) {
 func TestPoolStrategyLoads(t *testing.T) {
 	l, err := parsePool(t, `"auto": { "agents": ["claude"], "kind": "pool", "pool": {
       "own": ["alice", "bob"], "shared": ["carol", "derek"], "strategy": "expiring",
-      "week_relax_window": "12h", "max_sessions": 2, "sticky": false, "sticky_leave_ratio": 3,
+      "week_relax_window": "12h", "max_sessions": 2, "sticky": false, "sticky_leave_ratio": 5,
       "defaults": { "week_relax_max": 90 }, "own_caps": { "short": 95, "week": 98 },
       "shared_caps": { "week": 60, "week_relax_max": 85 },
-      "accounts": { "derek": { "week_relax_max": 60 } } } }`)
+      "accounts": { "derek": { "week_relax_max": 60, "capacity": 4 } } } }`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +135,7 @@ func TestPoolStrategyLoads(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r.Strategy != "expiring" || r.WeekRelaxWindow != 12*time.Hour || r.MaxSessions != 2 || r.Sticky || r.WeekRelaxMax != 90 || r.StickyLeaveRatio != 3 {
+	if r.Strategy != "expiring" || r.WeekRelaxWindow != 12*time.Hour || r.MaxSessions != 2 || r.Sticky || r.WeekRelaxMax != 90 || r.StickyLeaveRatio != 5 {
 		t.Errorf("rules: strategy %s, window %s, sessions %d, sticky %v, relax %v", r.Strategy, r.WeekRelaxWindow, r.MaxSessions, r.Sticky, r.WeekRelaxMax)
 	}
 	if c := r.CapsFor("alice"); c.Short != 95 || c.Week != 98 {
@@ -143,6 +143,9 @@ func TestPoolStrategyLoads(t *testing.T) {
 	}
 	if c := r.CapsFor("carol"); c.Short != 50 || c.Week != 60 {
 		t.Errorf("carol caps %v (shared_caps over defaults)", c)
+	}
+	if r.CapacityFor("derek") != 4 || r.CapacityFor("carol") != 1 {
+		t.Errorf("capacity: derek %v, carol %v", r.CapacityFor("derek"), r.CapacityFor("carol"))
 	}
 	if r.RelaxMaxFor("carol") != 85 || r.RelaxMaxFor("derek") != 60 || r.RelaxMaxFor("alice") != 90 {
 		t.Errorf("relax max: carol %v, derek %v, alice %v", r.RelaxMaxFor("carol"), r.RelaxMaxFor("derek"), r.RelaxMaxFor("alice"))
@@ -152,7 +155,7 @@ func TestPoolStrategyLoads(t *testing.T) {
 		t.Fatal(err)
 	}
 	dr, _ := d.Config.Logins["auto"].Pool.Rules()
-	if dr.Strategy != "deadline" || dr.WeekRelaxWindow != 24*time.Hour || dr.MaxSessions != 3 || !dr.Sticky || dr.WeekRelaxMax != 95 {
+	if dr.Strategy != "deadline" || dr.WeekRelaxWindow != 24*time.Hour || dr.MaxSessions != 4 || !dr.Sticky || dr.WeekRelaxMax != 95 {
 		t.Errorf("defaults: %+v", dr)
 	}
 	for _, bad := range []struct{ block, want string }{

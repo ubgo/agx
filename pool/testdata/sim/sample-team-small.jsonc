@@ -1,0 +1,36 @@
+// Pool simulator scenario (task sim; docs/guides/pool-simulator.md).
+{
+  "about": "Seeded sample of small team pools: two to six teammates' accounts of any plan, any teammate profile, one to ten sessions.",
+  "seed": 711,
+  "seeds": 24,
+  "shared": {
+    "count": [
+      2,
+      6
+    ],
+    "plans": [
+      "pro",
+      "max5",
+      "max20",
+      "unknown"
+    ],
+    "mates": [
+      "none",
+      "light",
+      "medium",
+      "heavy",
+      "irregular"
+    ]
+  },
+  "sessions": {
+    "count": [
+      1,
+      10
+    ],
+    "duty": [
+      0.3,
+      0.8
+    ],
+    "pattern": "any"
+  }
+}

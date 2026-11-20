@@ -15,14 +15,14 @@ func TestPoolStrategyFlags(t *testing.T) {
 	a, home := fixtureApp(t, flagConfig, nil, nil)
 	ch, err := a.LoginEdit(context.Background(), LoginEditOptions{ID: "auto", Pool: PoolSettings{Strategy: PoolStrategySettings{
 		Strategy: strp("expiring"), WeekRelaxWindow: strp("12h"), MaxSessions: strp("2"), Sticky: strp("false"), StickyLeaveRatio: strp("3"),
-		DefaultWeekRelax: strp("90"), CapWeekRelax: []string{"carol=70"},
+		DefaultWeekRelax: strp("90"), CapWeekRelax: []string{"carol=70"}, Capacity: []string{"alice=20", "carol=5"},
 		GroupCapShort: []string{"own=95"}, GroupCapWeek: []string{"own=98", "shared=60"}, GroupCapWeekRelax: []string{"shared=85"},
 	}}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := []Change{
-		{"pool.accounts.carol.week_relax_max", "", "70"}, {"pool.defaults.week_relax_max", "", "90"},
+		{"pool.accounts.carol.week_relax_max", "", "70"}, {"pool.accounts.carol.capacity", "", "5"}, {"pool.accounts.alice.capacity", "", "20"}, {"pool.defaults.week_relax_max", "", "90"},
 		{"pool.strategy", "", "expiring"}, {"pool.max_sessions", "", "2"}, {"pool.sticky", "", "false"}, {"pool.sticky_leave_ratio", "", "3"},
 		{"pool.own_caps.short", "", "95"}, {"pool.own_caps.week", "", "98"},
 		{"pool.shared_caps.week", "", "60"}, {"pool.shared_caps.week_relax_max", "", "85"},
@@ -43,7 +43,7 @@ func TestPoolStrategyFlags(t *testing.T) {
 	empty := ""
 	if _, err := a.LoginEdit(context.Background(), LoginEditOptions{ID: "auto", Pool: PoolSettings{Strategy: PoolStrategySettings{
 		Strategy: &empty, WeekRelaxWindow: &empty, MaxSessions: &empty, Sticky: &empty, StickyLeaveRatio: &empty, DefaultWeekRelax: &empty,
-		CapWeekRelax: []string{"carol="}, GroupCapShort: []string{"own="}, GroupCapWeek: []string{"own=", "shared="}, GroupCapWeekRelax: []string{"shared="},
+		CapWeekRelax: []string{"carol="}, Capacity: []string{"alice=", "carol="}, GroupCapShort: []string{"own="}, GroupCapWeek: []string{"own=", "shared="}, GroupCapWeekRelax: []string{"shared="},
 	}}}); err != nil {
 		t.Fatal(err)
 	}
@@ -74,6 +74,8 @@ func TestPoolStrategyFlagsRefused(t *testing.T) {
 		{"group name", PoolStrategySettings{GroupCapShort: []string{"team=10"}}, `--pool-group-cap-short "team=10": use own=N or shared=N`},
 		{"group twice", PoolStrategySettings{GroupCapWeek: []string{"own=1", "own=2"}}, "--pool-group-cap-week own is given twice"},
 		{"member relax", PoolStrategySettings{CapWeekRelax: []string{"zed=10"}}, "zed is not a member"},
+		{"capacity zero", PoolStrategySettings{Capacity: []string{"alice=0"}}, "--pool-capacity alice=0: 0 is not a number above 0"},
+		{"capacity form", PoolStrategySettings{Capacity: []string{"alice"}}, `--pool-capacity "alice": use NAME=N`},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -108,6 +110,7 @@ func TestPoolStrategyConfigSet(t *testing.T) {
 		{"logins.auto.pool.defaults.week_relax_max", "98", true},
 		{"logins.auto.pool.shared_caps.week", "101", false},
 		{"logins.auto.pool.accounts.alice.week_relax_max", "90", true},
+		{"logins.auto.pool.accounts.alice.capacity", "20", true},
 	} {
 		a, _ := fixtureApp(t, flagConfig, nil, nil)
 		_, err := a.ConfigSet(context.Background(), c.key, c.value)

@@ -178,6 +178,27 @@ func TestExpiringUrgencyOrder(t *testing.T) {
 	}
 }
 
+// TestExpiringCapacity: a member's capacity weighs its room, so a
+// bigger plan's percent counts for more work; unset counts as 1.
+func TestExpiringCapacity(t *testing.T) {
+	readings := map[string]pool.Reading{"alice": read(0, 40, 50*time.Hour), "bob": read(0, 70, 50*time.Hour)}
+	if got, _ := pick(t, expiring(), readings, pool.Options{}); got != "alice" {
+		t.Errorf("same capacity: picked %s, want alice (more room)", got)
+	}
+	c := expiring()
+	c.Accounts["bob"] = pool.Account{Short: f(95), Week: f(98), Capacity: f(4)}
+	got, r := pick(t, c, readings, pool.Options{})
+	if got != "bob" {
+		t.Errorf("bob 4 times the plan: picked %s, want bob (28%% × 4 beats 58%%)", got)
+	}
+	if b := candidateOf(t, r, "bob"); b.Urgency == nil || *b.Urgency != 2.24 { // 28 × 4 / 50
+		t.Errorf("bob urgency %v, want 2.24", b.Urgency)
+	}
+	if c.CapacityFor("alice") != 1 {
+		t.Errorf("unset capacity %v, want 1", c.CapacityFor("alice"))
+	}
+}
+
 // TestExpiringUrgencyValue: the candidate shows its urgency in percent
 // per hour, from the relaxed cap.
 func TestExpiringUrgencyValue(t *testing.T) {
@@ -186,6 +207,13 @@ func TestExpiringUrgencyValue(t *testing.T) {
 	if c.Urgency == nil || *c.Urgency != 3.54 { // (82.5 - 40) / 12
 		t.Errorf("urgency = %v, want 3.54", c.Urgency)
 	}
+}
+
+// stay is expiring() with sticky sessions that never leave.
+func stay() pool.Config {
+	c := expiring()
+	c.StickyLeaveRatio = 0
+	return c
 }
 
 // sessions is a pool where alice, bob and derek are usable, derek the
@@ -212,26 +240,27 @@ func TestExpiringAssign(t *testing.T) {
 		reason string
 	}{
 		{"most urgent first", expiring, pool.Options{}, "derek", false, "most room to lose"},
-		{"sticky keeps a ready member", expiring, pool.Options{Current: "bob"}, "bob", true, "sticky"},
+		{"sticky keeps a ready member", stay, pool.Options{Current: "bob"}, "bob", true, "sticky"},
+		{"sticky leaves for one sticky_leave_ratio (default 3) times as urgent", expiring, pool.Options{Current: "bob"}, "derek", false, "left bob: derek is at least 3 times as urgent"},
 		{"sticky off", func() pool.Config { c := expiring(); c.Sticky = false; return c }, pool.Options{Current: "bob"}, "derek", false, ""},
 		{"a waiting member is not kept", expiring, pool.Options{Current: "erin"}, "derek", false, ""},
 		{"a blocked member is not kept", expiring, pool.Options{Current: "carol"}, "derek", false, ""},
 		{"a member outside the pool is not kept", expiring, pool.Options{Current: "zed"}, "derek", false, ""},
-		{"kept while fewer than max_sessions older sessions hold it", expiring,
+		{"kept while fewer than max_sessions older sessions hold it", stay,
 			pool.Options{Current: "bob", CurrentAhead: 2, Load: map[string]int{"bob": 5}}, "bob", true, ""},
-		{"left when max_sessions older sessions hold it", expiring,
-			pool.Options{Current: "bob", CurrentAhead: 3, Load: map[string]int{"bob": 3}}, "derek", false, ""},
+		{"left when max_sessions older sessions hold it", stay,
+			pool.Options{Current: "bob", CurrentAhead: 4, Load: map[string]int{"bob": 4}}, "derek", false, ""},
 		{"a full member is passed over", expiring,
-			pool.Options{Load: map[string]int{"derek": 3}}, "alice", false, "derek has 3 other sessions"},
+			pool.Options{Load: map[string]int{"derek": 4}}, "alice", false, "derek has 4 other sessions"},
 		{"under max_sessions is not full", expiring,
 			pool.Options{Load: map[string]int{"derek": 2}}, "derek", false, ""},
 		{"full ready members overflow to a waiting one", expiring,
-			pool.Options{Load: map[string]int{"derek": 3, "alice": 3, "bob": 3}}, "erin", false, "borrow window"},
+			pool.Options{Load: map[string]int{"derek": 4, "alice": 4, "bob": 4}}, "erin", false, "borrow window"},
 		{"every member full: the least loaded ready one", expiring,
-			pool.Options{Load: map[string]int{"derek": 5, "alice": 4, "bob": 6, "erin": 3}}, "alice", false, "least loaded"},
+			pool.Options{Load: map[string]int{"derek": 6, "alice": 5, "bob": 7, "erin": 4}}, "alice", false, "least loaded"},
 		{"max_sessions 0 is no limit", func() pool.Config { c := expiring(); c.MaxSessions = 0; return c },
 			pool.Options{Load: map[string]int{"derek": 50}}, "derek", false, ""},
-		{"max_sessions 0 keeps a sticky member at any load", func() pool.Config { c := expiring(); c.MaxSessions = 0; return c },
+		{"max_sessions 0 keeps a sticky member at any load", func() pool.Config { c := stay(); c.MaxSessions = 0; return c },
 			pool.Options{Current: "bob", CurrentAhead: 40}, "bob", true, ""},
 		{"sticky leaves for a member at least sticky_leave_ratio times as urgent", func() pool.Config { c := expiring(); c.StickyLeaveRatio = 2; return c },
 			pool.Options{Current: "bob"}, "derek", false, "left bob: derek is at least 2 times as urgent"},
@@ -313,6 +342,8 @@ func TestExpiringValidate(t *testing.T) {
 		{"relax max over 100", func(c *pool.Config) { c.WeekRelaxMax = 101 }, "defaults.week_relax_max 101 is outside 0..100"},
 		{"relax max NaN", func(c *pool.Config) { c.WeekRelaxMax = math.NaN() }, "defaults.week_relax_max NaN is outside 0..100"},
 		{"member relax max", func(c *pool.Config) { c.Accounts["alice"] = pool.Account{WeekRelaxMax: f(-1)} }, "accounts.alice.week_relax_max -1"},
+		{"zero capacity", func(c *pool.Config) { c.Accounts["alice"] = pool.Account{Capacity: f(0)} }, "accounts.alice.capacity 0 is not a number above 0"},
+		{"NaN capacity", func(c *pool.Config) { c.Accounts["alice"] = pool.Account{Capacity: f(math.NaN())} }, "accounts.alice.capacity NaN"},
 		{"group cap", func(c *pool.Config) {
 			c.Groups = map[pool.Group]pool.GroupCaps{pool.GroupShared: {Short: f(200)}}
 		}, "shared_caps.short 200 is outside 0..100"},
@@ -344,14 +375,14 @@ func TestExpiringValidate(t *testing.T) {
 // TestExpiringDefaults pins the defaults the simulator chose.
 func TestExpiringDefaults(t *testing.T) {
 	c := pool.New(nil, nil)
-	if c.WeekRelaxWindow != 24*time.Hour || c.WeekRelaxMax != 95 || c.MaxSessions != 3 || !c.Sticky || c.StickyLeaveRatio != 0 {
+	if c.WeekRelaxWindow != 24*time.Hour || c.WeekRelaxMax != 95 || c.MaxSessions != 4 || !c.Sticky || c.StickyLeaveRatio != 3 {
 		t.Errorf("defaults: window %s, max %v, sessions %d, sticky %v", c.WeekRelaxWindow, c.WeekRelaxMax, c.MaxSessions, c.Sticky)
 	}
 }
 
 // TestExpiringJSON: the report's new fields encode.
 func TestExpiringJSON(t *testing.T) {
-	_, r := pick(t, expiring(), sessions(), pool.Options{Current: "bob", Load: map[string]int{"bob": 1}})
+	_, r := pick(t, stay(), sessions(), pool.Options{Current: "bob", Load: map[string]int{"bob": 1}})
 	b, err := json.Marshal(r)
 	if err != nil {
 		t.Fatal(err)
@@ -446,7 +477,7 @@ func TestSnapshotRelaxAfterShortWindow(t *testing.T) {
 // TestSnapshotSpread is the other real symptom: ten sessions all on one
 // shared account while an own account sat at 0%. Under the expiring
 // strategy ten sessions asking in turn spread over the most urgent
-// members, at most three each.
+// members, at most max_sessions each.
 func TestSnapshotSpread(t *testing.T) {
 	cfg, readings := snapshotPool(pool.StrategyExpiring)
 	load := map[string]int{}
@@ -454,7 +485,7 @@ func TestSnapshotSpread(t *testing.T) {
 		got, _ := pick(t, cfg, readings, pool.Options{Now: snapshotAt, Load: load})
 		load[got]++
 	}
-	if len(load) < 4 {
+	if len(load) < 3 {
 		t.Errorf("10 sessions on %d members: %v", len(load), load)
 	}
 	for m, n := range load {
