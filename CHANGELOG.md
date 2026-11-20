@@ -2,6 +2,12 @@
 
 All notable changes to agx are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and agx uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.14] - 2026-11-20
+
+### Changed
+
+- Claude Code 2.1.328 and 2.1.329 are tested: built on agentio `claude` v0.1.2 and `builtin` v0.1.2, whose tested range for Claude Code is now 2.1.323..2.1.329. `agx run`, `agx doctor` and `agx agent list` no longer warn that an installed 2.1.328 or 2.1.329 is outside the tested range. agentio's drift check on real 2.1.328 and 2.1.329 homes found no new transcript, settings or session shape.
+
 ## [0.4.13] - 2026-11-20
 
 ### Added

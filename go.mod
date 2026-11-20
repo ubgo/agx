@@ -6,8 +6,8 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.1.0
 	github.com/ubgo/agentio v0.1.1
-	github.com/ubgo/agentio/builtin v0.1.1
-	github.com/ubgo/agentio/claude v0.1.1
+	github.com/ubgo/agentio/builtin v0.1.2
+	github.com/ubgo/agentio/claude v0.1.2
 	github.com/ubgo/agentio/codex v0.1.1
 	github.com/ubgo/agentio/gemini v0.1.1
 	github.com/ubgo/agentio/opencode v0.1.0

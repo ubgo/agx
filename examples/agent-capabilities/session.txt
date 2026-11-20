@@ -2,7 +2,7 @@
 #region list
 $ agx agent list
 AGENT     KIND      BINARY    VERSION  TESTED            COMPAT   CAPABILITIES
-claude    built-in  claude    unknown  2.1.323..2.1.327  unknown  installer,binary-version,identity,usage,cached-usage,subscription,token-login,token-prober,login-commander,conversations,history-checker,history-mover,conversation-mover,prompt-history,live-sessions,process-classifier,turns,home-linker,instruction-files,mcp-servers,skills,plugins,config,run-events,doctor,live-credential,
+claude    built-in  claude    unknown  2.1.323..2.1.329  unknown  installer,binary-version,identity,usage,cached-usage,subscription,token-login,token-prober,login-commander,conversations,history-checker,history-mover,conversation-mover,prompt-history,live-sessions,process-classifier,turns,home-linker,instruction-files,mcp-servers,skills,plugins,config,run-events,doctor,live-credential,
                                                                   launch-config,process-sessions,stop-planner,turn-files,hooks
 codex     built-in  codex     unknown  0.162.1..0.162.1  unknown  installer,binary-version,identity,usage,cached-usage,subscription,login-commander,conversations,history-checker,prompt-history,live-sessions,process-classifier,turns,home-linker,instruction-files,mcp-servers,skills,plugins,config,models,run-events,doctor,launch-config,process-sessions,stop-planner,turn-files,hooks
 gemini    built-in  gemini    unknown  0.68.0..0.68.0    unknown  installer,binary-version,identity,token-login,conversations,history-checker,process-classifier,home-linker,instruction-files,mcp-servers,skills,plugins,config,doctor,process-sessions,stop-planner,turn-files,hooks
@@ -23,7 +23,7 @@ binary: claude
 path: /usr/local/bin/claude
 version: unknown
 method: unknown
-tested: 2.1.323..2.1.327
+tested: 2.1.323..2.1.329
 compat: unknown
 autonomy: default, read-only, ask, accept-edits, full
 token kinds: oauth-token, api-key, api-key-helper

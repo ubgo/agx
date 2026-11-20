@@ -22,7 +22,7 @@ $ agx doctor
 · shell                       shell layer not loaded: new and resume leave this shell where it is
                               fix: eval "$(agx shell-init --shell zsh)"
 ✓ binary claude               /usr/local/bin/claude (unknown)
-! binary claude               claude version unknown (no install metadata); tested 2.1.323..2.1.327
+! binary claude               claude version unknown (no install metadata); tested 2.1.323..2.1.329
 ✓ home claude ~/.claude       ~/.claude
 ! home claude ~/.claude       no login found in the credentials file or keychain
 · home claude ~/.claude       transcripts kept 30 days
@@ -92,7 +92,7 @@ info    plain-token      logins.gem-work.token holds a plain token value (allowe
 ok      run-folder       no run folders
 ok      shell-layer      shell layer loaded (zsh)
 ok      binary-found     /usr/local/bin/claude (unknown)
-warn    version-tested   claude version unknown (no install metadata); tested 2.1.323..2.1.327
+warn    version-tested   claude version unknown (no install metadata); tested 2.1.323..2.1.329
 ok      home             ~/.claude
 warn    login            no login found in the credentials file or keychain
 info    retention        transcripts kept 30 days
@@ -126,7 +126,7 @@ info    plain-token  logins.gem-work.token holds a plain token value (allowed; r
 ok      runs         no run folders
 info    shell        shell layer not loaded: new and resume leave this shell where it is
 ok      binary       /usr/local/bin/claude (unknown)
-warn    binary       claude version unknown (no install metadata); tested 2.1.323..2.1.327
+warn    binary       claude version unknown (no install metadata); tested 2.1.323..2.1.329
 ok      home         ~/.claude
 warn    home         no login found in the credentials file or keychain
 info    home         transcripts kept 30 days
@@ -177,7 +177,7 @@ agx: 3 checks failed
 · shell                       shell layer not loaded: new and resume leave this shell where it is
                               fix: eval "$(agx shell-init --shell zsh)"
 ✓ binary claude               /usr/local/bin/claude (unknown)
-! binary claude               claude version unknown (no install metadata); tested 2.1.323..2.1.327
+! binary claude               claude version unknown (no install metadata); tested 2.1.323..2.1.329
 ✓ home claude ~/.claude       ~/.claude
 ! home claude ~/.claude       no login found in the credentials file or keychain
 · home claude ~/.claude       transcripts kept 30 days

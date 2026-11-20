@@ -121,7 +121,7 @@ func TestEdge08DoctorVersionNewer(t *testing.T) {
 	nativeClaude(t, f, newerClaude)
 	f.WriteConfig(claudeConfig)
 	env, _ := runDoctor(t, f, "--agent", "claude")
-	c, ok := find(env.Data, "version-tested", "claude "+newerClaude+" is newer than tested (2.1.327)")
+	c, ok := find(env.Data, "version-tested", "claude "+newerClaude+" is newer than tested (2.1.329)")
 	if !ok || c.Status != "warn" {
 		t.Fatalf("no newer warning: %+v", env.Data)
 	}

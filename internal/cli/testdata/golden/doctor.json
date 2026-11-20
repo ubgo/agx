@@ -40,7 +40,7 @@
       "agent": "claude",
       "id": "version-tested",
       "status": "warn",
-      "message": "claude 2.1.330 is newer than tested (2.1.327)"
+      "message": "claude 2.1.330 is newer than tested (2.1.329)"
     },
     {
       "area": "home",

@@ -11,7 +11,7 @@
       "path": "<root>/bin/claude",
       "version": "2.1.330",
       "method": "native",
-      "tested": "2.1.323..2.1.327",
+      "tested": "2.1.323..2.1.329",
       "compat": "newer",
       "capabilities": [
         "installer",

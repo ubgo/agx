@@ -149,7 +149,7 @@ agx: 3 checks failed
 · shell                       shell layer not loaded: new and resume leave this shell where it is
                               fix: eval "$(agx shell-init --shell zsh)"
 ✓ binary claude               /usr/local/bin/claude (unknown)
-! binary claude               claude version unknown (no install metadata); tested 2.1.323..2.1.327
+! binary claude               claude version unknown (no install metadata); tested 2.1.323..2.1.329
 ✓ home claude ~/.claude       ~/.claude
 ! home claude ~/.claude       no login found in the credentials file or keychain
 · home claude ~/.claude       transcripts kept 30 days
