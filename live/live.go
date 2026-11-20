@@ -55,6 +55,10 @@ type State struct {
 	InUseAt time.Time `json:"in_use_at,omitzero"`
 	// Helper is the command the agent runs to fetch its credential.
 	Helper string `json:"helper"`
+	// Model is the model the run's session uses (--model, its profile's
+	// model or the agent's own setting at launch); "" = unknown. A pool
+	// probes its members with it so per-model windows show.
+	Model string `json:"model,omitempty"`
 	// PoolForce is the member a pool run's --pool-force named: every key
 	// request gets it over the pool's rules. agx live use clears it.
 	PoolForce string `json:"pool_force,omitempty"`

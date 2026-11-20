@@ -145,6 +145,8 @@ type LaunchPlan struct {
 	// liveSrc is the source of the settings a pool's live plan adds
 	// ("login auto (pool)"); "" = "--live-login".
 	liveSrc string
+	// liveModelSrc says where Live.Model comes from (runModel).
+	liveModelSrc string
 	// rawSettings are the raw settings flags taken out of the raw args
 	// (request), merged into Settings by the launch-config step.
 	rawSettings []rawSettingsArg
@@ -178,6 +180,8 @@ type LiveStart struct {
 	PoolOnlyWeek  *float64 `json:"pool_only_week,omitempty"`
 	// AllowAPIKey is the run's --allow-api-key.
 	AllowAPIKey bool `json:"allow_api_key,omitempty"`
+	// Model is the model the session uses (runModel); "" = unknown.
+	Model string `json:"model,omitempty"`
 }
 
 // only is the run's pin as the pool pick takes it.

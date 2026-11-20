@@ -73,6 +73,8 @@ type Account struct {
 	// the running 5-hour window's end (nil = no window running).
 	Week, Short  float64
 	ShortResetAt *time.Time
+	// Model is the per-model week's use at the start (Scenario.Model).
+	Model float64
 	// Mate is the teammate of a shared account; nil for an own one.
 	Mate *Teammate
 }
@@ -96,6 +98,18 @@ type Load struct {
 	Bursty bool
 }
 
+// ModelWeek is a per-model weekly window (Fable's 7d_oi): some of our
+// sessions use a model that has a week of its own on top of the
+// all-models week, which the probe reports when it asks with that model.
+type ModelWeek struct {
+	// Sessions is how many of our sessions use that model (the first
+	// ones); 0 = no per-model window.
+	Sessions int
+	// WeekRatio is how many full 5-hour windows of that model its own
+	// week holds (fewer than the all-models week: it fills faster).
+	WeekRatio float64
+}
+
 // Scenario is one simulated situation; a Generator makes a fresh one for
 // each seed.
 type Scenario struct {
@@ -111,6 +125,8 @@ type Scenario struct {
 	Lag      int
 	Accounts []Account
 	Load     Load
+	// Model is the per-model weekly window; zero = none.
+	Model ModelWeek
 	// BaseCaps are the normal caps per group the squeeze and own-room
 	// metrics measure against, whatever caps a picker uses.
 	BaseCaps map[pool.Group]pool.Caps

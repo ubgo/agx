@@ -172,6 +172,19 @@ type File struct {
 	Caps FileCaps `json:"caps,omitzero"`
 	// WeekRatio overrides DefaultWeekRatio.
 	WeekRatio float64 `json:"week_ratio,omitempty"`
+	// Model is a per-model weekly window; omitted = none.
+	Model *FileModel `json:"model,omitempty"`
+}
+
+// FileModel is a per-model weekly window (Fable's 7d_oi): a share of our
+// sessions use a model whose own week holds week_ratio full 5-hour
+// windows.
+type FileModel struct {
+	// Share is the part of our sessions on that model, 0 to 1 (at least
+	// one session when above 0).
+	Share float64 `json:"share"`
+	// WeekRatio is how many full 5-hour windows its own week holds.
+	WeekRatio float64 `json:"week_ratio"`
 }
 
 // Members are drawn members of one group.
@@ -320,6 +333,9 @@ func (f File) check() error {
 	case "", GroupSolo, GroupSmallTeam, GroupLargeTeam, GroupMixed:
 	default:
 		return fmt.Errorf("group %q is not solo, small-team, large-team or mixed", f.Group)
+	}
+	if m := f.Model; m != nil && (m.Share <= 0 || m.Share > 1 || m.WeekRatio <= 0) {
+		return fmt.Errorf("model: share %v must be above 0 and at most 1, week_ratio %v above 0", m.Share, m.WeekRatio)
 	}
 	if _, err := f.offset(); err != nil {
 		return err
@@ -471,9 +487,12 @@ func (f File) make(seed uint64) Scenario {
 		Duty: pickFloat(seed, 0, drawDuty, duty), UTCOffset: offset, ActiveStart: hours[0], ActiveEnd: hours[1],
 		Bursty: f.Sessions.Pattern == PatternBursty || (f.Sessions.Pattern == PatternAny && draw(seed, 0, drawPattern) < anyBursty),
 	}
+	if f.Model != nil {
+		sc.Model = ModelWeek{Sessions: max(1, int(math.Round(f.Model.Share*float64(sc.Load.Sessions)))), WeekRatio: f.Model.WeekRatio}
+	}
 	if len(f.Accounts) > 0 {
 		for i, a := range f.Accounts {
-			sc.Accounts = append(sc.Accounts, f.fixed(seed, i, a))
+			sc.Accounts = append(sc.Accounts, f.withModel(sc, f.fixed(seed, i, a)))
 		}
 		return sc
 	}
@@ -515,9 +534,19 @@ func (f File) make(seed uint64) Scenario {
 			a.Short = draw(seed, i, drawShortPct) * runningShortMax
 			a.ShortResetAt = shortReset(seed, i, sc.Start)
 		}
-		sc.Accounts = append(sc.Accounts, a)
+		sc.Accounts = append(sc.Accounts, f.withModel(sc, a))
 	}
 	return sc
+}
+
+// withModel sets an account's per-model week at the start: the model's
+// share of the week's use so far, on its smaller week.
+func (f File) withModel(sc Scenario, a Account) Account {
+	if sc.Model.WeekRatio > 0 && sc.Load.Sessions > 0 {
+		share := float64(sc.Model.Sessions) / float64(sc.Load.Sessions)
+		a.Model = math.Min(Full, a.Week*share*sc.WeekRatio/sc.Model.WeekRatio)
+	}
+	return a
 }
 
 // fixed is a recorded member at the start.

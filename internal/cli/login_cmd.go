@@ -205,8 +205,8 @@ type poolSettingFlags struct {
 	capShort, capWeek, disable, enable                        []string
 	defShort, defWeek, cutoff, borrow, maxAge, keyTTL, picker string
 	// The rule flags.
-	order, relaxWindow, maxSessions, sticky, defRelax, leaveRatio string
-	capRelax, groupShort, groupWeek, groupRelax, capacity            []string
+	order, relaxWindow, maxSessions, sticky, defRelax, leaveRatio      string
+	capRelax, groupShort, groupWeek, groupRelax, capacity, probeModels []string
 }
 
 // addPoolSettingFlags declares the pool setting flags add and edit share.
@@ -233,6 +233,7 @@ func addPoolSettingFlags(cmd *cobra.Command, ps *poolSettingFlags) {
 	f.StringArrayVar(&ps.capacity, "pool-capacity", nil, "a member's plan size relative to the others (only ratios matter), so its room counts for more work: NAME=N; NAME= removes it (repeat)")
 	f.StringArrayVar(&ps.groupShort, "pool-group-cap-short", nil, "the 5-hour cap of a group's members without their own: own=PERCENT or shared=PERCENT; GROUP= removes it (repeat)")
 	f.StringArrayVar(&ps.groupWeek, "pool-group-cap-week", nil, "the weekly cap of a group's members without their own: own=PERCENT or shared=PERCENT; GROUP= removes it (repeat)")
+	f.StringArrayVar(&ps.probeModels, "pool-probe-model", nil, "a model to probe the members with when a session's own model is unknown, so its per-model weekly window applies (repeat; '' removes probe_models)")
 	f.StringArrayVar(&ps.groupRelax, "pool-group-cap-week-relax", nil, "the weekly cap a group's members reach at their reset: own=PERCENT or shared=PERCENT; GROUP= removes it (repeat)")
 }
 
@@ -267,6 +268,7 @@ func (ps *poolSettingFlags) settings(cmd *cobra.Command) app.PoolSettings {
 		Capacity:      list("pool-capacity", ps.capacity),
 		GroupCapShort: list("pool-group-cap-short", ps.groupShort), GroupCapWeek: list("pool-group-cap-week", ps.groupWeek),
 		GroupCapWeekRelax: list("pool-group-cap-week-relax", ps.groupRelax),
+		ProbeModels:       list("pool-probe-model", ps.probeModels),
 	}
 	return s
 }

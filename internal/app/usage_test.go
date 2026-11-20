@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"fmt"
 	"net"
 	"net/http"
@@ -52,6 +53,11 @@ type account struct {
 	fail bool
 	// delay holds every answer this long (a hung endpoint).
 	delay time.Duration
+	// fable is the percent of the per-model window 7d_oi, answered only
+	// to a probe that asks with a Fable model; < 0 or unset = none.
+	fable *float64
+	// fableRejected answers 7d_oi with status rejected.
+	fableRejected bool
 }
 
 // resets are the account's window resets (the fixed ones by default).
@@ -81,6 +87,10 @@ type fakeVendor struct {
 	accounts map[string]account
 	// requests counts requests by path.
 	requests map[string]int
+	// models are the models probes asked with, in order.
+	models []string
+	// refuse is a model the fake API answers 404 not_found_error.
+	refuse string
 }
 
 // fixedReset is every window's reset in the fake answers.
@@ -117,6 +127,20 @@ func (fv *fakeVendor) serve(w http.ResponseWriter, r *http.Request) {
 	case "/api/oauth/profile":
 		_, _ = fmt.Fprint(w, `{"organization":{"organization_type":"claude_max","rate_limit_tier":"default_claude_max_20x","billing_type":"stripe_subscription","subscription_status":"active","subscription_created_at":"2025-01-02T00:00:00Z"}}`) // as above
 	case "/v1/messages":
+		var body struct {
+			Model string `json:"model"`
+		}
+		b, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(b, &body)
+		fv.mu.Lock()
+		fv.models = append(fv.models, body.Model)
+		refuse := fv.refuse
+		fv.mu.Unlock()
+		if refuse != "" && body.Model == refuse {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = fmt.Fprint(w, `{"type":"error","error":{"type":"not_found_error","message":"model: `+refuse+`"}}`) // as above
+			return
+		}
 		if acc.delay > 0 {
 			select {
 			case <-time.After(acc.delay):
@@ -139,6 +163,16 @@ func (fv *fakeVendor) serve(w http.ResponseWriter, r *http.Request) {
 			h.Set("anthropic-ratelimit-unified-5h-reset", strconv.FormatInt(sess.Unix(), 10))
 			h.Set("anthropic-ratelimit-unified-7d-utilization", strconv.FormatFloat(acc.weekly/100, 'f', -1, 64))
 			h.Set("anthropic-ratelimit-unified-7d-reset", strconv.FormatInt(week.Unix(), 10))
+			if acc.fable != nil && strings.Contains(body.Model, "fable") {
+				h.Set("anthropic-ratelimit-unified-7d_oi-utilization", strconv.FormatFloat(*acc.fable/100, 'f', -1, 64))
+				h.Set("anthropic-ratelimit-unified-7d_oi-reset", strconv.FormatInt(week.Add(-24*time.Hour).Unix(), 10))
+				status := "allowed"
+				if acc.fableRejected {
+					status = "rejected"
+					h.Set("anthropic-ratelimit-unified-representative-claim", "seven_day_oi")
+				}
+				h.Set("anthropic-ratelimit-unified-7d_oi-status", status)
+			}
 		}
 		if acc.status != 0 {
 			w.WriteHeader(acc.status)
@@ -148,6 +182,13 @@ func (fv *fakeVendor) serve(w http.ResponseWriter, r *http.Request) {
 	default:
 		w.WriteHeader(http.StatusNotFound)
 	}
+}
+
+// probeModels are the models probes asked with so far.
+func (fv *fakeVendor) probeModels() []string {
+	fv.mu.Lock()
+	defer fv.mu.Unlock()
+	return append([]string{}, fv.models...)
 }
 
 // count is the number of requests to path.

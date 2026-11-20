@@ -108,7 +108,7 @@ func TestScenarioFiles(t *testing.T) {
 // for the recommendation make exactly the picks of the shipped code, so
 // the tables measure what agx does.
 func TestPolicyMatchesPool(t *testing.T) {
-	for _, name := range []string{"solo-3-mixed-plans", "small-all-shared", "large-mixed", "snapshot-12-busy", "mixed-1-2", "team-6"} {
+	for _, name := range []string{"solo-3-mixed-plans", "small-all-shared", "large-mixed", "snapshot-12-busy", "mixed-1-2", "team-6", "fable-heavy-solo", "fable-heavy-team"} {
 		gen := WithSeeds(scenario(t, name), 2)
 		w := Recommended()
 		w.Weighted = true

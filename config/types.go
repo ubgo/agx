@@ -321,6 +321,12 @@ type Pool struct {
 	// urgent member's urgency is at least this many times its own
 	// (default 3; 0 = never).
 	StickyLeaveRatio *float64 `json:"sticky_leave_ratio,omitempty"`
+	// ProbeModels are the models to probe the members with when a
+	// session's own model is unknown (no --model, profile model or agent
+	// setting): a per-model weekly window shows only when the probe asks
+	// with that model. Omitted = the default profile's model, else the
+	// agent's default probe model.
+	ProbeModels []string `json:"probe_models,omitempty"`
 	// Accounts are per-member caps and enabled false, keyed by member.
 	Accounts map[string]PoolAccount `json:"accounts,omitempty"`
 	// UsageMaxAge is how old the shared usage cache may be before the

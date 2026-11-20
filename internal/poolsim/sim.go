@@ -25,6 +25,9 @@ type SessionView struct {
 	Busy bool
 	// Current is the account it used last; "" before its first key.
 	Current string
+	// Scoped is a session on the model with its own weekly window
+	// (Scenario.Model): only its pick sees that window.
+	Scoped bool
 }
 
 // View is everything a picker may look at in one step, the same facts
@@ -79,6 +82,9 @@ type account struct {
 	lastMate time.Time
 	// ourWeek is what we used this week (counted at reset).
 	ourWeek float64
+	// model is the per-model week's use (Scenario.Model); it resets
+	// with the week.
+	model float64
 }
 
 // teammateActiveFor is how long after their last use a teammate counts
@@ -91,7 +97,7 @@ func Run(sc Scenario, st Strategy) Metrics {
 	accts := make([]*account, len(sc.Accounts))
 	members := make([]Member, len(sc.Accounts))
 	for i, a := range sc.Accounts {
-		ac := &account{Account: a, idx: i, week: a.Week, short: a.Short, weekReset: a.WeekResetAt}
+		ac := &account{Account: a, idx: i, week: a.Week, short: a.Short, weekReset: a.WeekResetAt, model: a.Model}
 		if a.ShortResetAt != nil {
 			end := *a.ShortResetAt
 			ac.shortEnd = &end
@@ -110,10 +116,11 @@ func Run(sc Scenario, st Strategy) Metrics {
 	m := Metrics{Weeks: sc.Horizon.Hours() / WeekPeriod.Hours(), Sessions: sc.Load.Sessions, Accounts: len(sc.Accounts)}
 	// history holds the readings at the end of each step, newest last;
 	// the initial state stands in before the first step.
-	history := []map[string]pool.Reading{readings(accts)}
+	history := []map[string]pool.Reading{readings(accts, sc)}
 	sessions := make([]SessionView, sc.Load.Sessions)
 	for i := range sessions {
 		sessions[i].ID = i
+		sessions[i].Scoped = i < sc.Model.Sessions && sc.Model.WeekRatio > 0
 	}
 	load := map[string]int{}
 	// After the horizon our sessions stop and the run goes on until
@@ -141,7 +148,7 @@ func Run(sc Scenario, st Strategy) Metrics {
 		}
 		if k >= steps {
 			for _, a := range accts {
-				a.burn(sc, now, 0, false, &m)
+				a.burn(sc, now, 0, 0, false, &m)
 			}
 			continue
 		}
@@ -156,6 +163,7 @@ func Run(sc Scenario, st Strategy) Metrics {
 		picks := p.Assign(view)
 		newLoad := map[string]int{}
 		onAcct := map[string][]int{}
+		onModel := map[string]int{}
 		for i, s := range sessions {
 			if !s.Busy {
 				continue
@@ -175,12 +183,15 @@ func Run(sc Scenario, st Strategy) Metrics {
 			sessions[i].Current = name
 			newLoad[name]++
 			onAcct[name] = append(onAcct[name], i)
+			if s.Scoped {
+				onModel[name]++
+			}
 		}
 		for _, a := range accts {
-			a.burn(sc, now, len(onAcct[a.Name]), true, &m)
+			a.burn(sc, now, len(onAcct[a.Name]), onModel[a.Name], true, &m)
 		}
 		load = newLoad
-		history = append(history, readings(accts))
+		history = append(history, readings(accts, sc))
 		if len(history) > maxHistory {
 			history = history[1:]
 		}
@@ -197,7 +208,7 @@ const maxHistory = 16
 func (a *account) advance(now time.Time, sc Scenario, m *Metrics) {
 	for !now.Before(a.weekReset) {
 		m.reset(a, sc)
-		a.week, a.weekMate, a.ourWeek = 0, 0, 0
+		a.week, a.weekMate, a.ourWeek, a.model = 0, 0, 0, 0
 		a.weekReset = a.weekReset.Add(WeekPeriod)
 	}
 	if a.shortEnd != nil && !now.Before(*a.shortEnd) {
@@ -205,13 +216,15 @@ func (a *account) advance(now time.Time, sc Scenario, m *Metrics) {
 	}
 }
 
-// burn spends one step of use on the account: ours (n busy sessions) and
-// the teammate's (inHorizon false is the tail after the horizon, where
-// only teammates work). When the step would pass a limit, every user gets the
-// same share of what is left: ours that is refused is a 429 for each of
-// our sessions on it, the teammate's is a lockout (ours when the
-// teammate alone would have stayed under the limit).
-func (a *account) burn(sc Scenario, now time.Time, n int, inHorizon bool, m *Metrics) {
+// burn spends one step of use on the account: ours (n busy sessions, nm
+// of them on the model with its own week) and the teammate's (inHorizon
+// false is the tail after the horizon, where only teammates work). When
+// the step would pass a limit, every user gets the same share of what is
+// left: ours that is refused is a 429 for each of our sessions on it,
+// the teammate's is a lockout (ours when the teammate alone would have
+// stayed under the limit). The per-model week limits only the sessions
+// on its model: past it they get a smaller share, a 429 each.
+func (a *account) burn(sc Scenario, now time.Time, n, nm int, inHorizon bool, m *Metrics) {
 	stepH := sc.Step.Hours()
 	base := sc.BaseCaps[a.Group]
 	if inHorizon && a.Group == pool.GroupOwn && a.week >= base.Week {
@@ -248,15 +261,29 @@ func (a *account) burn(sc Scenario, now time.Time, n int, inHorizon bool, m *Met
 		}
 	}
 	share = math.Max(0, share)
+	// The per-model week: the model's sessions get at most what is left
+	// of it.
+	oursModel := float64(nm) * sc.Load.Burn * stepH / capacity
+	modelShare := share
+	if nm > 0 && sc.Model.WeekRatio > 0 && a.model+share*oursModel/sc.Model.WeekRatio > Full {
+		modelShare = math.Max(0, math.Min(share, (Full-a.model)/(oursModel/sc.Model.WeekRatio)))
+	}
+	used := share*(ours-oursModel) + modelShare*oursModel + share*mate
 	mateAlone := a.shortMate+mate <= Full && a.weekMate+mate/ratio <= Full
-	a.short += share * total
-	a.week += share * total / ratio
+	a.short += used
+	a.week += used / ratio
 	a.shortMate += share * mate
 	a.weekMate += share * mate / ratio
-	a.ourWeek += share * ours / ratio
-	m.ServedHours += share * float64(n) * stepH
-	if share < 1 && n > 0 {
+	a.ourWeek += (share*(ours-oursModel) + modelShare*oursModel) / ratio
+	if sc.Model.WeekRatio > 0 {
+		a.model += modelShare * oursModel / sc.Model.WeekRatio
+	}
+	m.ServedHours += (share*float64(n-nm) + modelShare*float64(nm)) * stepH
+	switch {
+	case share < 1 && n > 0:
 		m.Hits429 += float64(n)
+	case modelShare < 1 && nm > 0:
+		m.Hits429 += float64(nm)
 	}
 	if share < 1 && mate > 0 && mateAlone {
 		m.LockoutHours += (1 - share) * stepH
@@ -271,10 +298,15 @@ func (a *account) burn(sc Scenario, now time.Time, n int, inHorizon bool, m *Met
 	}
 }
 
+// modelWindowName labels the simulated per-model window.
+const modelWindowName = "model week"
+
 // readings is what a probe of every account would report now: integer
 // percentages (the probe's headers carry whole numbers), the reset
-// times, and a limit status at 100%.
-func readings(accts []*account) map[string]pool.Reading {
+// times, a limit status at 100% of an all-models window, and the
+// per-model week when the scenario has one (a picker shows it only to
+// the sessions on that model).
+func readings(accts []*account, sc Scenario) map[string]pool.Reading {
 	out := make(map[string]pool.Reading, len(accts))
 	for _, a := range accts {
 		rd := pool.Reading{Status: pool.StatusOK}
@@ -286,6 +318,9 @@ func readings(accts []*account) map[string]pool.Reading {
 		}
 		if a.week >= Full || a.short >= Full {
 			rd.Status = statusLimit
+		}
+		if sc.Model.WeekRatio > 0 {
+			rd.Scoped = []pool.ScopedWindow{{Name: modelWindowName, Percent: math.Round(a.model), ResetsAt: &reset}}
 		}
 		out[a.Name] = rd
 	}

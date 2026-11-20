@@ -1,4 +1,22 @@
 {
+  "fable-heavy-solo": {
+    "classic": {
+      "waste_total": 46.16705016189337,
+      "hits_429": 0,
+      "stall_hours": 30.333333333332988,
+      "lockout_hours": 0,
+      "served": 0.8811606038359657,
+      "switches": 0.9002976190476191
+    },
+    "defaults": {
+      "waste_total": 46.2535084952267,
+      "hits_429": 0,
+      "stall_hours": 30.40624999999969,
+      "lockout_hours": 0,
+      "served": 0.8806636560182904,
+      "switches": 0.7142857142857142
+    }
+  },
   "large-mixed": {
     "classic": {
       "waste_total": 44.74023145042128,

@@ -151,11 +151,16 @@ func setUsage(r *UsageRow, u agentio.Usage, err error, src RowSource) {
 		return
 	}
 	r.Windows = make([]UsageWindow, 0, len(u.Windows))
+	full := false
 	for _, w := range u.Windows {
-		r.Windows = append(r.Windows, UsageWindow{Class: w.Class().String(), Label: w.Label, Scope: w.Scope, Percent: w.Percent, ResetsAt: w.ResetsAt})
+		r.Windows = append(r.Windows, UsageWindow{Class: w.Class().String(), Label: w.Label, Scope: w.Scope, Percent: w.Percent, ResetsAt: w.ResetsAt,
+			ID: w.ID, Status: w.Status, Binding: w.Binding})
+		// A full per-model window limits that model only: the account
+		// still takes requests for the others.
+		full = full || (w.Scope == "" && w.Percent >= percentFull)
 	}
 	r.Status = StatusOK
-	if u.MaxPercent() >= percentFull {
+	if full {
 		r.Status = StatusLimit
 	}
 }

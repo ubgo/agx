@@ -27,11 +27,12 @@ const (
 	flagPoolGroupCapWeek      = "--pool-group-cap-week"
 	flagPoolGroupCapWeekRelax = "--pool-group-cap-week-relax"
 	flagPoolCapacity          = "--pool-capacity"
+	flagPoolProbeModel        = "--pool-probe-model"
 )
 
 // poolRuleFlagsText names the rule flags in "nothing to change".
 const poolRuleFlagsText = flagPoolOrder + ", " + flagPoolWeekRelaxWindow + ", " + flagPoolMaxSessions + ", " + flagPoolSticky + ", " + flagPoolStickyLeaveRatio + ", " +
-	flagPoolDefaultWeekRelax + ", " + flagPoolCapWeekRelax + ", " + flagPoolCapacity + ", " + flagPoolGroupCapShort + ", " + flagPoolGroupCapWeek + ", " + flagPoolGroupCapWeekRelax
+	flagPoolDefaultWeekRelax + ", " + flagPoolCapWeekRelax + ", " + flagPoolCapacity + ", " + flagPoolGroupCapShort + ", " + flagPoolGroupCapWeek + ", " + flagPoolGroupCapWeekRelax + ", " + flagPoolProbeModel
 
 // Keys the rule flags write inside logins.<name>.pool.
 const (
@@ -44,6 +45,7 @@ const (
 	keyPoolCapacity        = "capacity"
 	keyPoolOwnCaps         = "own_caps"
 	keyPoolSharedCaps      = "shared_caps"
+	keyPoolProbeModels     = "probe_models"
 )
 
 // PoolRuleSettings are the rule flags; nil = not given.
@@ -69,12 +71,16 @@ type PoolRuleSettings struct {
 	GroupCapShort     []string
 	GroupCapWeek      []string
 	GroupCapWeekRelax []string
+	// ProbeModels replaces probe_models (repeat); one empty value
+	// removes the key.
+	ProbeModels []string
 }
 
 // given reports any rule flag.
 func (s PoolRuleSettings) given() bool {
 	return s.Order != nil || s.WeekRelaxWindow != nil || s.MaxSessions != nil || s.Sticky != nil || s.StickyLeaveRatio != nil ||
-		s.DefaultWeekRelax != nil || s.CapWeekRelax != nil || s.Capacity != nil || s.GroupCapShort != nil || s.GroupCapWeek != nil || s.GroupCapWeekRelax != nil
+		s.DefaultWeekRelax != nil || s.CapWeekRelax != nil || s.Capacity != nil || s.GroupCapShort != nil || s.GroupCapWeek != nil || s.GroupCapWeekRelax != nil ||
+		s.ProbeModels != nil
 }
 
 // planRules plans the order, max_sessions, sticky, sticky_leave_ratio
@@ -132,7 +138,29 @@ func (p *poolPlan) planRules(cur config.Pool, s PoolRuleSettings) error {
 		}
 		p.change(keyPoolStickyLeave, old, orAbsent(*v), e)
 	}
+	if s.ProbeModels != nil {
+		if err := p.planProbeModels(cur, s.ProbeModels); err != nil {
+			return err
+		}
+	}
 	return p.planGroupCaps(cur, s)
+}
+
+// planProbeModels plans probe_models: the given models replace the list;
+// a single empty value removes it (the default applies again).
+func (p *poolPlan) planProbeModels(cur config.Pool, models []string) error {
+	old := strings.Join(cur.ProbeModels, " ")
+	if len(models) == 1 && models[0] == "" {
+		p.change(keyPoolProbeModels, orAbsent(old), absent, deleteIf(p.at(keyPoolProbeModels), cur.ProbeModels != nil))
+		return nil
+	}
+	for _, m := range models {
+		if strings.TrimSpace(m) == "" || strings.ContainsAny(m, " \t") {
+			return apperr.Usage(fmt.Sprintf("%s %q: give one model name per flag, like claude-fable-5-2 or opus (a single '' removes the list)", flagPoolProbeModel, m))
+		}
+	}
+	p.change(keyPoolProbeModels, orAbsent(old), strings.Join(models, " "), setTo(p.at(keyPoolProbeModels), models))
+	return nil
 }
 
 // orAbsent shows an optional string key ("" when unset).

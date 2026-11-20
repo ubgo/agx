@@ -435,6 +435,10 @@ type Reading struct {
 	// key (billed per use) and that does not allow it: never picked by
 	// the rules, whatever its usage says.
 	PerUseKey bool
+	// Scoped are the windows that apply only to the models the session
+	// uses (a per-model weekly limit, such as Fable's): each is an extra
+	// weekly cap (scoped.go).
+	Scoped []ScopedWindow
 }
 
 // Options are one selection's inputs besides the config.
@@ -486,9 +490,12 @@ type Candidate struct {
 	// WeekCapConfigured is the configured weekly cap when Caps.Week has
 	// been relaxed above it near the reset; nil otherwise.
 	WeekCapConfigured *float64 `json:"week_cap_configured,omitempty"`
-	// Urgency is Room ÷ hours to the weekly reset times the capacity, in
-	// percent per hour (the urgency order); nil when either is unknown.
+	// Urgency is Room ÷ hours to the reset of the window that leaves the
+	// least room, times the capacity, in percent per hour (the urgency
+	// order); nil when either is unknown.
 	Urgency *float64 `json:"urgency,omitempty"`
+	// Scoped are the reading's per-model windows with the cap each gets.
+	Scoped []ScopedState `json:"scoped,omitempty"`
 	// Load is how many other sessions use this member (Options.Load).
 	Load    int      `json:"load"`
 	Reasons []string `json:"reasons"`
@@ -499,6 +506,9 @@ type Candidate struct {
 	hasWeekReset bool
 	urgency      float64
 	hasUrgency   bool
+	// roomUntil is the time to the reset of the window that leaves the
+	// least room (the weekly one unless a scoped window leaves less).
+	roomUntil *time.Duration
 }
 
 // Selection is the account to use and why.
@@ -673,8 +683,12 @@ func candidate(cfg Config, name string, g Group, order int, rd Reading, found bo
 	}
 	if found {
 		cfg.relax(c, rd, now)
+		c.Scoped = cfg.scopedStates(name, rd, now)
 	}
 	c.Reasons = blockReasons(rd, found, c.Enabled, c.Caps, cfg.ShortUnavailableAt)
+	if found && !rd.PerUseKey {
+		c.Reasons = append(c.Reasons, scopedReasons(c.Scoped)...)
+	}
 	c.Eligible = len(c.Reasons) == 0
 	if !found {
 		return c
@@ -711,7 +725,11 @@ func candidate(cfg Config, name string, g Group, order int, rd Reading, found bo
 // lets something other than the rules choose (a picker command) reports
 // these as warnings.
 func (c Config) Reasons(name string, rd Reading, found bool) []string {
-	return blockReasons(rd, found, c.Enabled(name), c.CapsFor(name), c.ShortUnavailableAt)
+	reasons := blockReasons(rd, found, c.Enabled(name), c.CapsFor(name), c.ShortUnavailableAt)
+	if found && !rd.PerUseKey {
+		reasons = append(reasons, scopedReasons(c.scopedStates(name, rd, time.Time{}))...)
+	}
+	return reasons
 }
 
 // blockReasons is every reason an account cannot be used now; empty =

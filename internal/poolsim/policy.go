@@ -159,24 +159,28 @@ func (pp *policyPicker) Assign(v View) []string {
 		pp.started = v.Now
 	}
 	pp.observe(v)
-	opts := pp.options(v)
+	// A session on the per-model window's model sees that window too
+	// (an extra weekly cap); the others pick from the all-models windows.
+	lists := map[bool][]option{false: pp.options(v, false)}
+	lists[true] = lists[false]
+	if slices.ContainsFunc(v.Sessions, func(s SessionView) bool { return s.Scoped }) {
+		lists[true] = pp.options(v, true)
+	}
 	out := make([]string, len(v.Sessions))
-	if len(opts) == 0 {
-		return out
-	}
-	first := 1
-	for first < len(opts) && opts[first].tier == opts[0].tier {
-		first++
-	}
-	fill := opts
-	if pp.p.SpreadInTier {
-		fill = opts[:first]
-	}
 	pos := positions(v.Sessions)
 	limit := pp.p.Spread
 	for i, s := range v.Sessions {
-		if !s.Busy {
+		opts := lists[s.Scoped]
+		if !s.Busy || len(opts) == 0 {
 			continue
+		}
+		first := 1
+		for first < len(opts) && opts[first].tier == opts[0].tier {
+			first++
+		}
+		fill := opts
+		if pp.p.SpreadInTier {
+			fill = opts[:first]
 		}
 		load, ahead := others(pos, i, s.Current)
 		pick := ""
@@ -277,8 +281,10 @@ func (pp *policyPicker) mateActive(name string, now time.Time) bool {
 	return ok && now.Sub(at) <= pp.p.Idle.ActiveFor
 }
 
-// options are the usable accounts in pick order.
-func (pp *policyPicker) options(v View) []option {
+// options are the usable accounts in pick order; with scoped, each
+// reading's per-model windows are extra weekly caps (the shipped code's
+// rule: blocked at the cap, the room the least over the windows).
+func (pp *policyPicker) options(v View, scoped bool) []option {
 	p := pp.p
 	ownUsable := false
 	var opts []option
@@ -291,6 +297,21 @@ func (pp *policyPicker) options(v View) []option {
 		caps := pp.caps(mb, until, known, v.Now)
 		short, week := percent(rd.Short), percent(rd.Week)
 		if short >= p.Cutoff || short >= caps.Short || week >= caps.Week {
+			continue
+		}
+		modelRoom, modelBlocked := math.Inf(1), false
+		for _, w := range rd.Scoped {
+			if !scoped {
+				break
+			}
+			if w.ResetsAt != nil && w.ResetsAt.Before(v.Now) {
+				// It has reset since the reading.
+				continue
+			}
+			modelBlocked = modelBlocked || w.Percent >= caps.Week
+			modelRoom = math.Min(modelRoom, caps.Week-w.Percent)
+		}
+		if modelBlocked {
 			continue
 		}
 		o := option{name: mb.Name, group: mb.Group, order: i, caps: caps, short: short, week: week}
@@ -310,7 +331,7 @@ func (pp *policyPicker) options(v View) []option {
 		if mb.Group == pool.GroupOwn && o.tier == tierMain {
 			ownUsable = true
 		}
-		room := caps.Week - week
+		room := math.Min(caps.Week-week, modelRoom)
 		if p.Weighted && mb.Capacity > 0 {
 			// Room in work, not percent: a bigger plan's percent is
 			// worth more sessions.
@@ -429,21 +450,46 @@ func percent(w *pool.Window) float64 {
 // running session does today; under the expiring strategy each busy
 // session asks in turn with its own load and current member, as each
 // run's key request does.
-type poolPicker struct{ cfg pool.Config }
+type poolPicker struct {
+	cfg pool.Config
+	// blind leaves out every per-model window.
+	blind bool
+}
 
 // NewPoolRules is the real pool.Select as a picker.
 func NewPoolRules(cfg pool.Config) Picker { return poolPicker{cfg: cfg} }
 
-// Assign implements Picker.
+// NewPoolRulesBlind is NewPoolRules without the per-model windows: what
+// agx did before it read them (every session sees the all-models
+// windows only).
+func NewPoolRulesBlind(cfg pool.Config) Picker { return poolPicker{cfg: cfg, blind: true} }
+
+// withoutScoped is readings with every per-model window left out.
+func withoutScoped(readings map[string]pool.Reading) map[string]pool.Reading {
+	out := make(map[string]pool.Reading, len(readings))
+	for k, r := range readings {
+		r.Scoped = nil
+		out[k] = r
+	}
+	return out
+}
+
+// Assign implements Picker. A session not on the per-model window's
+// model (or every session, blind) picks from readings without it.
 func (pp poolPicker) Assign(v View) []string {
 	out := make([]string, len(v.Sessions))
 	pos := positions(v.Sessions)
+	unscoped := withoutScoped(v.Readings)
 	for i, s := range v.Sessions {
 		if !s.Busy {
 			continue
 		}
 		load, ahead := others(pos, i, s.Current)
-		res, err := pool.Select(pp.cfg, v.Readings, pool.Options{Now: v.Now, Load: load, Current: s.Current, CurrentAhead: ahead})
+		readings := v.Readings
+		if pp.blind || !s.Scoped {
+			readings = unscoped
+		}
+		res, err := pool.Select(pp.cfg, readings, pool.Options{Now: v.Now, Load: load, Current: s.Current, CurrentAhead: ahead})
 		if err != nil || res.Selected == nil {
 			continue
 		}

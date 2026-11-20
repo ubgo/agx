@@ -223,15 +223,31 @@ func (c Config) relax(cand *Candidate, rd Reading, now time.Time) {
 		num(configured), num(relaxMax), Hours(c.WeekRelaxWindow), num(week)))
 }
 
-// setUrgency sets the candidate's room ÷ hours to its reset (percent
-// per hour, times the member's capacity) from the unrounded room; it stays unset when the room or a
-// future reset is unknown. Urgency shows it rounded; the order uses the
-// exact value.
+// setUrgency sets the candidate's room and urgency. The room is the
+// room under the weekly cap, or less when a per-model window leaves less
+// (scoped.go); the urgency is that room ÷ hours to that window's reset,
+// in percent per hour, times the member's capacity. It stays unset when
+// the room or a future reset is unknown. Urgency shows it rounded; the
+// order uses the exact value.
 func setUrgency(c *Candidate, rd Reading, capacity float64) {
-	if !readable(rd.Week) || !c.hasWeekReset || *c.UntilReset < 0 {
+	if !readable(rd.Week) {
 		return
 	}
-	c.urgency = math.Max(0, c.Caps.Week-rd.Week.Percent) * capacity / math.Max(c.UntilReset.Hours(), minUrgencyHours)
+	room, until := math.Max(0, c.Caps.Week-rd.Week.Percent), c.UntilReset
+	if !c.hasWeekReset {
+		until = nil
+	}
+	for _, s := range c.Scoped {
+		if s.until != nil && s.Room < room {
+			room, until = s.Room, s.until
+		}
+	}
+	c.Room = ptr(round(room))
+	c.roomUntil = until
+	if until == nil || *until < 0 {
+		return
+	}
+	c.urgency = room * capacity / math.Max(until.Hours(), minUrgencyHours)
 	c.hasUrgency = true
 	c.Urgency = ptr(math.Round(c.urgency*100) / 100)
 }
@@ -322,7 +338,7 @@ func urgencyReason(c *Candidate) string {
 		return "no member has a known weekly reset and room; first in config order"
 	}
 	return fmt.Sprintf("most room to lose: %s%% left under its weekly cap with %s to the reset (%s%%/h to use it all)",
-		num(*c.Room), hoursText(*c.UntilReset), num(*c.Urgency))
+		num(*c.Room), hoursText(*c.roomUntil), num(*c.Urgency))
 }
 
 // hoursText is a duration as hours with one decimal ("43.3h").

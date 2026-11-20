@@ -34,7 +34,7 @@ var poolPickFields = []string{"data.pool", "data.agent", "data.selected", "data.
 	"data.candidates.*.eligible", "data.candidates.*.enabled", "data.candidates.*.status", "data.candidates.*.account",
 	"data.candidates.*.short", "data.candidates.*.week", "data.candidates.*.weekly_resets_at", "data.candidates.*.hours_to_reset",
 	"data.candidates.*.room_percent", "data.candidates.*.caps", "data.candidates.*.caps_source", "data.candidates.*.week_cap_configured",
-	"data.candidates.*.urgency_percent_per_hour", "data.candidates.*.sessions", "data.candidates.*.reasons", "data.candidates.*.notes",
+	"data.candidates.*.urgency_percent_per_hour", "data.candidates.*.sessions", "data.candidates.*.scoped", "data.probe_models", "data.probe_models_source", "data.candidates.*.reasons", "data.candidates.*.notes",
 	"data.candidates.*.source", "data.candidates.*.age_seconds"}
 
 // Fields of agx pool list and agx pool show.
@@ -203,6 +203,7 @@ func (c *cliCtx) poolPickCmd() *cobra.Command {
 	f.BoolVar(&o.Cached, "cached", false, "use the login-usage cache only, of any age; probe nothing")
 	f.DurationVar(&o.MaxAge, "max-age", 0, "reuse cached usage younger than this; 0 probes every member (default: the pool's usage_max_age)")
 	f.StringVar(&o.Force, "pool-force", "", "pick this member for this one run, over the pool's rules, force and picker")
+	f.StringVar(&o.Model, "model", "", "the model the session uses: members are probed with it, so its per-model weekly window applies (default: the pool's probe_models, else the default profile's model)")
 	addPoolOnlyFlags(f, &o.Only, "pick only this member, with its caps enforced; none when it is blocked", "this pick")
 	f.StringVar(&now, "now", "", "pretend it is this RFC 3339 time (to read an old cache)")
 	_ = f.MarkHidden("now") // the flag exists, so marking it cannot fail
@@ -222,6 +223,8 @@ const (
 	pickUnknown   = "reset unknown"
 	pickPassed    = "reset passed"
 	pickRules     = "Rules: "
+	// pickDefaultModel names the agent's default probe model.
+	pickDefaultModel = "the agent's default"
 )
 
 // writePoolReport prints the pick: "Use: NAME (GROUP)" (or FORCED with a
@@ -251,6 +254,13 @@ func writePoolReport(w io.Writer, rep app.PoolReport, st render.Style) error {
 		ew.Line(st.Paint(render.ToneWarn, "warning: "+warn))
 	}
 	ew.Line(st.Paint(render.ToneDim, "Source: "+rep.Source))
+	if rep.ProbeModelsSource != "" {
+		models := strings.Join(rep.ProbeModels, ", ")
+		if models == "" {
+			models = pickDefaultModel
+		}
+		ew.Line(st.Paint(render.ToneDim, "Probe model: "+models+" ("+rep.ProbeModelsSource+")"))
+	}
 	if len(rep.Settings) > 0 {
 		parts := make([]string, 0, len(rep.Settings))
 		for _, s := range rep.Settings {
@@ -304,6 +314,11 @@ func candidateLine(c app.PoolCandidate, v usageView, st render.Style) string {
 	}
 	if c.Week != nil {
 		usage = append(usage, fmt.Sprintf("week %.0f%%", math.Round(*c.Week)))
+	}
+	for _, sw := range c.Scoped {
+		if sw.Percent != nil && !sw.Stale {
+			usage = append(usage, fmt.Sprintf("%s %.0f%%", sw.Name, math.Round(*sw.Percent)))
+		}
 	}
 	figures := strings.Join(usage, ", ")
 	if figures == "" {

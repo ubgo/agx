@@ -130,7 +130,7 @@ func Strategies() []Strategy {
 		policy("REC+D", "REC + idle 5h cap", from(rec, idle)),
 		policy("REC+F", "REC + own pacing", from(rec, pace)),
 		policy("REC+W", "REC ranking by room in work (plan size known)", from(rec, func(p *Policy) { p.Weighted = true })),
-		RealToday(), RealRecommended(), RealWeighted(),
+		RealToday(), RealRecommended(), RealWeighted(), RealBlind(),
 	}
 }
 
@@ -161,6 +161,13 @@ func RealToday() Strategy {
 // check it against the Policy's REC.
 func RealRecommended() Strategy {
 	return Strategy{Name: "REC-real", About: "pool.Select, the default rules", New: func(sc Scenario) Picker { return NewPoolRules(RecommendedConfig(sc)) }}
+}
+
+// RealBlind runs the real pool.Select with the default rules but
+// without the per-model windows (agx before it read them), to show what
+// they save in a scenario with one.
+func RealBlind() Strategy {
+	return Strategy{Name: "REC-blind", About: "pool.Select, the defaults without per-model windows", New: func(sc Scenario) Picker { return NewPoolRulesBlind(RecommendedConfig(sc)) }}
 }
 
 // knownCapacity is what a picker may know of an account's plan size:

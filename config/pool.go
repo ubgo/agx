@@ -67,6 +67,11 @@ func (p Pool) Rules() (pool.Config, error) {
 	if err := p.ruleValues(&c); err != nil {
 		return c, err
 	}
+	for _, m := range p.ProbeModels {
+		if strings.TrimSpace(m) == "" {
+			return c, fmt.Errorf("pool: probe_models has an empty model name")
+		}
+	}
 	if _, err := p.MaxAge(); err != nil {
 		return c, err
 	}
