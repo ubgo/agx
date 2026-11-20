@@ -3,8 +3,8 @@ package app
 import (
 	"context"
 	"encoding/json"
-	"io"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
