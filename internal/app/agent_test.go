@@ -12,6 +12,7 @@ import (
 	"github.com/ubgo/agentio/claude"
 	"github.com/ubgo/agentio/codex"
 	"github.com/ubgo/agentio/gemini"
+	"github.com/ubgo/agentio/opencode"
 	"github.com/ubgo/agentio/pi"
 )
 
@@ -19,12 +20,14 @@ import (
 // builder really accepts (agentio's mapping, never a spec map alone):
 // Codex has no edits-only mode, and pi has no permission modes at all (it
 // always runs without prompts, so default and full both mean that, and
-// read-only is its read-only tool set).
+// read-only is its read-only tool set). opencode maps only full (its
+// --auto flag); the finer levels are permission rules in its own config.
 var builtinAutonomy = map[agentio.ID][]agentio.Autonomy{
-	claude.ID: {agentio.AutonomyDefault, agentio.AutonomyReadOnly, agentio.AutonomyAsk, agentio.AutonomyAcceptEdits, agentio.AutonomyFull},
-	codex.ID:  {agentio.AutonomyDefault, agentio.AutonomyReadOnly, agentio.AutonomyAsk, agentio.AutonomyFull},
-	gemini.ID: {agentio.AutonomyDefault, agentio.AutonomyReadOnly, agentio.AutonomyAsk, agentio.AutonomyAcceptEdits, agentio.AutonomyFull},
-	pi.ID:     {agentio.AutonomyDefault, agentio.AutonomyReadOnly, agentio.AutonomyFull},
+	claude.ID:   {agentio.AutonomyDefault, agentio.AutonomyReadOnly, agentio.AutonomyAsk, agentio.AutonomyAcceptEdits, agentio.AutonomyFull},
+	codex.ID:    {agentio.AutonomyDefault, agentio.AutonomyReadOnly, agentio.AutonomyAsk, agentio.AutonomyFull},
+	gemini.ID:   {agentio.AutonomyDefault, agentio.AutonomyReadOnly, agentio.AutonomyAsk, agentio.AutonomyAcceptEdits, agentio.AutonomyFull},
+	pi.ID:       {agentio.AutonomyDefault, agentio.AutonomyReadOnly, agentio.AutonomyFull},
+	opencode.ID: {agentio.AutonomyDefault, agentio.AutonomyFull},
 }
 
 // levelNames is the wire spelling of levels, as agent show lists them.

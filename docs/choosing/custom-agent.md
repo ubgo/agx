@@ -1,12 +1,12 @@
 # Built-in or config-defined agent
 
-agx knows four agents in code: Claude Code, Codex, Gemini CLI and pi. Any other coding-agent CLI can be described in config with `agents.<id>.spec`: its binary, how it selects a home, and the argument templates for a model, extra folders, a prompt, each autonomy level and headless mode. A built-in agent can also take anything raw after `--` or in a profile's `args`. This page helps you choose between a config-defined agent and a built-in one with raw args. The steps are in [A custom agent](../guides/custom-agent.md), the spec keys in the [config reference](../config.md#a-custom-agent).
+agx knows five agents in code: Claude Code, Codex, Gemini CLI, pi and opencode. Any other coding-agent CLI can be described in config with `agents.<id>.spec`: its binary, how it selects a home, and the argument templates for a model, extra folders, a prompt, each autonomy level and headless mode. A built-in agent can also take anything raw after `--` or in a profile's `args`. This page helps you choose between a config-defined agent and a built-in one with raw args. The steps are in [A custom agent](../guides/custom-agent.md), the spec keys in the [config reference](../config.md#a-custom-agent).
 
 ## Short answer
 
 | Your situation | Choose |
 |---|---|
-| the CLI is Claude Code, Codex, Gemini CLI or pi | the built-in agent; pass what agx does not model as raw args |
+| the CLI is Claude Code, Codex, Gemini CLI, pi or opencode | the built-in agent; pass what agx does not model as raw args |
 | a built-in agent gained a flag agx does not know yet | the built-in agent with the flag after `--` or in the profile's `args` |
 | another CLI, and you want profiles, homes, `agx run` and `agx new`, `--model`, `--autonomy` mapped, run folders and `--dry-run` | a config-defined agent |
 | another CLI, and you only want to start it | a config-defined agent with just `binary`, `new_args` and a home; or start it yourself |
@@ -54,6 +54,7 @@ conversations       no         disk     config-only agent: a spec describes L1 o
 ...
 live-credential     no         pure     config-only agent: a spec describes L1 only; this needs code
 launch-config       no         disk     config-only agent: a spec has no typed launch options and no settings flag; pass vendor flags as raw args
+...
 ```
 
 ## See it

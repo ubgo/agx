@@ -27,6 +27,7 @@ A login is what one launch authenticates with. agx offers seven choices: a login
 | Codex | yes | no | no | no | no |
 | Gemini CLI | yes | no | yes (`GEMINI_API_KEY`) | no | no |
 | pi | yes | no | yes (the provider's variable, e.g. `ANTHROPIC_API_KEY` for `"provider": "anthropic"`) | no | no |
+| opencode | yes (its `auth.json`) | no | no | no | no |
 | a config-defined agent | yes | no | no | no | no |
 
 A kind an agent does not take is refused when you add the login (exit 4), with the kind it does take:

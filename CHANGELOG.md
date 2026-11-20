@@ -2,6 +2,18 @@
 
 All notable changes to agx are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and agx uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.13] - 2026-11-20
+
+### Added
+
+- opencode is a built-in agent (agentio `opencode` v0.1.0, tested with opencode 1.18.30). It shows in `agx agent list`, `agx agent show --id opencode`, `agx doctor` (binary on PATH, tested range) and in the known-agents list of an unknown-id error. A profile can use it (`"agent": "opencode"`, home `~/.local/share/opencode` or another data dir); a non-default home is selected with `XDG_DATA_HOME` set to the folder that contains the `opencode` data dir. `--model`, `--prompt`, `--headless` (`opencode run --format json`) and resume (`--session ID`) work; `--autonomy full` becomes `--auto`, `default` adds nothing, and `read-only`, `ask` and `accept-edits` are refused (exit 125) because opencode expresses them only as permission rules in `opencode.json`. `agx conversation list` reads the sessions opencode kept before 1.2.0 (newer ones live in its `opencode.db`, not read yet). opencode has no plan usage, token login or live login, each reported with its reason.
+- Config-defined agents can match an npm install run through an interpreter: `agents.<agent>.spec.process.script_basenames`, `script_contains` and `interpreters` (absent: node, nodejs, bun, deno), in the config schema and the config reference.
+- `agx agent show` and `agx agent list` list agentio's new capabilities: `process-sessions`, `stop-planner`, `turn-files` and `hooks`, each with its cost and, where missing, the agent's reason.
+
+### Changed
+
+- Built on agentio v0.1.1 (root, `claude`, `codex`, `gemini`, `pi`, `builtin`) and `opencode` v0.1.0. Process matching now also tests the raw command line and ignores a Windows `.exe`/`.cmd`/`.bat` ending, and an `npm install` of an agent package is no longer taken for the agent.
+
 ## [0.4.12] - 2026-11-19
 
 ### Added

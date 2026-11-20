@@ -46,7 +46,7 @@ claude --dangerously-skip-permissions
 
 `ask` becomes Claude Code's `manual` permission mode (the spelling Claude Code 2.1.323 lists in its `--help`; settings files may also spell it `default`). `full` needs the consent flag on every agent, because it lets the agent run any command without asking.
 
-## Step 2: the same levels on Codex, Gemini CLI and pi
+## Step 2: the same levels on Codex, Gemini CLI, pi and opencode
 
 Codex maps levels to its sandbox (`-s`) and approval policy (`-a`). It has no edits-only mode, so `accept-edits` is refused rather than mapped to something more permissive:
 
@@ -110,6 +110,8 @@ agx: pi: autonomy ask: pi has no permission modes; it always runs without prompt
 $ agx run --agent pi --autonomy full --consent full-autonomy --dry-run --quiet --json --field data.command.line
 pi
 ```
+
+opencode has one flag for this: `full` becomes `opencode --auto` (approve every permission that is not explicitly denied). `read-only`, `ask` and `accept-edits` are permission rules in its `opencode.json`, not flags, so they are refused (exit 125) rather than guessed; `default` leaves its configured permissions in charge.
 
 `default` adds nothing on any agent:
 

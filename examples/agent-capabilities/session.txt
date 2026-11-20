@@ -1,16 +1,18 @@
 #: Every agent agx knows, read from agentio and the disk; no binary runs.
 #region list
 $ agx agent list
-AGENT   KIND      BINARY  VERSION  TESTED            COMPAT   CAPABILITIES
-claude  built-in  claude  unknown  2.1.323..2.1.327  unknown  installer,binary-version,identity,usage,cached-usage,subscription,token-login,token-prober,login-commander,conversations,history-checker,history-mover,conversation-mover,prompt-history,live-sessions,process-classifier,turns,home-linker,instruction-files,mcp-servers,skills,plugins,config,run-events,doctor,live-credential,launch-config
-codex   built-in  codex   unknown  0.162.1..0.162.1  unknown  installer,binary-version,identity,usage,cached-usage,subscription,login-commander,conversations,history-checker,prompt-history,live-sessions,process-classifier,turns,home-linker,instruction-files,mcp-servers,skills,plugins,config,models,run-events,doctor,launch-config
-gemini  built-in  gemini  unknown  0.68.0..0.68.0    unknown  installer,binary-version,identity,token-login,conversations,history-checker,process-classifier,home-linker,instruction-files,mcp-servers,skills,plugins,config,doctor
-pi      built-in  pi      unknown  1.5.2..1.5.2      unknown  installer,binary-version,identity,token-login,conversations,history-checker,process-classifier,turns,instruction-files,mcp-servers,skills,config,doctor
+AGENT     KIND      BINARY    VERSION  TESTED            COMPAT   CAPABILITIES
+claude    built-in  claude    unknown  2.1.323..2.1.327  unknown  installer,binary-version,identity,usage,cached-usage,subscription,token-login,token-prober,login-commander,conversations,history-checker,history-mover,conversation-mover,prompt-history,live-sessions,process-classifier,turns,home-linker,instruction-files,mcp-servers,skills,plugins,config,run-events,doctor,live-credential,
+                                                                  launch-config,process-sessions,stop-planner,turn-files,hooks
+codex     built-in  codex     unknown  0.162.1..0.162.1  unknown  installer,binary-version,identity,usage,cached-usage,subscription,login-commander,conversations,history-checker,prompt-history,live-sessions,process-classifier,turns,home-linker,instruction-files,mcp-servers,skills,plugins,config,models,run-events,doctor,launch-config,process-sessions,stop-planner,turn-files,hooks
+gemini    built-in  gemini    unknown  0.68.0..0.68.0    unknown  installer,binary-version,identity,token-login,conversations,history-checker,process-classifier,home-linker,instruction-files,mcp-servers,skills,plugins,config,doctor,process-sessions,stop-planner,turn-files,hooks
+pi        built-in  pi        unknown  1.5.2..1.5.2      unknown  installer,binary-version,identity,token-login,conversations,history-checker,process-classifier,turns,instruction-files,mcp-servers,skills,config,doctor,process-sessions,stop-planner,turn-files
+opencode  built-in  opencode  —        1.18.30..1.18.30  unknown  installer,binary-version,conversations,history-checker,process-classifier,turns,doctor,process-sessions,stop-planner,turn-files
 
 #endregion
 #region ids
 $ agx agent list --json --field data.*.id
-["claude","codex","gemini","pi"]
+["claude","codex","gemini","pi","opencode"]
 
 #endregion
 #: One agent: each capability, its cost, and the agent's own reason when it is missing.
@@ -55,6 +57,10 @@ run-events          yes        pure     —
 doctor              yes        disk     —
 live-credential     yes        pure     —
 launch-config       yes        disk     —
+process-sessions    yes        process  —
+stop-planner        yes        pure     —
+turn-files          yes        disk     —
+hooks               yes        disk     —
 
 #endregion
 #region show-codex
@@ -98,6 +104,10 @@ run-events          yes        pure     —
 doctor              yes        disk     —
 live-credential     no         pure     Codex reads its login from auth.json or the keyring and refreshes it itself; it has no credential-helper setting
 launch-config       yes        disk     —
+process-sessions    yes        process  —
+stop-planner        yes        pure     —
+turn-files          yes        disk     —
+hooks               yes        disk     —
 
 #endregion
 #region show-gemini
@@ -141,6 +151,10 @@ run-events          no         pure     the --output-format stream-json event sh
 doctor              yes        disk     —
 live-credential     no         pure     Gemini CLI reads its login (oauth_creds.json, the keychain or GEMINI_API_KEY) at start and refreshes OAuth itself; it has no setting that re-reads a key from a caller's command
 launch-config       no         disk     Gemini CLI has no settings flag and no typed launch options in agentio; pass flags as raw args
+process-sessions    yes        process  —
+stop-planner        yes        pure     —
+turn-files          yes        disk     —
+hooks               yes        disk     —
 
 #endregion
 #region show-pi
@@ -184,6 +198,10 @@ run-events          no         pure     pi's --mode json event stream is recorde
 doctor              yes        disk     —
 live-credential     no         pure     pi can read a key from a !command in auth.json, but when it re-runs that command is not documented or recorded
 launch-config       no         disk     pi has no settings flag and no typed launch options in agentio; pass flags as raw args
+process-sessions    yes        process  —
+stop-planner        yes        pure     —
+turn-files          yes        disk     —
+hooks               no         disk     pi has no shell-command hooks: its extensions are TypeScript modules loaded into the process, so there is no settings key to add a command to
 
 #endregion
 #: The levels and login kinds as data, for a script.
@@ -227,7 +245,7 @@ gem  gem · gemini  ~/.gemini
 #endregion
 #region unknown
 $ agx agent show --id cursor
-agx: unknown agent cursor; known: claude, codex, gemini, pi
+agx: unknown agent cursor; known: claude, codex, gemini, pi, opencode
 [exit 1]
 
 #endregion

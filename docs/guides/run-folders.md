@@ -128,6 +128,7 @@ Why: the home variable is how one agent binary serves several accounts. agx sets
 | Codex | `CODEX_HOME` | the home |
 | Gemini CLI | `GEMINI_CLI_HOME` | the parent of the `.gemini` home folder |
 | pi | `PI_CODING_AGENT_DIR` | the home |
+| opencode | `XDG_DATA_HOME` | the parent of the `opencode` data dir (this base dir is shared by every XDG tool the agent starts) |
 | a custom agent | its `home_env` | the home, or its parent with `home_env_names_parent` |
 
 <!-- snippet: examples/launch-run-folder/session.txt#home-vars -->

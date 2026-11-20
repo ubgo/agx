@@ -5,12 +5,13 @@ go 1.26.4
 require (
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.1.0
-	github.com/ubgo/agentio v0.1.0
-	github.com/ubgo/agentio/builtin v0.1.0
-	github.com/ubgo/agentio/claude v0.1.0
-	github.com/ubgo/agentio/codex v0.1.0
-	github.com/ubgo/agentio/gemini v0.1.0
-	github.com/ubgo/agentio/pi v0.1.0
+	github.com/ubgo/agentio v0.1.1
+	github.com/ubgo/agentio/builtin v0.1.1
+	github.com/ubgo/agentio/claude v0.1.1
+	github.com/ubgo/agentio/codex v0.1.1
+	github.com/ubgo/agentio/gemini v0.1.1
+	github.com/ubgo/agentio/opencode v0.1.0
+	github.com/ubgo/agentio/pi v0.1.1
 	github.com/ubgo/textdata v0.1.6
 	github.com/ubgo/textdata/dotenv v0.1.6
 	github.com/ubgo/textdata/jsonc v0.1.7

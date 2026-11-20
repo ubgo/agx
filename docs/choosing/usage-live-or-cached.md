@@ -22,6 +22,7 @@ The cost classes are in [Output and exit codes](../output.md); `agx help --json`
 | Codex | yes | yes: the last rate-limit snapshot in its newest session files | no (Codex has no token login) |
 | Gemini CLI | no | no | no |
 | pi | no | no | no |
+| opencode | no | no | no |
 | a config-defined agent | no | no | no |
 
 A row agx cannot read says why, so one unsupported home never hides the others.

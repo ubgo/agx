@@ -47,7 +47,7 @@ agx: unknown profile wrok
   agx profile list
 ```
 
-### "unknown agent cursor; known: claude, codex, gemini, pi"
+### "unknown agent cursor; known: claude, codex, gemini, pi, opencode"
 
 agx has no agent with that id (exit 1). A custom agent joins the list once it is in config under `agents.<id>.spec`; see [A custom agent](guides/custom-agent.md).
 
@@ -301,7 +301,7 @@ A custom agent's spec has no template for what you asked: an `--autonomy` level 
 
 ### "mycli has no --option or --setting"
 
-The agent has no typed options or settings flag (a custom agent, Gemini CLI, pi). Pass its flags as raw args after `--`, in profile `args` or in `agents.<agent>.defaults.args`.
+The agent has no typed options or settings flag (a custom agent, Gemini CLI, pi, opencode). Pass its flags as raw args after `--`, in profile `args` or in `agents.<agent>.defaults.args`.
 
 ### "--option settings: settings is not a launch option"
 
@@ -339,7 +339,7 @@ agx reads a raw `--settings FILE` itself: a relative path is taken from the laun
 
 ### A path with `~` is not found by the agent
 
-No shell runs between agx and the agent, so agx itself expands a leading `~`, but only in options agentio marks as paths: Claude Code's `add_dirs`, `mcp_configs`, `system_prompt_file`, `append_system_prompt_file`, `plugin_dirs`, `debug_file` and Codex's `cd`, `add_dirs`, `images`, in the profile block, `--option`, and after those options' flags in profile `args` and agent default args. Anywhere else (another option, a quoted `'~/x'` after `--`, Gemini CLI, pi, a custom agent) the agent gets a literal `~`: write an absolute path there. See [launch options, recipe 7](launch-options.md#block-keys-with-no-flag-of-their-own-prompt-and-extra_args).
+No shell runs between agx and the agent, so agx itself expands a leading `~`, but only in options agentio marks as paths: Claude Code's `add_dirs`, `mcp_configs`, `system_prompt_file`, `append_system_prompt_file`, `plugin_dirs`, `debug_file` and Codex's `cd`, `add_dirs`, `images`, in the profile block, `--option`, and after those options' flags in profile `args` and agent default args. Anywhere else (another option, a quoted `'~/x'` after `--`, Gemini CLI, pi, opencode, a custom agent) the agent gets a literal `~`: write an absolute path there. See [launch options, recipe 7](launch-options.md#block-keys-with-no-flag-of-their-own-prompt-and-extra_args).
 
 ### "before_run failed (exit 3)"
 

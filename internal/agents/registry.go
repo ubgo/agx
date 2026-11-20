@@ -18,7 +18,8 @@ import (
 )
 
 // Registry is every agent agx knows on one Host, in a stable order:
-// built-ins first (claude, codex, gemini, pi), then custom agents by id.
+// built-ins first (claude, codex, gemini, pi, opencode, in agentio's
+// builtin order), then custom agents by id.
 type Registry struct {
 	host agentio.Host
 	all  []agentio.Agent

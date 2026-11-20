@@ -32,7 +32,7 @@ $ agx conversation list
 8 d ago      claude personal   Fix the parser                   ~/projects/client             3f2a9c1e
 ```
 
-All four built-in agents (Claude Code, Codex, Gemini CLI, pi) list their conversations. An agent that cannot is skipped quietly, or refused with its reason (exit 4) when you asked for it with `--agent` or `--profile`.
+All five built-in agents (Claude Code, Codex, Gemini CLI, pi, opencode) list their conversations; for opencode that is the sessions from before opencode 1.2.0 (newer ones live in its `opencode.db`, which agx does not read yet), and `agx resume --id` works for any session id. An agent that cannot is skipped quietly, or refused with its reason (exit 4) when you asked for it with `--agent` or `--profile`.
 
 ## Step 2: look across folders, narrow and script
 

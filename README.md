@@ -1,10 +1,10 @@
 # agx
 
-**One CLI for every coding agent and every account on your machine.** agx starts Claude Code, OpenAI Codex, Gemini CLI, pi and any agent you describe in config, on the right home and the right login, and shows you where every decision came from.
+**One CLI for every coding agent and every account on your machine.** agx starts Claude Code, OpenAI Codex, Gemini CLI, pi, opencode and any agent you describe in config, on the right home and the right login, and shows you where every decision came from.
 
 ![Go 1.26.4+](https://img.shields.io/badge/go-1.26.4%2B-00ADD8?logo=go&logoColor=white) ![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue) ![Platforms: macOS, Linux, Windows preview](https://img.shields.io/badge/platforms-macOS%20%7C%20Linux%20%7C%20Windows%20preview-lightgrey) ![Status: pre-release](https://img.shields.io/badge/status-pre--release-orange) [![Go Reference](https://pkg.go.dev/badge/github.com/ubgo/agx.svg)](https://pkg.go.dev/github.com/ubgo/agx)
 
-agx is an open-source command-line account and launch manager for AI coding agents, written in Go. It runs Claude Code, OpenAI Codex, Gemini CLI and pi on any of your accounts: several Claude Pro or Max plans, a Codex login, a Gemini API key, a client's account that must be used in the client's repository. It switches the agent's home folder and login per launch, binds accounts to project folders, shows plan usage across every home, finds and resumes conversations wherever they are stored, and passes models, settings, autonomy levels and environment variables the same way for every agent. Tokens come from gopass, a command or an environment variable and are never printed unless you ask with `agx login token`.
+agx is an open-source command-line account and launch manager for AI coding agents, written in Go. It runs Claude Code, OpenAI Codex, Gemini CLI, pi and opencode on any of your accounts: several Claude Pro or Max plans, a Codex login, a Gemini API key, a client's account that must be used in the client's repository. It switches the agent's home folder and login per launch, binds accounts to project folders, shows plan usage across every home, finds and resumes conversations wherever they are stored, and passes models, settings, autonomy levels and environment variables the same way for every agent. Tokens come from gopass, a command or an environment variable and are never printed unless you ask with `agx login token`.
 
 ## Contents
 
@@ -41,7 +41,7 @@ What agx never does: guess, discover accounts behind your back, edit an agent's 
 
 | | agx | Exporting variables by hand | A switcher for one vendor |
 |---|---|---|---|
-| Claude Code, Codex, Gemini CLI, pi and your own agents | yes, one set of commands | yes, a different variable and rule per agent | one vendor each |
+| Claude Code, Codex, Gemini CLI, pi, opencode and your own agents | yes, one set of commands | yes, a different variable and rule per agent | one vendor each |
 | Account chosen per project folder | yes, per agent (`agx project use`) | no, unless you add a per-folder tool | varies |
 | Shows which source decided each value | yes (`--dry-run`) | no | varies |
 | Token kept out of your shell and output | yes: resolved at launch, set only in the agent's environment, `[redacted]` everywhere | no: the token sits in your shell's environment | varies |
@@ -64,10 +64,10 @@ Prebuilt binaries (macOS and Linux on amd64 and arm64, Windows on amd64) are on 
 
 ```sh
 # macOS on Apple Silicon: swap darwin_arm64 for darwin_amd64, linux_amd64 or linux_arm64
-curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.12/agx_v0.4.12_darwin_arm64.tar.gz
-curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.12/checksums.txt
+curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.13/agx_v0.4.13_darwin_arm64.tar.gz
+curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.13/checksums.txt
 shasum -a 256 -c checksums.txt --ignore-missing
-tar -xzf agx_v0.4.12_darwin_arm64.tar.gz agx && sudo mv agx /usr/local/bin/
+tar -xzf agx_v0.4.13_darwin_arm64.tar.gz agx && sudo mv agx /usr/local/bin/
 agx version
 ```
 
@@ -197,6 +197,7 @@ agx doctor                                # config, references, binaries, homes,
 | OpenAI Codex | yes | yes | no (the home's own login) | all but `accept-edits` | yes | no |
 | Gemini CLI | no | yes | `api-key` | all | no | no |
 | pi | no | yes | `api-key` | `read-only`, `full` | no | no |
+| opencode | no | yes (sessions before opencode 1.2.0; newer ones live in its database, not read yet) | no (its per-provider `auth.json`) | `full` | no | no |
 | your own, by config | no | no | no (home login only) | per definition (`autonomy_args`) | no | no |
 
 The autonomy levels are `default`, `read-only`, `ask`, `accept-edits` and `full` (`full` needs `--consent full-autonomy`). A level an agent cannot express exactly is refused, never mapped to a more permissive one. Every missing capability is reported with its reason, never silently skipped: `agx agent show --id gemini` lists each capability, its cost and why it is missing, and `agx agent list` shows the agent versions each release was tested with.
@@ -262,7 +263,7 @@ macOS and Linux. Windows builds are a preview: there agx stays as the parent of 
 
 ### Which agents and accounts can agx run?
 
-Claude Code, OpenAI Codex, Gemini CLI and pi are built in, and any other agent can be described in config under `agents.<agent>.spec`. Accounts are not limited: every home folder can be a profile, and every token (a Claude plan token, an API key, a key helper) can be a named login that runs on any home of an agent that accepts it.
+Claude Code, OpenAI Codex, Gemini CLI, pi and opencode are built in, and any other agent can be described in config under `agents.<agent>.spec`. Accounts are not limited: every home folder can be a profile, and every token (a Claude plan token, an API key, a key helper) can be a named login that runs on any home of an agent that accepts it.
 
 ### Does agx store, print or refresh my OAuth token?
 
@@ -310,9 +311,9 @@ agx profile edit --id work --env HTTPS_PROXY=http://proxy.local:3128
 
 To send Claude Code to another endpoint (an LLM gateway, or a compatible provider such as Kimi) set `ANTHROPIC_BASE_URL` the same way, for example `agx profile edit --id kimi --env ANTHROPIC_BASE_URL=https://api.moonshot.ai/anthropic` (see [Shared homes](docs/guides/shared-homes.md)); for Codex set `openai_base_url` with `--setting`. agx's own requests (`agx usage`, login probes) follow `HTTPS_PROXY`, `HTTP_PROXY` and `NO_PROXY` from your shell. A value can be a reference such as `'$(gopass show -o …)'`, resolved at launch and redacted in output, and `--dry-run` lists every variable the agent gets and where it came from. The details are in [Launch options](docs/launch-options.md).
 
-### Does `agx usage` show Gemini CLI or pi usage?
+### Does `agx usage` show Gemini CLI, pi or opencode usage?
 
-Not yet. Plan usage is read for Claude Code and Codex. Gemini CLI's quota comes from an API call whose responses are not recorded yet, and pi has no plan or quota; both are listed with that reason instead of a number.
+Not yet. Plan usage is read for Claude Code and Codex. Gemini CLI's quota comes from an API call whose responses are not recorded yet, and pi and opencode have no plan or quota of their own (they bill through each provider's key); each is listed with that reason instead of a number.
 
 ### Can I switch the account of a session that is already running?
 

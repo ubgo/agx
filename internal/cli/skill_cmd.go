@@ -81,13 +81,13 @@ func (c *cliCtx) userHome() string {
 
 // skillDescription is the frontmatter's one line: when an agent should
 // load the skill.
-const skillDescription = "Use when running, resuming or switching Claude Code / Codex / Gemini CLI / pi sessions and accounts with agx: profiles and homes, named logins, login pools that switch Claude accounts by usage, live login, plan usage, conversations, folder bindings, shell aliases, and agx's own config."
+const skillDescription = "Use when running, resuming or switching Claude Code / Codex / Gemini CLI / pi / opencode sessions and accounts with agx: profiles and homes, named logins, login pools that switch Claude accounts by usage, live login, plan usage, conversations, folder bindings, shell aliases, and agx's own config."
 
 // skillIntro is the hand-written part: how agx works. The command list
 // below it is generated, never written by hand.
 const skillIntro = `## How agx works
 
-agx is one CLI for AI coding agents (Claude Code, OpenAI Codex, Gemini CLI, pi and config-defined agents) across every account on the machine. Its config is ` + "`~/.agx/config.jsonc`" + ` (JSONC, checked strictly: an unknown key or a wrong type is an error at its line).
+agx is one CLI for AI coding agents (Claude Code, OpenAI Codex, Gemini CLI, pi, opencode and config-defined agents) across every account on the machine. Its config is ` + "`~/.agx/config.jsonc`" + ` (JSONC, checked strictly: an unknown key or a wrong type is an error at its line).
 
 - **Profiles** name an agent home (` + "`~/.claude-work`" + `) plus launch defaults: ` + "`agx run --profile work`" + `.
 - **Logins** run any home on any account: a plan token or API key from a reference (` + "`${gopass:…}`, `$(…)`, `${VAR}`" + `), a pasted value in ` + "`tokens.jsonc`" + ` (0600), or a key helper. ` + "`agx run --login carol`" + `. agx never prints a token, except ` + "`agx login token`" + ` on request (to a pipe, or with ` + "`--reveal`" + `).

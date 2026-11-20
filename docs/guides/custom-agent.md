@@ -1,6 +1,6 @@
 # A custom agent
 
-agx ships with Claude Code, Codex, Gemini CLI and pi. Any other agent CLI can be described in `config.jsonc` under `agents.<agent>.spec`: its binary, its config folder, and how its flags are spelled. agx then launches it like a built-in agent: profiles and homes, the folder, `--model`, `--prompt`, `--add-dir`, `--autonomy`, `--headless`, token logins (with `token_env`), raw args, `--env`, `before_run` and `--dry-run` all work.
+agx ships with Claude Code, Codex, Gemini CLI, pi and opencode. Any other agent CLI can be described in `config.jsonc` under `agents.<agent>.spec`: its binary, its config folder, and how its flags are spelled. agx then launches it like a built-in agent: profiles and homes, the folder, `--model`, `--prompt`, `--add-dir`, `--autonomy`, `--headless`, token logins (with `token_env`), raw args, `--env`, `before_run` and `--dry-run` all work.
 
 Use it when you want one launcher for every agent you run, or a profile per account for an agent agx does not know yet. What a description cannot give you is anything that needs code that reads the agent's files: plan usage, conversation lists and resume, settings and typed options, and a login probe. Those are reported as not supported, with the reason, rather than half-working.
 
@@ -89,13 +89,14 @@ $ agx config check
 <!-- snippet: examples/cfg-custom-agent/session.txt#list -->
 ```sh
 $ agx agent list --field data.*.id --field data.*.kind --field data.*.binary --field data.*.tested
-ID      KIND      BINARY  TESTED
-claude  built-in  claude  2.1.323..2.1.327
-codex   built-in  codex   0.162.1..0.162.1
-gemini  built-in  gemini  0.68.0..0.68.0
-pi      built-in  pi      1.5.2..1.5.2
-mycli   custom    echo    —
-nocli   custom    nocli   —
+ID        KIND      BINARY    TESTED
+claude    built-in  claude    2.1.323..2.1.327
+codex     built-in  codex     0.162.1..0.162.1
+gemini    built-in  gemini    0.68.0..0.68.0
+pi        built-in  pi        1.5.2..1.5.2
+opencode  built-in  opencode  1.18.30..1.18.30
+mycli     custom    echo      —
+nocli     custom    nocli     —
 ```
 
 <!-- snippet: examples/cfg-custom-agent/session.txt#show -->

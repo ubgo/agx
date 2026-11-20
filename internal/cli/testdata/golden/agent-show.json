@@ -34,7 +34,11 @@
       "models",
       "run-events",
       "doctor",
-      "launch-config"
+      "launch-config",
+      "process-sessions",
+      "stop-planner",
+      "turn-files",
+      "hooks"
     ],
     "shadowed": [],
     "autonomy": [
@@ -187,6 +191,26 @@
       },
       {
         "name": "launch-config",
+        "supported": true,
+        "cost": "disk"
+      },
+      {
+        "name": "process-sessions",
+        "supported": true,
+        "cost": "process"
+      },
+      {
+        "name": "stop-planner",
+        "supported": true,
+        "cost": "pure"
+      },
+      {
+        "name": "turn-files",
+        "supported": true,
+        "cost": "disk"
+      },
+      {
+        "name": "hooks",
         "supported": true,
         "cost": "disk"
       }

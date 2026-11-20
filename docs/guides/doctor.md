@@ -38,6 +38,7 @@ $ agx doctor
 · home gemini ~/.gemini       general.enableAutoUpdate is on: Gemini CLI updates its own npm-family install
 ✓ binary pi                   /usr/local/bin/pi (unknown)
 ! binary pi                   pi version unknown (no install metadata); tested 1.5.2..1.5.2
+· binary opencode             opencode not found on PATH; install: npm i -g opencode-ai
 ```
 
 Each row is one check. `STATUS` is `ok`, `info` (worth knowing, nothing to fix), `warn` (works, but check it), `fail` (something will break) or `skip` (a check that could not run, with the reason). A row with a fix shows it on an indented `fix:` line. The message column wraps to the terminal width.
@@ -107,6 +108,7 @@ warn    login            no auth method chosen (security.auth.selectedType unset
 info    auto-update      general.enableAutoUpdate is on: Gemini CLI updates its own npm-family install
 ok      binary-found     /usr/local/bin/pi (unknown)
 warn    version-tested   pi version unknown (no install metadata); tested 1.5.2..1.5.2
+info    binary-found     opencode not found on PATH; install: npm i -g opencode-ai
 ```
 
 ## Step 3: ask for more checks

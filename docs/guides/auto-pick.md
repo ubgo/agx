@@ -25,7 +25,7 @@ You want this when you run out of a plan's five-hour or weekly window often and 
 |---|---|---|
 | Claude Code | yes | yes |
 | Codex | yes | no: Codex has no token login to probe |
-| Gemini CLI, pi, custom agents | no: they have no plan usage agx can read | no |
+| Gemini CLI, pi, opencode, custom agents | no: they have no plan usage agx can read | no |
 
 - The cost. `--auto-profile` makes one live usage request per home (cost N; a home shared by several profiles is read once). `--auto-login` resolves each login's token (cost X when the reference runs a command) and sends a minimal request with each plan token (cost Q: it spends a few tokens of each plan); an API key or key helper is never probed, since it bills per token. Usage endpoints rate-limit, so do not put either flag in a loop.
 

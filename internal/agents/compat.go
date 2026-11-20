@@ -5,6 +5,7 @@ import (
 	"github.com/ubgo/agentio/claude"
 	"github.com/ubgo/agentio/codex"
 	"github.com/ubgo/agentio/gemini"
+	"github.com/ubgo/agentio/opencode"
 	"github.com/ubgo/agentio/pi"
 )
 
@@ -23,6 +24,8 @@ func Compat(id agentio.ID) (c agentio.Compat, ok bool) {
 		return gemini.Compat(), true
 	case pi.ID:
 		return pi.Compat(), true
+	case opencode.ID:
+		return opencode.Compat(), true
 	}
 	return agentio.Compat{}, false
 }

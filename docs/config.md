@@ -182,6 +182,9 @@ Fix: describe it. agx then launches it with profiles and homes, `--model`, `--pr
 | `agents.<agent>.spec.process.basenames` | list of strings | executable names |
 | `agents.<agent>.spec.process.argv_contains` | list of strings | an argument that must appear (for agents run through an interpreter) |
 | `agents.<agent>.spec.process.exclude` | list of strings | arguments that mark a process as not the agent |
+| `agents.<agent>.spec.process.script_basenames` | list of strings | names of the script an interpreter runs (`node /opt/bin/mycli` matches `mycli`), for an npm install started through node |
+| `agents.<agent>.spec.process.script_contains` | list of strings | a substring of that script's path, such as `@acme/mycli/`; narrower than `argv_contains`, which also matches an `npm install` of the package |
+| `agents.<agent>.spec.process.interpreters` | list of strings | the programs that run such a script; absent means node, nodejs, bun and deno (with `.exe` on Windows) |
 
 ## Profiles
 

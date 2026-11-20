@@ -198,7 +198,7 @@ func TestOnlyOwnersWriteFiles(t *testing.T) {
 }
 
 // agentModules are agentio's vendor modules.
-var agentModules = []string{"github.com/ubgo/agentio/builtin", "github.com/ubgo/agentio/claude", "github.com/ubgo/agentio/codex", "github.com/ubgo/agentio/gemini", "github.com/ubgo/agentio/pi"}
+var agentModules = []string{"github.com/ubgo/agentio/builtin", "github.com/ubgo/agentio/claude", "github.com/ubgo/agentio/codex", "github.com/ubgo/agentio/gemini", "github.com/ubgo/agentio/opencode", "github.com/ubgo/agentio/pi"}
 
 // TestAgentModulesOnlyInRegistry: vendor modules are imported only by the
 // registry package, so agx stays agent-neutral (principle 10).

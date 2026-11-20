@@ -1,6 +1,6 @@
 # Agents and what they support
 
-agx drives four built-in agents, Claude Code (`claude`), Codex (`codex`), Gemini CLI (`gemini`) and pi (`pi`), plus any agent you describe in config. They do not all support the same things: Codex has no token login, Gemini CLI and pi report no plan usage, pi has no permission modes. agx never guesses what an agent can do. It asks the agent module, and when something is missing it refuses with the agent's own reason instead of half-working.
+agx drives five built-in agents, Claude Code (`claude`), Codex (`codex`), Gemini CLI (`gemini`), pi (`pi`) and opencode (`opencode`), plus any agent you describe in config. They do not all support the same things: Codex and opencode have no token login, Gemini CLI, pi and opencode report no plan usage, pi has no permission modes and opencode only has `full`. agx never guesses what an agent can do. It asks the agent module, and when something is missing it refuses with the agent's own reason instead of half-working.
 
 Read this page when a command says an agent cannot do something, when you want to know before you set up a second account or a login, or when a new agent version is out and you want to know whether agx was tested with it.
 
@@ -17,11 +17,13 @@ Read this page when a command says an agent cannot do something, when you want t
 <!-- snippet: examples/agent-capabilities/session.txt#list -->
 ```sh
 $ agx agent list
-AGENT   KIND      BINARY  VERSION  TESTED            COMPAT   CAPABILITIES
-claude  built-in  claude  unknown  2.1.323..2.1.327  unknown  installer,binary-version,identity,usage,cached-usage,subscription,token-login,token-prober,login-commander,conversations,history-checker,history-mover,conversation-mover,prompt-history,live-sessions,process-classifier,turns,home-linker,instruction-files,mcp-servers,skills,plugins,config,run-events,doctor,live-credential,launch-config
-codex   built-in  codex   unknown  0.162.1..0.162.1  unknown  installer,binary-version,identity,usage,cached-usage,subscription,login-commander,conversations,history-checker,prompt-history,live-sessions,process-classifier,turns,home-linker,instruction-files,mcp-servers,skills,plugins,config,models,run-events,doctor,launch-config
-gemini  built-in  gemini  unknown  0.68.0..0.68.0    unknown  installer,binary-version,identity,token-login,conversations,history-checker,process-classifier,home-linker,instruction-files,mcp-servers,skills,plugins,config,doctor
-pi      built-in  pi      unknown  1.5.2..1.5.2      unknown  installer,binary-version,identity,token-login,conversations,history-checker,process-classifier,turns,instruction-files,mcp-servers,skills,config,doctor
+AGENT     KIND      BINARY    VERSION  TESTED            COMPAT   CAPABILITIES
+claude    built-in  claude    unknown  2.1.323..2.1.327  unknown  installer,binary-version,identity,usage,cached-usage,subscription,token-login,token-prober,login-commander,conversations,history-checker,history-mover,conversation-mover,prompt-history,live-sessions,process-classifier,turns,home-linker,instruction-files,mcp-servers,skills,plugins,config,run-events,doctor,live-credential,
+                                                                  launch-config,process-sessions,stop-planner,turn-files,hooks
+codex     built-in  codex     unknown  0.162.1..0.162.1  unknown  installer,binary-version,identity,usage,cached-usage,subscription,login-commander,conversations,history-checker,prompt-history,live-sessions,process-classifier,turns,home-linker,instruction-files,mcp-servers,skills,plugins,config,models,run-events,doctor,launch-config,process-sessions,stop-planner,turn-files,hooks
+gemini    built-in  gemini    unknown  0.68.0..0.68.0    unknown  installer,binary-version,identity,token-login,conversations,history-checker,process-classifier,home-linker,instruction-files,mcp-servers,skills,plugins,config,doctor,process-sessions,stop-planner,turn-files,hooks
+pi        built-in  pi        unknown  1.5.2..1.5.2      unknown  installer,binary-version,identity,token-login,conversations,history-checker,process-classifier,turns,instruction-files,mcp-servers,skills,config,doctor,process-sessions,stop-planner,turn-files
+opencode  built-in  opencode  —        1.18.30..1.18.30  unknown  installer,binary-version,conversations,history-checker,process-classifier,turns,doctor,process-sessions,stop-planner,turn-files
 ```
 
 | Column | Meaning |
@@ -38,7 +40,7 @@ For a script, the ids alone:
 <!-- snippet: examples/agent-capabilities/session.txt#ids -->
 ```sh
 $ agx agent list --json --field data.*.id
-["claude","codex","gemini","pi"]
+["claude","codex","gemini","pi","opencode"]
 ```
 
 ## Step 2: look at one agent
@@ -87,6 +89,10 @@ run-events          no         pure     pi's --mode json event stream is recorde
 doctor              yes        disk     —
 live-credential     no         pure     pi can read a key from a !command in auth.json, but when it re-runs that command is not documented or recorded
 launch-config       no         disk     pi has no settings flag and no typed launch options in agentio; pass flags as raw args
+process-sessions    yes        process  —
+stop-planner        yes        pure     —
+turn-files          yes        disk     —
+hooks               no         disk     pi has no shell-command hooks: its extensions are TypeScript modules loaded into the process, so there is no settings key to add a command to
 ```
 
 The `COST` column is what using the capability costs: `pure` computes from what agx already has, `disk` reads files, `process` runs or inspects a process, `network` makes a request, `quota` spends plan quota. The capabilities that matter most day to day:
@@ -122,18 +128,18 @@ $ agx agent show --id pi --json --field data.autonomy --field data.token_kinds
 
 ## What each built-in agent supports
 
-From `agx agent show` of each agent ([Claude Code](../../examples/agent-capabilities/session.txt), Codex, Gemini CLI and pi are all in the example session):
+From `agx agent show` of each agent ([Claude Code](../../examples/agent-capabilities/session.txt), Codex, Gemini CLI, pi and opencode are all in the example session):
 
-| | Claude Code | Codex | Gemini CLI | pi | custom |
-|---|---|---|---|---|---|
-| Plan usage (`agx usage`) | yes | yes | no | no | no |
-| Token login (`--login`) | `oauth-token`, `api-key`, `api-key-helper` | no: log in inside the home with `codex login` | `api-key` | `api-key`, per provider | the kinds its `token_env` names (see [custom agent](custom-agent.md#step-6-a-token-login)) |
-| Login probe (`login check`) | yes | no | no | no | no |
-| Conversations and resume | yes | yes | yes | yes | no |
-| Move conversations | yes | no: Codex indexes them by absolute path | no | no | no |
-| Autonomy levels | all five | `default`, `read-only`, `ask`, `full` | all five | `default`, `read-only`, `full` | `default` plus the levels in `autonomy_args` |
-| Typed options and settings | yes | yes (settings as `-c`) | no: raw args only | no: raw args only | no: raw args only |
-| Live login | yes | no | no | no | no |
+| | Claude Code | Codex | Gemini CLI | pi | opencode | custom |
+|---|---|---|---|---|---|---|
+| Plan usage (`agx usage`) | yes | yes | no | no | no | no |
+| Token login (`--login`) | `oauth-token`, `api-key`, `api-key-helper` | no: log in inside the home with `codex login` | `api-key` | `api-key`, per provider | no: its per-provider `auth.json` (`opencode providers login`) | the kinds its `token_env` names (see [custom agent](custom-agent.md#step-6-a-token-login)) |
+| Login probe (`login check`) | yes | no | no | no | no | no |
+| Conversations and resume | yes | yes | yes | yes | yes (listing reads sessions from before opencode 1.2.0; resume takes any id) | no |
+| Move conversations | yes | no: Codex indexes them by absolute path | no | no | no | no |
+| Autonomy levels | all five | `default`, `read-only`, `ask`, `full` | all five | `default`, `read-only`, `full` | `default`, `full` | `default` plus the levels in `autonomy_args` |
+| Typed options and settings | yes | yes (settings as `-c`) | no: raw args only | no: raw args only | no: raw args only | no: raw args only |
+| Live login | yes | no | no | no | no | no |
 
 The five autonomy levels are `default`, `read-only`, `ask`, `accept-edits` and `full`; see [autonomy](autonomy.md).
 
@@ -179,6 +185,10 @@ run-events          yes        pure     —
 doctor              yes        disk     —
 live-credential     no         pure     Codex reads its login from auth.json or the keyring and refreshes it itself; it has no credential-helper setting
 launch-config       yes        disk     —
+process-sessions    yes        process  —
+stop-planner        yes        pure     —
+turn-files          yes        disk     —
+hooks               yes        disk     —
 ```
 
 ## Step 3: check the version against the tested range
@@ -234,7 +244,7 @@ The session runs `agent list`, `agent show` for each agent and the refusals on a
 
 ## Pitfalls
 
-- **An unknown id exits 1** and lists the known ones: `agx: unknown agent cursor; known: claude, codex, gemini, pi`. A custom agent's id joins the list once it is in config.
+- **An unknown id exits 1** and lists the known ones: `agx: unknown agent cursor; known: claude, codex, gemini, pi, opencode`. A custom agent's id joins the list once it is in config.
 - **`version unknown` is common** for installs without metadata agx can read (a binary copied by hand, some native installers). It only means typed options are not version-checked; `--vendor-checks` settles it.
 - **A second copy of a binary on `PATH` never runs.** `agent show` lists it as `shadowed:` and `agx doctor` as `binary-shadowed`; remove the stale one or fix `PATH` order.
 - **`--vendor-checks` runs the binary.** It is the only way agx starts an agent outside a launch; keep it out of status bars and loops.

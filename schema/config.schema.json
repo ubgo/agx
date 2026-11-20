@@ -282,6 +282,33 @@
                         "items": {
                           "type": "string"
                         }
+                      },
+                      "script_basenames": {
+                        "type": [
+                          "array",
+                          "null"
+                        ],
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "script_contains": {
+                        "type": [
+                          "array",
+                          "null"
+                        ],
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "interpreters": {
+                        "type": [
+                          "array",
+                          "null"
+                        ],
+                        "items": {
+                          "type": "string"
+                        }
                       }
                     },
                     "additionalProperties": false

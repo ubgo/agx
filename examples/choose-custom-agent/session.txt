@@ -23,6 +23,7 @@ conversations       no         disk     config-only agent: a spec describes L1 o
 ...
 live-credential     no         pure     config-only agent: a spec describes L1 only; this needs code
 launch-config       no         disk     config-only agent: a spec has no typed launch options and no settings flag; pass vendor flags as raw args
+...
 
 #endregion
 #region launch

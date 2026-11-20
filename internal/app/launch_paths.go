@@ -35,7 +35,7 @@ func expandTilde(p, home string) string {
 
 // pathKeys are the option keys agentio marks as paths (OptionKey.Path):
 // the only values agx expands "~" in. Nothing is a path for an agent
-// without typed launch options (Gemini CLI, pi, a config-defined agent).
+// without typed launch options (Gemini CLI, pi, opencode, a config-defined agent).
 func pathKeys(keys []agentio.OptionKey) []agentio.OptionKey {
 	var out []agentio.OptionKey
 	for _, k := range keys {

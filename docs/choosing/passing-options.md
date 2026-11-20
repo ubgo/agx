@@ -75,19 +75,19 @@ $ agx run --env DEBUG=2 --dry-run --quiet --json --field data.command.env
 - If the value is the same for every launch of an account, put it in the profile (block, `settings`, `env`, `args`). If it is for one run, use the flag. The command line beats the profile, and `--dry-run` says what it overrode.
 - If agx models it, prefer the modelled road (`--model`, `--option`, `--setting`): it is checked, shows its source in `--dry-run`, and refuses a second choice for the same thing. Raw args are for what agx does not model yet.
 - If it is a secret, use a login or `env_refs` with a reference, never a plain value on the command line. Values go into the environment, never onto the agent's command line.
-- If the agent is Gemini CLI, pi or a config-defined agent, there is no `--setting` or `--option`: use the shared flags, `--env`, and raw args.
+- If the agent is Gemini CLI, pi, opencode or a config-defined agent, there is no `--setting` or `--option`: use the shared flags, `--env`, and raw args.
 - If two of your roads set the same concern in one command, agx refuses and names both. Pick one.
 
 ## Per agent
 
-| Road | Claude Code | Codex | Gemini CLI | pi | config-defined |
-|---|---|---|---|---|---|
-| `--model` | yes | yes | yes | yes | with `model_args` in the spec |
-| `--autonomy` | every level | all but `accept-edits` | every level | `read-only` and `full` | levels in `autonomy_args` |
-| `--option`, agent block | yes | yes | refused | refused | refused |
-| `--setting`, `settings` | settings JSON | `-c key=value` | refused | refused | refused |
-| `--env`, `env`, `env_refs`, `env_file` | yes | yes | yes | yes | yes |
-| raw after `--`, `args` | yes | yes | yes | yes | yes |
+| Road | Claude Code | Codex | Gemini CLI | pi | opencode | config-defined |
+|---|---|---|---|---|---|---|
+| `--model` | yes | yes | yes | yes | yes | with `model_args` in the spec |
+| `--autonomy` | every level | all but `accept-edits` | every level | `read-only` and `full` | `full` only | levels in `autonomy_args` |
+| `--option`, agent block | yes | yes | refused | refused | refused | refused |
+| `--setting`, `settings` | settings JSON | `-c key=value` | refused | refused | refused | refused |
+| `--env`, `env`, `env_refs`, `env_file` | yes | yes | yes | yes | yes | yes |
+| raw after `--`, `args` | yes | yes | yes | yes | yes | yes |
 
 <!-- snippet: examples/choose-passing/session.txt#other-agents -->
 ```sh

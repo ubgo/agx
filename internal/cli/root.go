@@ -358,7 +358,7 @@ func NewRoot(env Env) (*cobra.Command, *cliCtx) {
 	root := &cobra.Command{
 		Use:           Name,
 		Short:         "One CLI for every coding agent and every account",
-		Long:          "agx runs Claude Code, Codex, Gemini CLI, pi and config-defined agents across every account on the machine: usage, launch and resume, logins, project bindings, session folders and conversations.",
+		Long:          "agx runs Claude Code, Codex, Gemini CLI, pi, opencode and config-defined agents across every account on the machine: usage, launch and resume, logins, project bindings, session folders and conversations.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Args:          cobra.ArbitraryArgs,

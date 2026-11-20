@@ -13,7 +13,7 @@ agx agent list
 <!-- runnable -->
 ```sh
 $ agx agent list --json --field data.*.id
-["claude","codex","gemini","pi"]
+["claude","codex","gemini","pi","opencode"]
 ```
 
 `COMPAT` is `in-range`, `newer`, `older` or `unknown` (no version in the install metadata, or a custom agent, which has no tested range). A version outside the range is a warning, never a refusal.
@@ -24,6 +24,7 @@ $ agx agent list --json --field data.*.id
 | codex | yes | listed, never moved | yes | no | not `accept-edits` | yes (`-c`) | no |
 | gemini | no | yes | yes | yes | every level | no | no |
 | pi | no | yes | yes | yes | `default`, `read-only` and `full` | no | no |
+| opencode | no | yes (sessions before 1.2.0) | yes | no | `default` and `full` | no | no |
 | custom | no | no | no | no (use `env_refs`) | `default` plus `autonomy_args` | no | no |
 
 Try it: [`examples/agent-capabilities`](../../examples/agent-capabilities/README.md) (`list` region).
@@ -31,7 +32,7 @@ Try it: [`examples/agent-capabilities`](../../examples/agent-capabilities/README
 <!-- snippet: examples/agent-capabilities/session.txt#ids -->
 ```sh
 $ agx agent list --json --field data.*.id
-["claude","codex","gemini","pi"]
+["claude","codex","gemini","pi","opencode"]
 ```
 
 Pitfalls: `VERSION` `unknown` only means the install has no metadata agx reads; `agx agent show --vendor-checks` asks the binary. Guide: [see every agent](../guides/agents.md#step-1-see-every-agent).
@@ -87,7 +88,7 @@ Pitfalls:
   <!-- snippet: examples/agent-capabilities/session.txt#unknown -->
   ```sh
   $ agx agent show --id cursor
-  agx: unknown agent cursor; known: claude, codex, gemini, pi
+  agx: unknown agent cursor; known: claude, codex, gemini, pi, opencode
   [exit 1]
   ```
 

@@ -76,6 +76,7 @@ pi --mode json -- "Summarise the README"
 | Codex | `codex exec --json` | as the last argument |
 | Gemini CLI | `--output-format stream-json` | as `--prompt` (without `--headless`: `--prompt-interactive`) |
 | pi | `--mode json` | after `--` |
+| opencode | `opencode run --format json` | as the last argument |
 | a custom agent | its `headless_args` | per its `prompt_args` |
 
 Without `--prompt`, a headless agent reads the task from stdin, so `echo "Fix the failing test" | agx run --headless` works too (Gemini CLI documents this; check your agent's own docs for the others).

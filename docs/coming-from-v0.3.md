@@ -55,7 +55,7 @@ agx doctor
 | profile discovery at run time | dropped; `agx profile list --discovered` and `agx profile import` |
 | `config.yaml` and `tokens.yaml` | `config.jsonc` and `tokens.jsonc` |
 | JSON envelope with `kind` and `count` | a new envelope with `--field` and stable `error.code` values (see [output](output.md) and [Scripting with agx](guides/scripting.md)) |
-| hard-coded Claude and Codex support | four built-in agents plus config-defined ones; `agx agent show --id` lists what each supports ([Agents](guides/agents.md)) |
+| hard-coded Claude and Codex support | five built-in agents plus config-defined ones; `agx agent show --id` lists what each supports ([Agents](guides/agents.md)) |
 
 ## Habits to change
 

@@ -40,7 +40,11 @@
         "run-events",
         "doctor",
         "live-credential",
-        "launch-config"
+        "launch-config",
+        "process-sessions",
+        "stop-planner",
+        "turn-files",
+        "hooks"
       ]
     },
     {
@@ -75,7 +79,11 @@
         "models",
         "run-events",
         "doctor",
-        "launch-config"
+        "launch-config",
+        "process-sessions",
+        "stop-planner",
+        "turn-files",
+        "hooks"
       ]
     },
     {
@@ -101,7 +109,11 @@
         "skills",
         "plugins",
         "config",
-        "doctor"
+        "doctor",
+        "process-sessions",
+        "stop-planner",
+        "turn-files",
+        "hooks"
       ]
     },
     {
@@ -126,7 +138,32 @@
         "mcp-servers",
         "skills",
         "config",
-        "doctor"
+        "doctor",
+        "process-sessions",
+        "stop-planner",
+        "turn-files"
+      ]
+    },
+    {
+      "id": "opencode",
+      "name": "opencode",
+      "kind": "built-in",
+      "binary": "opencode",
+      "path": "",
+      "version": "",
+      "tested": "1.18.30..1.18.30",
+      "compat": "unknown",
+      "capabilities": [
+        "installer",
+        "binary-version",
+        "conversations",
+        "history-checker",
+        "process-classifier",
+        "turns",
+        "doctor",
+        "process-sessions",
+        "stop-planner",
+        "turn-files"
       ]
     },
     {

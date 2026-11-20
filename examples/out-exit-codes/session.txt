@@ -28,7 +28,7 @@ agx: nocli not found on PATH
 #: Other commands: 1 failure, 2 usage error, 3 partial, 4 unsupported.
 #region other-1
 $ agx agent show --id cursor
-agx: unknown agent cursor; known: claude, codex, gemini, pi, nocli
+agx: unknown agent cursor; known: claude, codex, gemini, pi, opencode, nocli
 [exit 1]
 
 #endregion
