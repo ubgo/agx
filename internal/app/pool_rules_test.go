@@ -13,15 +13,15 @@ import (
 	"github.com/ubgo/agx/pool"
 )
 
-// TestPoolExpiringSessions: under the expiring strategy each run's key
+// TestPoolSessions: under the default rules each run's key
 // request is its own pick: the most room first, at most max_sessions
 // runs per member (counted from the live runs that asked within two
 // key_ttls), the overflow to a waiting member, and a run stays on its
 // member (sticky). agx pool pick, outside a run, shows the sessions per
 // member.
-func TestPoolExpiringSessions(t *testing.T) {
+func TestPoolSessions(t *testing.T) {
 	m, _, _ := freshPool(t)
-	m.f.WriteConfig(strings.Replace(poolConfig, `"key_ttl": "30s"`, `"strategy": "expiring", "max_sessions": 1, "key_ttl": "30s"`, 1))
+	m.f.WriteConfig(strings.Replace(poolConfig, poolClassicKeys, `"max_sessions": 1, `, 1))
 	a := m.app(t)
 	key := func(start string) (string, string) {
 		t.Helper()
@@ -60,8 +60,8 @@ func TestPoolExpiringSessions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rep.Strategy != pool.StrategyExpiring {
-		t.Errorf("strategy %q", rep.Strategy)
+	if rep.Order != pool.OrderUrgency {
+		t.Errorf("order %q", rep.Order)
 	}
 	sessions := map[string]int{}
 	for _, c := range rep.Candidates {
@@ -88,9 +88,10 @@ func TestPoolExpiringSessions(t *testing.T) {
 	}
 }
 
-// TestPoolDeadlineIgnoresSessions: today's rules give every run the one
-// pick and read no live runs.
-func TestPoolDeadlineIgnoresSessions(t *testing.T) {
+// TestPoolClassicIgnoresSessions: the classic preset (deadline order, no
+// session limit, not sticky) gives every run the one pick and reads no
+// live runs.
+func TestPoolClassicIgnoresSessions(t *testing.T) {
 	m, _, a := freshPool(t)
 	for range 3 {
 		liveRun(t, m, a, "auto")
@@ -100,12 +101,12 @@ func TestPoolDeadlineIgnoresSessions(t *testing.T) {
 		}
 	}
 	rep, err := a.PoolPick(context.Background(), PoolPickOptions{ID: "auto", Cached: true}, TimeOptions{})
-	if err != nil || rep.Strategy != pool.StrategyDeadline {
-		t.Fatalf("%v %v", rep.Strategy, err)
+	if err != nil || rep.Order != pool.OrderDeadline {
+		t.Fatalf("%v %v", rep.Order, err)
 	}
 	for _, c := range rep.Candidates {
-		if c.Sessions != 0 || c.UrgencyPercentPerHour != nil {
-			t.Errorf("deadline report counts sessions or urgency: %+v", c)
+		if c.Sessions != 0 {
+			t.Errorf("classic report counts sessions: %+v", c)
 		}
 	}
 }

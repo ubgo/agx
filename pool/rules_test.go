@@ -10,11 +10,9 @@ import (
 	"github.com/ubgo/agx/pool"
 )
 
-// expiring is team() under the expiring strategy at its defaults.
+// expiring is team() under the default rules (the recommended preset).
 func expiring() pool.Config {
-	c := team()
-	c.Strategy = pool.StrategyExpiring
-	return c
+	return team().WithRules(pool.DefaultRules())
 }
 
 // pick runs Select and returns the selection's name ("" for none).
@@ -101,7 +99,7 @@ func TestExpiringRelaxCaps(t *testing.T) {
 			c.WeekRelaxWindow = 0
 			return c
 		}, read(10, 72, time.Hour), false, 70},
-		{"deadline strategy never relaxes", team, read(10, 72, time.Hour), false, 70},
+		{"the classic preset never relaxes", team, read(10, 72, time.Hour), false, 70},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -334,7 +332,7 @@ func TestExpiringValidate(t *testing.T) {
 		edit func(*pool.Config)
 		want string
 	}{
-		{"unknown strategy", func(c *pool.Config) { c.Strategy = "soonest" }, `strategy "soonest" is not one of`},
+		{"unknown order", func(c *pool.Config) { c.Order = "soonest" }, `order "soonest" is not one of`},
 		{"negative relax window", func(c *pool.Config) { c.WeekRelaxWindow = -time.Hour }, "week_relax_window is negative"},
 		{"negative max sessions", func(c *pool.Config) { c.MaxSessions = -1 }, "max_sessions is negative"},
 		{"negative leave ratio", func(c *pool.Config) { c.StickyLeaveRatio = -1 }, "sticky_leave_ratio -1 is not a number of 0 or more"},
@@ -367,15 +365,16 @@ func TestExpiringValidate(t *testing.T) {
 	if err := expiring().Validate(); err != nil {
 		t.Errorf("defaults: %v", err)
 	}
-	if pool.New(nil, nil).Strategy != pool.StrategyDeadline {
-		t.Error("New's strategy is not deadline")
+	if pool.New(nil, nil).Order != pool.OrderUrgency {
+		t.Error("New's order is not urgency")
 	}
 }
 
 // TestExpiringDefaults pins the defaults the simulator chose.
 func TestExpiringDefaults(t *testing.T) {
 	c := pool.New(nil, nil)
-	if c.WeekRelaxWindow != 24*time.Hour || c.WeekRelaxMax != 95 || c.MaxSessions != 4 || !c.Sticky || c.StickyLeaveRatio != 3 {
+	if c.WeekRelaxWindow != 24*time.Hour || c.WeekRelaxMax != 95 || c.MaxSessions != 4 || !c.Sticky || c.StickyLeaveRatio != 3 ||
+		c.Order != pool.OrderUrgency || c.OwnDefaults != (pool.Caps{Short: 95, Week: 98}) || c.Defaults != (pool.Caps{Short: 50, Week: 70}) {
 		t.Errorf("defaults: window %s, max %v, sessions %d, sticky %v", c.WeekRelaxWindow, c.WeekRelaxMax, c.MaxSessions, c.Sticky)
 	}
 }
@@ -387,7 +386,7 @@ func TestExpiringJSON(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{`"strategy":"expiring"`, `"sticky":true`, `"urgency":`, `"load":1`} {
+	for _, want := range []string{`"order":"urgency"`, `"sticky":true`, `"urgency":`, `"load":1`} {
 		if !strings.Contains(string(b), want) {
 			t.Errorf("JSON lacks %s: %s", want, b)
 		}
@@ -410,10 +409,11 @@ func snap(short, week, hours float64) pool.Reading {
 }
 
 // snapshotPool is that pool: three own (95/98), nine shared.
-func snapshotPool(s pool.Strategy) (pool.Config, map[string]pool.Reading) {
+func snapshotPool(s string) (pool.Config, map[string]pool.Reading) {
 	c := pool.New([]string{"ava", "ben", "cara"}, []string{"dan", "eli", "fay", "gus", "hal", "ivy", "jon", "kim", "lea"})
 	c.Groups = map[pool.Group]pool.GroupCaps{pool.GroupOwn: {Short: f(95), Week: f(98)}}
-	c.Strategy = s
+	p, _ := pool.PresetNamed(s)
+	c = c.WithRules(p.Rules)
 	return c, map[string]pool.Reading{
 		"ava": snap(-1, 52, 118.3), "ben": snap(0, 0, 154.3), "cara": snap(56, 98, 20.3),
 		"dan": snap(4, 7, 128.3), "eli": snap(6, 7, 115.3), "fay": snap(12, 19, 49.3),
@@ -422,16 +422,16 @@ func snapshotPool(s pool.Strategy) (pool.Config, map[string]pool.Reading) {
 	}
 }
 
-// TestSnapshotShortBlocksNearReset is the case that started the expiring strategy: a
+// TestSnapshotShortBlocksNearReset is the case that started the default rules: a
 // shared account 27 minutes from its weekly reset with 36% used, skipped
 // for its 5-hour 52% (cap 50). The 5-hour cap still blocks it under the
-// expiring strategy (that window outlives the weekly reset and is the
+// default rules (that window outlives the weekly reset and is the
 // teammate's working time; 27 minutes could not have spent its 34% of
 // weekly room anyway, the 5-hour cap allows about 6% of a week per
 // window); its weekly cap is relaxed to about 94.7% and the reason says the
 // 5-hour cap is what blocks it.
 func TestSnapshotShortBlocksNearReset(t *testing.T) {
-	for _, s := range []pool.Strategy{pool.StrategyDeadline, pool.StrategyExpiring} {
+	for _, s := range []string{pool.PresetClassic, pool.PresetRecommended} {
 		cfg, readings := snapshotPool(s)
 		_, r := pick(t, cfg, readings, pool.Options{Now: snapshotAt})
 		gus := candidateOf(t, r, "gus")
@@ -439,9 +439,9 @@ func TestSnapshotShortBlocksNearReset(t *testing.T) {
 			t.Errorf("%s: gus eligible %v, reasons %v", s, gus.Eligible, gus.Reasons)
 		}
 	}
-	// A day earlier, with its 5-hour window idle, the expiring strategy
+	// A day earlier, with its 5-hour window idle, the default rules
 	// puts it first: 34% to lose in 24 hours beats every other member.
-	cfg, readings := snapshotPool(pool.StrategyExpiring)
+	cfg, readings := snapshotPool(pool.PresetRecommended)
 	readings["gus"] = snap(-1, 36, 24.3)
 	got, r := pick(t, cfg, readings, pool.Options{Now: snapshotAt})
 	if got != "gus" {
@@ -451,11 +451,11 @@ func TestSnapshotShortBlocksNearReset(t *testing.T) {
 
 // TestSnapshotRelaxAfterShortWindow: a shared account 4.3 hours from its reset at week
 // 70% (its cap) and 5-hour 66%. Today's rules block it twice; once its
-// 5-hour window has ended the expiring strategy's relaxed weekly cap
+// 5-hour window has ended the default rules's relaxed weekly cap
 // (90.5% at 4.3 hours) makes it usable, and it goes first: its room is
 // lost in hours.
 func TestSnapshotRelaxAfterShortWindow(t *testing.T) {
-	cfg, readings := snapshotPool(pool.StrategyExpiring)
+	cfg, readings := snapshotPool(pool.PresetRecommended)
 	_, r := pick(t, cfg, readings, pool.Options{Now: snapshotAt})
 	ivy := candidateOf(t, r, "ivy")
 	if ivy.Eligible || strings.Join(ivy.Reasons, "; ") != "5h is 66% (cap 50%)" {
@@ -466,7 +466,7 @@ func TestSnapshotRelaxAfterShortWindow(t *testing.T) {
 	if got != "ivy" {
 		t.Errorf("5-hour window over: picked %s (%s), want ivy", got, r.Selected.Reason)
 	}
-	deadline, dr := snapshotPool(pool.StrategyDeadline)
+	deadline, dr := snapshotPool(pool.PresetClassic)
 	dr["ivy"] = snap(-1, 70, 4.3)
 	_, res := pick(t, deadline, dr, pool.Options{Now: snapshotAt})
 	if c := candidateOf(t, res, "ivy"); c.Eligible {
@@ -479,7 +479,7 @@ func TestSnapshotRelaxAfterShortWindow(t *testing.T) {
 // strategy ten sessions asking in turn spread over the most urgent
 // members, at most max_sessions each.
 func TestSnapshotSpread(t *testing.T) {
-	cfg, readings := snapshotPool(pool.StrategyExpiring)
+	cfg, readings := snapshotPool(pool.PresetRecommended)
 	load := map[string]int{}
 	for range 10 {
 		got, _ := pick(t, cfg, readings, pool.Options{Now: snapshotAt, Load: load})

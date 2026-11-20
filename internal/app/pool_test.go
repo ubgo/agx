@@ -22,9 +22,15 @@ import (
 	"github.com/ubgo/agx/pool"
 )
 
+// poolClassicKeys are the classic preset's rule values as config keys:
+// poolConfig's tests (forces, pins, pickers, the ported selector flows)
+// were written for those rules; pool_rules_test.go drops them.
+const poolClassicKeys = `"order": "deadline", "week_relax_window": "0s", "max_sessions": 0, "sticky": false, `
+
 // poolConfig: a pool "auto" with own members alice and bob and shared
-// members carol and derek (fake tokens from the env), a log file and a
-// 30s key ttl; one Claude profile so a launch can resolve.
+// members carol and derek (fake tokens from the env), the classic
+// preset, a log file and a 30s key ttl; one Claude profile so a launch
+// can resolve.
 const poolConfig = `{
   "version": 1,
   "default_agent": "claude",
@@ -37,7 +43,7 @@ const poolConfig = `{
     "auto": { "agents": ["claude"], "kind": "pool", "pool": {
       "own": ["alice", "bob"], "shared": ["carol", "derek"],
       "accounts": { "alice": { "short": 95, "week": 98 }, "bob": { "short": 95, "week": 98 } },
-      "key_ttl": "30s", "log": "~/pool.log" } }
+      ` + poolClassicKeys + `"key_ttl": "30s", "log": "~/pool.log" } }
   }
 }`
 

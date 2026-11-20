@@ -16,7 +16,7 @@ import (
 // stale and unknown resets, ties, force edge cases and empty pools.
 
 // one is a pool of own a and shared b with the defaults (50/70) for both.
-func one() pool.Config { return pool.New([]string{"a"}, []string{"b"}) }
+func one() pool.Config { return classicNew([]string{"a"}, []string{"b"}) }
 
 // TestBoundaryCapsExclusive: a hair under the cap is usable, the cap
 // itself blocks, for the short and the weekly window.
@@ -35,7 +35,7 @@ func TestBoundaryCapsExclusive(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			cfg := pool.New(nil, []string{"b"})
+			cfg := classicNew(nil, []string{"b"})
 			r := pickPort(t, map[string]pool.Reading{"b": {Status: pool.StatusOK, Short: &pool.Window{Percent: c.short}, Week: &pool.Window{Percent: c.week, ResetsAt: at(1)}}}, cfg, "")
 			if (r.Selected != nil) != c.usable {
 				t.Errorf("usable %v, want %v (reasons %v)", r.Selected != nil, c.usable, r.Candidates[0].Reasons)
@@ -69,7 +69,7 @@ func TestBoundaryShortCutoff(t *testing.T) {
 		cutoff, short float64
 		usable        bool
 	}{{99, 98.9999, true}, {99, 99, false}, {99, 100, false}, {80, 79.9, true}, {80, 80, false}} {
-		cfg := pool.New([]string{"a"}, nil)
+		cfg := classicNew([]string{"a"}, nil)
 		cfg.ShortUnavailableAt = c.cutoff
 		cfg.Accounts = map[string]pool.Account{"a": {Short: p(100), Week: p(100)}}
 		r := pickPort(t, map[string]pool.Reading{"a": {Status: pool.StatusOK, Short: &pool.Window{Percent: c.short}, Week: &pool.Window{Percent: 1, ResetsAt: at(10)}}}, cfg, "")
@@ -82,7 +82,7 @@ func TestBoundaryShortCutoff(t *testing.T) {
 // TestBoundaryMissingShortWindow: without a 5-hour window only the status
 // can block an account that is at its 5-hour limit.
 func TestBoundaryMissingShortWindow(t *testing.T) {
-	cfg := pool.New([]string{"a"}, nil)
+	cfg := classicNew([]string{"a"}, nil)
 	week := &pool.Window{Percent: 1, ResetsAt: at(10)}
 	if r := pickPort(t, map[string]pool.Reading{"a": {Status: pool.StatusOK, Week: week}}, cfg, ""); selected(r) != "a" {
 		t.Errorf("ok without short: %s", selected(r))
@@ -96,7 +96,7 @@ func TestBoundaryMissingShortWindow(t *testing.T) {
 // TestBoundaryResetOrder: known resets by time, then unknown and passed
 // resets (stale) in config order; a reset exactly now is not stale.
 func TestBoundaryResetOrder(t *testing.T) {
-	cfg := pool.New([]string{"a", "b", "c", "d"}, nil)
+	cfg := classicNew([]string{"a", "b", "c", "d"}, nil)
 	cfg.Accounts = map[string]pool.Account{}
 	nowReset := portNow
 	r := pickPort(t, map[string]pool.Reading{
@@ -116,7 +116,7 @@ func TestBoundaryResetOrder(t *testing.T) {
 // TestBoundaryTies: equal resets keep config order with own first, even
 // when the readings map lists them otherwise.
 func TestBoundaryTies(t *testing.T) {
-	cfg := pool.New([]string{"z", "y"}, []string{"x", "w"})
+	cfg := classicNew([]string{"z", "y"}, []string{"x", "w"})
 	cfg.BorrowWindow = 100 * time.Hour
 	same := func() pool.Reading {
 		return pool.Reading{Status: pool.StatusOK, Week: &pool.Window{Percent: 1, ResetsAt: at(24)}}
@@ -152,10 +152,10 @@ func TestBoundaryForceCases(t *testing.T) {
 // TestBoundaryEmptyAndAll: an empty pool, all disabled, all limited pick
 // nothing; a pool of one picks it.
 func TestBoundaryEmptyAndAll(t *testing.T) {
-	if r := pickPort(t, nil, pool.New(nil, nil), ""); r.Selected != nil || len(r.Candidates) != 0 {
+	if r := pickPort(t, nil, classicNew(nil, nil), ""); r.Selected != nil || len(r.Candidates) != 0 {
 		t.Errorf("empty %+v", r)
 	}
-	all := pool.New([]string{"a"}, []string{"b"})
+	all := classicNew([]string{"a"}, []string{"b"})
 	all.Accounts = map[string]pool.Account{"a": {Enabled: f2(false)}, "b": {Enabled: f2(false)}}
 	ok := func() pool.Reading {
 		return pool.Reading{Status: pool.StatusOK, Week: &pool.Window{Percent: 1, ResetsAt: at(5)}}
@@ -167,7 +167,7 @@ func TestBoundaryEmptyAndAll(t *testing.T) {
 	if r := pickPort(t, map[string]pool.Reading{"a": lim(), "b": lim()}, one(), ""); r.Selected != nil {
 		t.Errorf("all limited picked %s", selected(r))
 	}
-	if r := pickPort(t, map[string]pool.Reading{"b": ok()}, pool.New(nil, []string{"b"}), ""); selected(r) != "b" {
+	if r := pickPort(t, map[string]pool.Reading{"b": ok()}, classicNew(nil, []string{"b"}), ""); selected(r) != "b" {
 		t.Errorf("pool of one %s", selected(r))
 	}
 }
@@ -218,10 +218,11 @@ func randomPool(rng *rand.Rand) (pool.Config, map[string]pool.Reading) {
 			shared = append(shared, m)
 		}
 	}
-	cfg := pool.New(own, shared)
+	cfg := classicNew(own, shared)
 	cfg.BorrowWindow = time.Duration(rng.IntN(200)) * time.Hour
 	cfg.ShortUnavailableAt = float64(50 + rng.IntN(51))
 	cfg.Defaults = pool.Caps{Short: float64(rng.IntN(101)), Week: float64(rng.IntN(101))}
+	cfg.OwnDefaults = cfg.Defaults
 	cfg.Accounts = map[string]pool.Account{}
 	data := map[string]pool.Reading{}
 	for _, m := range all[:n] {

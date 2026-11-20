@@ -39,7 +39,7 @@ func flowConfig(extra string) string {
     "auto": { "agents": ["claude"], "kind": "pool", "pool": {
       "own": ["alice", "carol"], "shared": ["grace", "ivan"],
       "accounts": { "alice": { "short": 99, "week": 100 }, "carol": { "short": 99, "week": 100 }` + extra + ` },
-      "usage_max_age": "60s", "log": "~/helper.log" } }
+      ` + poolClassicKeys + `"usage_max_age": "60s", "log": "~/helper.log" } }
   }
 }`
 }

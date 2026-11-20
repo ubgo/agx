@@ -955,11 +955,11 @@
                   "shared_caps": {
                     "$ref": "#/$defs/PoolCaps"
                   },
-                  "strategy": {
+                  "order": {
                     "type": "string",
                     "enum": [
-                      "deadline",
-                      "expiring"
+                      "urgency",
+                      "deadline"
                     ]
                   },
                   "week_relax_window": {

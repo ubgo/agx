@@ -67,11 +67,12 @@ var (
 // genConfig is a random valid pool; caps lean to edge values.
 func genConfig(g gen) pool.Config {
 	capV := func() float64 { return g.pickF(0, 1, 30, 50, 69, 70, 71, 95, 98, 99, 100, float64(g.intn(0, 100))) }
-	c := pool.New(g.shuffle(propOwn)[:g.intn(0, 3)], g.shuffle(propShared)[:g.intn(0, 4)])
+	c := classicNew(g.shuffle(propOwn)[:g.intn(0, 3)], g.shuffle(propShared)[:g.intn(0, 4)])
 	c.BorrowWindow = time.Duration(g.pickF(0, 1, 24, 48, 48, 72, 1000)) * time.Hour
 	c.ShortUnavailableAt = g.pickF(99, 99, 90, 100, float64(g.intn(50, 100)))
 	if g.chance(0.7) {
 		c.Defaults = pool.Caps{Short: capV(), Week: capV()}
+		c.OwnDefaults = c.Defaults
 	}
 	if g.chance(0.8) {
 		c.Accounts = map[string]pool.Account{}

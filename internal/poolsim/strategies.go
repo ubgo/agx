@@ -22,8 +22,10 @@ func members(sc Scenario) []Member {
 	return out
 }
 
-// TodayConfig is a scenario's pool as the real pool.Config under
-// today's rules: its members and its configured caps per group.
+// TodayConfig is a scenario's pool as the real pool.Config under the
+// classic preset (the rules before v0.4.16, strategy A), made only of
+// config values: its members, its configured caps per group and the
+// preset's rule values.
 func TodayConfig(sc Scenario) pool.Config {
 	var own, shared []string
 	for _, m := range members(sc) {
@@ -33,7 +35,8 @@ func TodayConfig(sc Scenario) pool.Config {
 			shared = append(shared, m.Name)
 		}
 	}
-	c := pool.New(own, shared)
+	classic, _ := pool.PresetNamed(pool.PresetClassic)
+	c := pool.New(own, shared).WithRules(classic.Rules)
 	o, s := sc.BaseCaps[pool.GroupOwn], sc.BaseCaps[pool.GroupShared]
 	c.Groups = map[pool.Group]pool.GroupCaps{
 		pool.GroupOwn:    {Short: &o.Short, Week: &o.Week},
@@ -43,11 +46,9 @@ func TodayConfig(sc Scenario) pool.Config {
 }
 
 // RecommendedConfig is the recommendation as the real pool.Config: the
-// scenario's caps with the expiring strategy at its defaults.
+// scenario's caps with every rule value at its default.
 func RecommendedConfig(sc Scenario) pool.Config {
-	c := TodayConfig(sc)
-	c.Strategy = pool.StrategyExpiring
-	return c
+	return TodayConfig(sc).WithRules(pool.DefaultRules())
 }
 
 // Knob values of the named strategies (the sweep tunes them).
@@ -153,13 +154,13 @@ func Candidate() Policy { return Recommended() }
 // RealToday runs the real pool.Select with today's config, to check the
 // Policy's A against the shipped code.
 func RealToday() Strategy {
-	return Strategy{Name: "A-real", About: "pool.Select, deadline strategy", New: func(sc Scenario) Picker { return NewPoolRules(TodayConfig(sc)) }}
+	return Strategy{Name: "A-real", About: "pool.Select, the classic preset", New: func(sc Scenario) Picker { return NewPoolRules(TodayConfig(sc)) }}
 }
 
-// RealRecommended runs the real pool.Select with the expiring strategy
-// at its defaults, to check it against the Policy's REC.
+// RealRecommended runs the real pool.Select with the default rules, to
+// check it against the Policy's REC.
 func RealRecommended() Strategy {
-	return Strategy{Name: "REC-real", About: "pool.Select, expiring strategy at its defaults", New: func(sc Scenario) Picker { return NewPoolRules(RecommendedConfig(sc)) }}
+	return Strategy{Name: "REC-real", About: "pool.Select, the default rules", New: func(sc Scenario) Picker { return NewPoolRules(RecommendedConfig(sc)) }}
 }
 
 // knownCapacity is what a picker may know of an account's plan size:
@@ -184,8 +185,8 @@ func WeightedConfig(sc Scenario) pool.Config {
 	return c
 }
 
-// RealWeighted runs the real pool.Select with the expiring strategy and
-// the known plan sizes as capacities, to check it against REC+W.
+// RealWeighted runs the real pool.Select with the default rules and the
+// known plan sizes as capacities, to check it against REC+W.
 func RealWeighted() Strategy {
-	return Strategy{Name: "REC+W-real", About: "pool.Select, expiring with capacities where plans are known", New: func(sc Scenario) Picker { return NewPoolRules(WeightedConfig(sc)) }}
+	return Strategy{Name: "REC+W-real", About: "pool.Select, the defaults with capacities where plans are known", New: func(sc Scenario) Picker { return NewPoolRules(WeightedConfig(sc)) }}
 }

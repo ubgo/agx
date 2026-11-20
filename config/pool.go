@@ -64,7 +64,7 @@ func (p Pool) Rules() (pool.Config, error) {
 			c.Accounts[name] = pool.Account{Short: a.Short, Week: a.Week, Enabled: a.Enabled, WeekRelaxMax: a.WeekRelaxMax, Capacity: a.Capacity}
 		}
 	}
-	if err := p.strategyRules(&c); err != nil {
+	if err := p.ruleValues(&c); err != nil {
 		return c, err
 	}
 	if _, err := p.MaxAge(); err != nil {
@@ -136,11 +136,11 @@ func parseDuration(key, v string) (time.Duration, error) {
 	return d, nil
 }
 
-// strategyRules copies the strategy and the expiring strategy's knobs
-// into c, each omitted one at its default.
-func (p Pool) strategyRules(c *pool.Config) error {
-	if p.Strategy != "" {
-		c.Strategy = pool.Strategy(p.Strategy)
+// ruleValues copies the order and the rule values into c, each omitted
+// one at its default.
+func (p Pool) ruleValues(c *pool.Config) error {
+	if p.Order != "" {
+		c.Order = pool.Order(p.Order)
 	}
 	if p.WeekRelaxWindow != "" {
 		d, err := parseDuration("week_relax_window", p.WeekRelaxWindow)

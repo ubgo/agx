@@ -23,19 +23,24 @@
 //     accounts plus the usable shared accounts whose weekly reset is
 //     within BorrowWindow; other usable shared accounts wait. With no own
 //     account usable, the pool is every usable shared account.
-//  4. The pool is sorted by weekly reset, soonest first; an unknown or
+//  4. The pool is ordered by Config.Order: "urgency" (the default) puts
+//     the member with the most room to lose per hour first (room under
+//     its weekly cap ÷ hours to the reset, weighed by its capacity);
+//     "deadline" puts the soonest weekly reset first. An unknown or
 //     already-passed reset sorts last (a passed reset means stale data);
 //     ties keep config order, own before shared.
-//  5. The first in the pool is selected; an empty pool selects nothing.
+//  5. Each session gets its own pick (file rules.go): it stays on its
+//     member while that member is still in the pool (Sticky, unless
+//     another member is StickyLeaveRatio times as urgent), and a member
+//     takes at most MaxSessions sessions before the next one is used. A
+//     member's weekly cap rises toward its relax max over the last
+//     WeekRelaxWindow before its reset. An empty pool selects nothing.
 //
-// That is the "deadline" strategy (today's rules, the default). The
-// "expiring" strategy (Config.Strategy, file expiring.go) keeps rules 1
-// to 3 and changes the rest: a shared member's weekly cap rises toward
-// WeekRelaxMax over the last WeekRelaxWindow before its reset, the pool
-// is ordered by use-it-or-lose-it urgency (room under the weekly cap ÷
-// hours to the reset), and each session gets its own pick: it stays on
-// its member while that is still in the pool (Sticky), and a member
-// takes at most MaxSessions sessions before the next one is used.
+// There is no strategy switch: every difference between rule sets is a
+// Config value with a default (New), and a Preset is only a named set of
+// those values (Presets: "recommended" = the defaults, "classic" = the
+// rules before v0.4.16: deadline order, no relax, no session limit, not
+// sticky).
 //
 // Options.Only pins one member for a selection without dropping the
 // rules: the pool shrinks to that member alone (its caps lowered by
@@ -67,46 +72,50 @@ const (
 	// DefaultBorrowWindow is how close a shared account's weekly reset
 	// must be for it to go before a usable own account.
 	DefaultBorrowWindow = 48 * time.Hour
-	// DefaultStrategy is today's rules.
-	DefaultStrategy = StrategyDeadline
+	// DefaultOwnShortCap and DefaultOwnWeekCap are the caps of an own
+	// member without an own_caps or member entry: your own quota is used
+	// up almost fully (the 99% cutoff still guards the 5-hour window).
+	DefaultOwnShortCap = 95.0
+	DefaultOwnWeekCap  = 98.0
+	// DefaultOrder ranks the pool by urgency.
+	DefaultOrder = OrderUrgency
 	// DefaultWeekRelaxWindow is how long before its weekly reset a
-	// member's weekly cap starts rising (expiring strategy).
+	// member's weekly cap starts rising; 0 = never.
 	DefaultWeekRelaxWindow = 24 * time.Hour
 	// DefaultWeekRelaxMax is the weekly cap a member reaches at its
-	// reset (expiring strategy); a member whose cap is already higher
-	// keeps its cap.
+	// reset; a member whose cap is already higher keeps its cap.
 	DefaultWeekRelaxMax = 95.0
 	// DefaultMaxSessions is how many sessions one member takes before
-	// the next is used (expiring strategy); 0 = no limit.
+	// the next is used; 0 = no limit.
 	DefaultMaxSessions = 4
 	// DefaultSticky keeps a session on its member while that member is
-	// still in the pool (expiring strategy).
+	// still in the pool.
 	DefaultSticky = true
 	// DefaultStickyLeaveRatio lets a sticky session leave its member
 	// when the most urgent member's urgency is at least this many times
-	// its own (expiring strategy); 0 = never. The simulator: without it
+	// its own; 0 = never. The simulator: without it
 	// a small pool short of quota keeps draining an account that resets
 	// later (up to half again today's cost when a week holds few 5-hour
 	// windows); 3 bounds that for a few more switches.
 	DefaultStickyLeaveRatio = 3.0
 )
 
-// Strategy names the rules Select applies.
-type Strategy string
+// Order is how the pool ranks its usable members.
+type Order string
 
-// Strategies.
+// Orders.
 const (
-	// StrategyDeadline is today's rules: soonest weekly reset first, one
-	// pick for every session.
-	StrategyDeadline Strategy = "deadline"
-	// StrategyExpiring spends the room that expires first: relaxed
-	// weekly caps near the reset, urgency order, a pick per session
-	// with sticky members and at most MaxSessions per member.
-	StrategyExpiring Strategy = "expiring"
+	// OrderUrgency puts the member with the most room to lose per hour
+	// first: room under the weekly cap ÷ hours to the reset, times the
+	// member's capacity.
+	OrderUrgency Order = "urgency"
+	// OrderDeadline puts the soonest weekly reset first (the rule before
+	// v0.4.16).
+	OrderDeadline Order = "deadline"
 )
 
-// StrategyValues are the strategies a config may name.
-func StrategyValues() []string { return []string{string(StrategyDeadline), string(StrategyExpiring)} }
+// OrderValues are the orders a config may name.
+func OrderValues() []string { return []string{string(OrderUrgency), string(OrderDeadline)} }
 
 // The range of every cap and of the safety cutoff, in percent of a
 // window. config publishes it in the editor schema, and agx config set
@@ -196,13 +205,13 @@ type Account struct {
 	Short   *float64
 	Week    *float64
 	Enabled *bool
-	// WeekRelaxMax is the weekly cap this member reaches at its reset
-	// (expiring strategy); its cap or lower = never relaxed.
+	// WeekRelaxMax is the weekly cap this member reaches at its reset;
+	// its cap or lower = never relaxed.
 	WeekRelaxMax *float64
 	// Capacity is the member's plan size relative to the others (any
-	// unit: only ratios matter); nil = 1. The expiring strategy weighs
-	// a member's room by it, so a bigger plan's percent counts for
-	// more work.
+	// unit: only ratios matter); nil = 1. The urgency order weighs a
+	// member's room by it, so a bigger plan's percent counts for more
+	// work.
 	Capacity *float64
 }
 
@@ -227,18 +236,22 @@ type Config struct {
 	BorrowWindow time.Duration
 	// ShortUnavailableAt is the short-window safety cutoff (percent).
 	ShortUnavailableAt float64
-	// Defaults are the caps of accounts without their own entry.
+	// Defaults are the caps of shared (and unlisted forced) accounts
+	// without a group or member entry.
 	Defaults Caps
+	// OwnDefaults are the caps of own accounts without a group or member
+	// entry (DefaultOwnShortCap, DefaultOwnWeekCap).
+	OwnDefaults Caps
 	// Groups are per-group caps (GroupOwn, GroupShared) between the
 	// defaults and an account's own entry.
 	Groups map[Group]GroupCaps
 	// Accounts are per-account entries keyed by name.
 	Accounts map[string]Account
-	// Strategy is the rules Select applies (DefaultStrategy).
-	Strategy Strategy
-	// WeekRelaxWindow, WeekRelaxMax, MaxSessions and Sticky are the
-	// expiring strategy's knobs (the Default… constants); the deadline
-	// strategy ignores them. WeekRelaxWindow 0 = no relaxing.
+	// Order ranks the usable members ("" = DefaultOrder).
+	Order Order
+	// WeekRelaxWindow, WeekRelaxMax, MaxSessions and Sticky are the rule
+	// values of the Default… constants. WeekRelaxWindow 0 = no relaxing,
+	// MaxSessions 0 = no limit, Sticky false = a fresh pick every time.
 	WeekRelaxWindow time.Duration
 	WeekRelaxMax    float64
 	MaxSessions     int
@@ -256,7 +269,8 @@ func New(own, shared []string) Config {
 		Own: own, Shared: shared, BorrowWindow: DefaultBorrowWindow,
 		ShortUnavailableAt: DefaultShortUnavailableAt,
 		Defaults:           Caps{Short: DefaultShortCap, Week: DefaultWeekCap},
-		Strategy:           DefaultStrategy, WeekRelaxWindow: DefaultWeekRelaxWindow, WeekRelaxMax: DefaultWeekRelaxMax,
+		OwnDefaults:        Caps{Short: DefaultOwnShortCap, Week: DefaultOwnWeekCap},
+		Order:              DefaultOrder, WeekRelaxWindow: DefaultWeekRelaxWindow, WeekRelaxMax: DefaultWeekRelaxMax,
 		MaxSessions: DefaultMaxSessions, Sticky: DefaultSticky, StickyLeaveRatio: DefaultStickyLeaveRatio,
 	}
 }
@@ -278,13 +292,14 @@ func (c Config) Validate() error {
 	if c.BorrowWindow < 0 {
 		return errors.New("pool: the borrow window is negative")
 	}
-	if err := c.validateStrategy(); err != nil {
+	if err := c.validateRules(); err != nil {
 		return err
 	}
 	for _, p := range []struct {
 		label string
 		v     float64
-	}{{"short_unavailable_at_percent", c.ShortUnavailableAt}, {"defaults.short", c.Defaults.Short}, {"defaults.week", c.Defaults.Week}, {"defaults.week_relax_max", c.WeekRelaxMax}} {
+	}{{"short_unavailable_at_percent", c.ShortUnavailableAt}, {"defaults.short", c.Defaults.Short}, {"defaults.week", c.Defaults.Week}, {"defaults.week_relax_max", c.WeekRelaxMax},
+		{"own defaults short", c.OwnDefaults.Short}, {"own defaults week", c.OwnDefaults.Week}} {
 		if !validPercent(p.v) {
 			return fmt.Errorf("pool: %s %v is outside 0..100", p.label, p.v)
 		}
@@ -317,11 +332,15 @@ func (c Config) Validate() error {
 // validPercent is a finite value in 0..100.
 func validPercent(v float64) bool { return v >= MinPercent && v <= MaxPercent && !math.IsNaN(v) }
 
-// CapsFor is one account's caps: the defaults, then its group's, then
-// its own entry.
+// CapsFor is one account's caps: the defaults (OwnDefaults for an own
+// account), then its group's, then its own entry.
 func (c Config) CapsFor(name string) Caps {
 	caps := c.Defaults
-	if g, ok := c.Groups[c.groupOf(name)]; ok {
+	group := c.groupOf(name)
+	if group == GroupOwn {
+		caps = c.OwnDefaults
+	}
+	if g, ok := c.Groups[group]; ok {
 		if g.Short != nil {
 			caps.Short = *g.Short
 		}
@@ -435,8 +454,8 @@ type Options struct {
 	// Load is how many other sessions use each member now, and Current
 	// the member this session uses ("" = none yet); CurrentAhead is how
 	// many of the other sessions on Current started before this one
-	// (they keep it first when it is full). Only the expiring strategy
-	// reads them.
+	// (they keep it first when it is full). MaxSessions and Sticky read
+	// them.
 	Load         map[string]int
 	Current      string
 	CurrentAhead int
@@ -465,10 +484,10 @@ type Candidate struct {
 	Room *float64 `json:"room"`
 	Caps Caps     `json:"caps"`
 	// WeekCapConfigured is the configured weekly cap when Caps.Week has
-	// been relaxed above it (expiring strategy); nil otherwise.
+	// been relaxed above it near the reset; nil otherwise.
 	WeekCapConfigured *float64 `json:"week_cap_configured,omitempty"`
-	// Urgency is Room ÷ hours to the weekly reset, in percent per hour
-	// (expiring strategy); nil when either is unknown.
+	// Urgency is Room ÷ hours to the weekly reset times the capacity, in
+	// percent per hour (the urgency order); nil when either is unknown.
 	Urgency *float64 `json:"urgency,omitempty"`
 	// Load is how many other sessions use this member (Options.Load).
 	Load    int      `json:"load"`
@@ -491,7 +510,7 @@ type Selection struct {
 	ForcedBy ForcedBy `json:"forced_by,omitempty"`
 	// Only is true when Options.Only pinned the selection.
 	Only bool `json:"only,omitempty"`
-	// Sticky is true when the session stayed on its member (expiring).
+	// Sticky is true when the session stayed on its member.
 	Sticky bool `json:"sticky,omitempty"`
 	// Load is how many other sessions use the selected member.
 	Load int `json:"load"`
@@ -508,7 +527,7 @@ type Selection struct {
 // then blocked).
 type Result struct {
 	Selected           *Selection    `json:"selected"`
-	Strategy           Strategy      `json:"strategy"`
+	Order              Order         `json:"order"`
 	Now                time.Time     `json:"now"`
 	ShortUnavailableAt float64       `json:"short_unavailable_at_percent"`
 	BorrowWindow       time.Duration `json:"-"`
@@ -553,7 +572,7 @@ func Select(cfg Config, readings map[string]Reading, o Options) (Result, error) 
 		a.WeekRelaxMax = o.OnlyCaps.Week
 		cfg.Accounts[o.Only] = a
 	}
-	res := Result{Now: o.Now, ShortUnavailableAt: cfg.ShortUnavailableAt, BorrowWindow: cfg.BorrowWindow, Strategy: cfg.strategy()}
+	res := Result{Now: o.Now, ShortUnavailableAt: cfg.ShortUnavailableAt, BorrowWindow: cfg.BorrowWindow, Order: cfg.order()}
 	cands := make([]*Candidate, 0, len(cfg.Own)+len(cfg.Shared))
 	add := func(names []string, g Group) {
 		for _, name := range names {
@@ -578,9 +597,9 @@ func Select(cfg Config, readings map[string]Reading, o Options) (Result, error) 
 			waiting = append(waiting, c)
 		}
 	}
-	order := byDeadline
-	if res.Strategy == StrategyExpiring {
-		order = byUrgency
+	order := byUrgency
+	if res.Order == OrderDeadline {
+		order = byDeadline
 	}
 	slices.SortStableFunc(ready, order)
 	slices.SortStableFunc(waiting, order)
@@ -612,8 +631,8 @@ func Select(cfg Config, readings map[string]Reading, o Options) (Result, error) 
 			return res, err
 		}
 		res.Selected = &sel
-	case len(ready) > 0 && res.Strategy == StrategyExpiring && o.Only == "":
-		res.Selected = assign(cfg, ready, waiting, o)
+	case len(ready) > 0 && o.Only == "":
+		res.Selected = assign(cfg, ready, waiting, o, ownUsable)
 	case len(ready) > 0:
 		pick := ready[0]
 		res.Selected = &Selection{
@@ -652,7 +671,7 @@ func candidate(cfg Config, name string, g Group, order int, rd Reading, found bo
 		Name: name, Group: g, order: order, Enabled: cfg.Enabled(name), Caps: cfg.CapsFor(name),
 		Status: statusMissing, Reasons: []string{}, Notes: []string{},
 	}
-	if found && cfg.strategy() == StrategyExpiring {
+	if found {
 		cfg.relax(c, rd, now)
 	}
 	c.Reasons = blockReasons(rd, found, c.Enabled, c.Caps, cfg.ShortUnavailableAt)
@@ -683,9 +702,7 @@ func candidate(cfg Config, name string, g Group, order int, rd Reading, found bo
 		}
 		c.inWindow = g == GroupShared && until >= 0 && until <= cfg.BorrowWindow
 	}
-	if cfg.strategy() == StrategyExpiring {
-		setUrgency(c, rd, cfg.CapacityFor(name))
-	}
+	setUrgency(c, rd, cfg.CapacityFor(name))
 	return c
 }
 

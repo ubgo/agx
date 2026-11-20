@@ -295,31 +295,31 @@ type Pool struct {
 	// ShortUnavailableAtPercent is the 5-hour safety cutoff for every
 	// member (default 99).
 	ShortUnavailableAtPercent *float64 `json:"short_unavailable_at_percent,omitempty"`
-	// Defaults are the caps of members without their own entry (default
-	// short 50, week 70).
+	// Defaults are the caps of shared members without a shared_caps or
+	// member entry (default short 50, week 70), and the pool's
+	// week_relax_max (default 95).
 	Defaults PoolCaps `json:"defaults,omitzero"`
 	// OwnCaps and SharedCaps are the caps of each group's members without
-	// their own entry, over the defaults.
+	// their own entry, over the defaults (own members without own_caps
+	// default to short 95, week 98).
 	OwnCaps    PoolCaps `json:"own_caps,omitzero"`
 	SharedCaps PoolCaps `json:"shared_caps,omitzero"`
-	// Strategy is the rules that pick: "deadline" (today's: soonest
-	// weekly reset first, one pick for every session; the default) or
-	// "expiring" (relaxed weekly caps near the reset, use-it-or-lose-it
-	// order, a pick per session).
-	Strategy string `json:"strategy,omitempty" enum:"deadline,expiring"`
-	// WeekRelaxWindow (expiring): over this long before a member's weekly
-	// reset its weekly cap rises to week_relax_max (default "24h"; "0s"
-	// = never).
+	// Order ranks the usable members: "urgency" (the most room to lose
+	// per hour first; the default) or "deadline" (the soonest weekly
+	// reset first).
+	Order string `json:"order,omitempty" enum:"urgency,deadline"`
+	// WeekRelaxWindow: over this long before a member's weekly reset its
+	// weekly cap rises to week_relax_max (default "24h"; "0s" = never).
 	WeekRelaxWindow string `json:"week_relax_window,omitempty"`
-	// MaxSessions (expiring) is how many sessions one member takes before
-	// the next is used (default 4; 0 = no limit).
+	// MaxSessions is how many sessions one member takes before the next
+	// is used (default 4; 0 = no limit).
 	MaxSessions *int `json:"max_sessions,omitempty"`
-	// Sticky (expiring) keeps a session on its member while that member
-	// is still in the pool (default true).
+	// Sticky keeps a session on its member while that member is still in
+	// the pool (default true).
 	Sticky *bool `json:"sticky,omitempty"`
-	// StickyLeaveRatio (expiring): a sticky session leaves its member
-	// when the most urgent member's urgency is at least this many times
-	// its own (default 3; 0 = never).
+	// StickyLeaveRatio: a sticky session leaves its member when the most
+	// urgent member's urgency is at least this many times its own
+	// (default 3; 0 = never).
 	StickyLeaveRatio *float64 `json:"sticky_leave_ratio,omitempty"`
 	// Accounts are per-member caps and enabled false, keyed by member.
 	Accounts map[string]PoolAccount `json:"accounts,omitempty"`
@@ -353,8 +353,8 @@ type PoolCaps struct {
 	Short *float64 `json:"short,omitempty"`
 	// Week is the weekly window cap.
 	Week *float64 `json:"week,omitempty"`
-	// WeekRelaxMax is the weekly cap reached at the weekly reset under
-	// the expiring strategy (default 95); a cap already higher is kept.
+	// WeekRelaxMax is the weekly cap reached at the weekly reset
+	// (default 95); a cap already higher is kept.
 	WeekRelaxMax *float64 `json:"week_relax_max,omitempty"`
 }
 
@@ -366,12 +366,12 @@ type PoolAccount struct {
 	Week *float64 `json:"week,omitempty"`
 	// Enabled false leaves the member out; omitted = true.
 	Enabled *bool `json:"enabled,omitempty"`
-	// WeekRelaxMax is the weekly cap this member reaches at its reset
-	// (expiring strategy); its weekly cap or lower = never relaxed.
+	// WeekRelaxMax is the weekly cap this member reaches at its reset;
+	// its weekly cap or lower = never relaxed.
 	WeekRelaxMax *float64 `json:"week_relax_max,omitempty"`
 	// Capacity is the member's plan size relative to the others' (only
-	// ratios matter; omitted = 1): the expiring strategy weighs its room
-	// by it.
+	// ratios matter; omitted = 1): the urgency order weighs its room by
+	// it.
 	Capacity *float64 `json:"capacity,omitempty"`
 }
 

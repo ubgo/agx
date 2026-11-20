@@ -12,12 +12,11 @@ import (
 	"github.com/ubgo/agx/pool"
 )
 
-// The strategy flags of login add and edit (docs/guides/login-pool.md
-// "Strategies"): the rules that pick, the expiring strategy's knobs, and
-// the per-group caps. Like every pool setting flag, an empty value
+// The rule flags of login add and edit (docs/guides/pool-rules.md): the
+// order, the rule values and the per-group caps. Like every pool setting flag, an empty value
 // removes the key so the documented default applies again.
 const (
-	flagPoolStrategy          = "--pool-strategy"
+	flagPoolOrder             = "--pool-order"
 	flagPoolWeekRelaxWindow   = "--pool-week-relax-window"
 	flagPoolMaxSessions       = "--pool-max-sessions"
 	flagPoolSticky            = "--pool-sticky"
@@ -30,13 +29,13 @@ const (
 	flagPoolCapacity          = "--pool-capacity"
 )
 
-// poolStrategyFlagsText names the strategy flags in "nothing to change".
-const poolStrategyFlagsText = flagPoolStrategy + ", " + flagPoolWeekRelaxWindow + ", " + flagPoolMaxSessions + ", " + flagPoolSticky + ", " + flagPoolStickyLeaveRatio + ", " +
+// poolRuleFlagsText names the rule flags in "nothing to change".
+const poolRuleFlagsText = flagPoolOrder + ", " + flagPoolWeekRelaxWindow + ", " + flagPoolMaxSessions + ", " + flagPoolSticky + ", " + flagPoolStickyLeaveRatio + ", " +
 	flagPoolDefaultWeekRelax + ", " + flagPoolCapWeekRelax + ", " + flagPoolCapacity + ", " + flagPoolGroupCapShort + ", " + flagPoolGroupCapWeek + ", " + flagPoolGroupCapWeekRelax
 
-// Keys the strategy flags write inside logins.<name>.pool.
+// Keys the rule flags write inside logins.<name>.pool.
 const (
-	keyPoolStrategy        = "strategy"
+	keyPoolOrder           = "order"
 	keyPoolWeekRelaxWindow = "week_relax_window"
 	keyPoolMaxSessions     = "max_sessions"
 	keyPoolSticky          = "sticky"
@@ -47,10 +46,10 @@ const (
 	keyPoolSharedCaps      = "shared_caps"
 )
 
-// PoolStrategySettings are the strategy flags; nil = not given.
-type PoolStrategySettings struct {
-	// Strategy is "deadline" or "expiring".
-	Strategy *string
+// PoolRuleSettings are the rule flags; nil = not given.
+type PoolRuleSettings struct {
+	// Order is "urgency" or "deadline".
+	Order *string
 	// WeekRelaxWindow is a Go duration (week_relax_window).
 	WeekRelaxWindow *string
 	// MaxSessions is a whole number, 0 or more (max_sessions).
@@ -72,20 +71,21 @@ type PoolStrategySettings struct {
 	GroupCapWeekRelax []string
 }
 
-// given reports any strategy flag.
-func (s PoolStrategySettings) given() bool {
-	return s.Strategy != nil || s.WeekRelaxWindow != nil || s.MaxSessions != nil || s.Sticky != nil || s.StickyLeaveRatio != nil ||
+// given reports any rule flag.
+func (s PoolRuleSettings) given() bool {
+	return s.Order != nil || s.WeekRelaxWindow != nil || s.MaxSessions != nil || s.Sticky != nil || s.StickyLeaveRatio != nil ||
 		s.DefaultWeekRelax != nil || s.CapWeekRelax != nil || s.Capacity != nil || s.GroupCapShort != nil || s.GroupCapWeek != nil || s.GroupCapWeekRelax != nil
 }
 
-// planStrategy plans the strategy, max_sessions, sticky and the group
-// caps (week_relax_window is planned with the other durations).
-func (p *poolPlan) planStrategy(cur config.Pool, s PoolStrategySettings) error {
-	if v := s.Strategy; v != nil {
-		if *v != "" && !slices.Contains(pool.StrategyValues(), *v) {
-			return apperr.Usage(fmt.Sprintf("%s %q: use %s", flagPoolStrategy, *v, strings.Join(pool.StrategyValues(), " or ")))
+// planRules plans the order, max_sessions, sticky, sticky_leave_ratio
+// and the group caps (week_relax_window is planned with the other
+// durations).
+func (p *poolPlan) planRules(cur config.Pool, s PoolRuleSettings) error {
+	if v := s.Order; v != nil {
+		if *v != "" && !slices.Contains(pool.OrderValues(), *v) {
+			return apperr.Usage(fmt.Sprintf("%s %q: use %s", flagPoolOrder, *v, strings.Join(pool.OrderValues(), " or ")))
 		}
-		p.change(keyPoolStrategy, orAbsent(cur.Strategy), orAbsent(*v), setOrDeleteEdit(p.at(keyPoolStrategy), *v))
+		p.change(keyPoolOrder, orAbsent(cur.Order), orAbsent(*v), setOrDeleteEdit(p.at(keyPoolOrder), *v))
 	}
 	if v := s.MaxSessions; v != nil {
 		old := absent
@@ -144,7 +144,7 @@ func orAbsent(v string) string {
 }
 
 // planGroupCaps plans own_caps and shared_caps from the GROUP=N flags.
-func (p *poolPlan) planGroupCaps(cur config.Pool, s PoolStrategySettings) error {
+func (p *poolPlan) planGroupCaps(cur config.Pool, s PoolRuleSettings) error {
 	byGroup := map[pool.Group][]capFlag{}
 	for _, f := range []struct {
 		flag, key string

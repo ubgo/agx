@@ -74,15 +74,15 @@ type PoolSettings struct {
 	// Picker is picker.command; "" removes the picker (the built-in rules
 	// decide again).
 	Picker *string
-	// The strategy settings (login_pool_strategy.go).
-	Strategy PoolStrategySettings
+	// The rule settings (login_pool_rules.go).
+	Rules PoolRuleSettings
 }
 
 // given reports any setting flag.
 func (s PoolSettings) given() bool {
 	return s.CapShort != nil || s.CapWeek != nil || s.Disable != nil || s.Enable != nil ||
 		s.DefaultShort != nil || s.DefaultWeek != nil || s.ShortCutoff != nil ||
-		s.BorrowWindow != nil || s.UsageMaxAge != nil || s.KeyTTL != nil || s.Picker != nil || s.Strategy.given()
+		s.BorrowWindow != nil || s.UsageMaxAge != nil || s.KeyTTL != nil || s.Picker != nil || s.Rules.given()
 }
 
 // poolPlan is the set of document edits one pool command makes, with the
@@ -161,11 +161,11 @@ func (p *poolPlan) planSettings(cur config.Pool, members []string, s PoolSetting
 	if err := p.planCapsBlock(keyPoolDefaults, cur.Defaults, []capFlag{
 		{flagPoolDefaultShort, keyPoolShort, s.DefaultShort},
 		{flagPoolDefaultWeek, keyPoolWeek, s.DefaultWeek},
-		{flagPoolDefaultWeekRelax, keyPoolWeekRelaxMax, s.Strategy.DefaultWeekRelax},
+		{flagPoolDefaultWeekRelax, keyPoolWeekRelaxMax, s.Rules.DefaultWeekRelax},
 	}); err != nil {
 		return err
 	}
-	if err := p.planStrategy(cur, s.Strategy); err != nil {
+	if err := p.planRules(cur, s.Rules); err != nil {
 		return err
 	}
 	if s.ShortCutoff != nil {
@@ -181,7 +181,7 @@ func (p *poolPlan) planSettings(cur config.Pool, members []string, s PoolSetting
 		{flagPoolBorrowWindow, keyPoolBorrowWindow, cur.SharedBorrowWindow, s.BorrowWindow, 0},
 		{flagPoolUsageMaxAge, keyPoolUsageMaxAge, cur.UsageMaxAge, s.UsageMaxAge, 0},
 		{flagPoolKeyTTL, keyPoolKeyTTL, cur.KeyTTL, s.KeyTTL, config.MinKeyTTL},
-		{flagPoolWeekRelaxWindow, keyPoolWeekRelaxWindow, cur.WeekRelaxWindow, s.Strategy.WeekRelaxWindow, 0},
+		{flagPoolWeekRelaxWindow, keyPoolWeekRelaxWindow, cur.WeekRelaxWindow, s.Rules.WeekRelaxWindow, 0},
 	} {
 		if d.v == nil {
 			continue
@@ -303,11 +303,11 @@ func (p *poolPlan) planAccounts(cur config.Pool, members []string, s PoolSetting
 	if err != nil {
 		return err
 	}
-	relaxes, err := parseCaps(flagPoolCapWeekRelax, s.Strategy.CapWeekRelax, members, p.login)
+	relaxes, err := parseCaps(flagPoolCapWeekRelax, s.Rules.CapWeekRelax, members, p.login)
 	if err != nil {
 		return err
 	}
-	capacities, err := parseCapacities(s.Strategy.Capacity, members, p.login)
+	capacities, err := parseCapacities(s.Rules.Capacity, members, p.login)
 	if err != nil {
 		return err
 	}

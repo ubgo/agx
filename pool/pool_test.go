@@ -42,10 +42,20 @@ func f(v float64) *float64 { return &v }
 // no is a pointer to false.
 func no() *bool { b := false; return &b }
 
+// classicNew is a pool under the classic preset with own members at the
+// shared defaults (50/70): the rules the ported selector tests were
+// written for.
+func classicNew(own, shared []string) pool.Config {
+	p, _ := pool.PresetNamed(pool.PresetClassic)
+	c := pool.New(own, shared).WithRules(p.Rules)
+	c.OwnDefaults = c.Defaults
+	return c
+}
+
 // team is the flow's pool with fake names: alice, bob and carol are
 // yours (caps 95/98), the rest are teammates' (default caps 50/70).
 func team() pool.Config {
-	c := pool.New([]string{"alice", "bob", "carol"}, []string{"derek", "erin", "frank", "grace", "heidi", "ivan"})
+	c := classicNew([]string{"alice", "bob", "carol"}, []string{"derek", "erin", "frank", "grace", "heidi", "ivan"})
 	c.Accounts = map[string]pool.Account{
 		"alice": {Short: f(95), Week: f(98)},
 		"bob":   {Short: f(95), Week: f(98)},
@@ -243,7 +253,7 @@ func TestFlowExamples(t *testing.T) {
 // TestUsableChecksListEveryReason: section 4: every reason is listed,
 // not the first; caps are exclusive (< cap usable, >= cap not).
 func TestUsableChecksListEveryReason(t *testing.T) {
-	cfg := pool.New([]string{"alice"}, []string{"derek", "erin", "frank"})
+	cfg := classicNew([]string{"alice"}, []string{"derek", "erin", "frank"})
 	cfg.Accounts = map[string]pool.Account{"derek": {Enabled: no()}}
 	readings := map[string]pool.Reading{
 		"derek": {Status: "limit-reached", Short: &pool.Window{Percent: 99.5}, Week: &pool.Window{Percent: 70}},
@@ -275,7 +285,7 @@ func TestUsableChecksListEveryReason(t *testing.T) {
 // TestShortCutoffAppliesToOwnAccounts: the 99% short cutoff blocks even
 // an own account whose short cap is 100.
 func TestShortCutoffAppliesToOwnAccounts(t *testing.T) {
-	cfg := pool.New([]string{"alice"}, nil)
+	cfg := classicNew([]string{"alice"}, nil)
 	cfg.Accounts = map[string]pool.Account{"alice": {Short: f(100), Week: f(100)}}
 	r, _ := pool.Select(cfg, map[string]pool.Reading{"alice": read(99, 10, day)}, pool.Options{Now: now})
 	if r.Selected != nil || !slices.Equal(r.Candidates[0].Reasons, []string{"5h is 99% (unavailable at 99%)"}) {
@@ -285,7 +295,7 @@ func TestShortCutoffAppliesToOwnAccounts(t *testing.T) {
 
 // TestNoneUsable: an empty pool selects nothing and is not an error.
 func TestNoneUsable(t *testing.T) {
-	cfg := pool.New([]string{"alice"}, []string{"derek"})
+	cfg := classicNew([]string{"alice"}, []string{"derek"})
 	r, err := pool.Select(cfg, map[string]pool.Reading{"alice": status("rejected"), "derek": read(0, 80, day)}, pool.Options{Now: now})
 	if err != nil || r.Selected != nil {
 		t.Fatalf("selected %+v err %v", r.Selected, err)
@@ -299,7 +309,7 @@ func TestNoneUsable(t *testing.T) {
 // shared; an unknown reset and a passed (stale) reset sort last, the
 // passed one noted.
 func TestOrdering(t *testing.T) {
-	cfg := pool.New([]string{"alice", "bob", "carol"}, []string{"derek"})
+	cfg := classicNew([]string{"alice", "bob", "carol"}, []string{"derek"})
 	cfg.BorrowWindow = 7 * day
 	unknown := pool.Reading{Status: pool.StatusOK, Week: &pool.Window{Percent: 1}}
 	readings := map[string]pool.Reading{
@@ -327,7 +337,7 @@ func TestOrdering(t *testing.T) {
 // TestBorrowWindowZeroNeverBorrows: window 0 holds every shared account
 // back while an own account is usable, even one resetting now.
 func TestBorrowWindowZeroNeverBorrows(t *testing.T) {
-	cfg := pool.New([]string{"alice"}, []string{"derek"})
+	cfg := classicNew([]string{"alice"}, []string{"derek"})
 	cfg.BorrowWindow = 0
 	r, _ := pool.Select(cfg, map[string]pool.Reading{"alice": read(0, 1, 6*day), "derek": read(0, 1, time.Minute)}, pool.Options{Now: now})
 	if r.Selected.Name != "alice" || candidateOf(t, r, "derek").State != pool.StateWaiting {
@@ -396,7 +406,7 @@ func TestHours(t *testing.T) {
 // login declared oauth-token that does not allow it) is blocked with one
 // reason however low its usage, and the next member is picked.
 func TestPerUseKeyNeverPicked(t *testing.T) {
-	cfg := pool.New([]string{"alice", "bob"}, nil)
+	cfg := classicNew([]string{"alice", "bob"}, nil)
 	key := read(1, 1, day)
 	key.PerUseKey = true
 	r, err := pool.Select(cfg, map[string]pool.Reading{"alice": key, "bob": read(40, 60, day)}, pool.Options{Now: now})

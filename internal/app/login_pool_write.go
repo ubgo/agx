@@ -31,7 +31,7 @@ func (o LoginEditOptions) poolGiven() bool {
 // messages.
 const poolFlagsText = flagPoolOwn + ", " + flagPoolShared + ", " + flagPoolForce + ", " + flagPoolCapShort + ", " + flagPoolCapWeek + ", " +
 	flagPoolDisable + ", " + flagPoolEnable + ", " + flagPoolDefaultShort + ", " + flagPoolDefaultWeek + ", " + flagPoolShortCutoff + ", " +
-	flagPoolBorrowWindow + ", " + flagPoolUsageMaxAge + ", " + flagPoolKeyTTL + ", " + flagPoolPicker + ", " + poolStrategyFlagsText
+	flagPoolBorrowWindow + ", " + flagPoolUsageMaxAge + ", " + flagPoolKeyTTL + ", " + flagPoolPicker + ", " + poolRuleFlagsText
 
 // addPool is login add --kind pool: a login with members and no value,
 // plus any pool setting flags. The members, the agent and every number

@@ -151,21 +151,28 @@ const (
 	gateServed  = 0.0005
 )
 
-// Expiring-versus-deadline slack on the same runs.
+// Defaults-versus-classic slack on the same runs.
 const (
 	wasteSlack   = 0.2
 	servedSlack  = 0.002
 	lockoutSlack = 0.15
-	// switchSlack: a one-tier pool switches almost never under deadline,
-	// and sticky_leave_ratio may add a few switches there.
+	// switchSlack: a one-tier pool switches almost never under the
+	// classic preset, and sticky_leave_ratio may add a few switches there.
 	switchSlack = 1.0
 )
 
-// TestSimGate is the regression gate (go test, task check): the shipped
-// strategies on the gate scenarios must not waste more quota, hit more
-// limits, stall more, lock teammates out more or serve less than the
-// recorded baseline; and the expiring strategy must not lose to the
-// deadline strategy on waste, service, lockouts or switches. A change to
+// Baseline keys: the classic preset and the default rules.
+const (
+	gateClassic  = pool.PresetClassic
+	gateDefaults = "defaults"
+)
+
+// TestSimGate is the regression gate (go test, task check): the default
+// rules and the classic preset (reference A, made only of config values)
+// on the gate scenarios must not waste more quota, hit more limits,
+// stall more, lock teammates out more or serve less than the recorded
+// baseline; and the defaults must not lose to the classic preset on
+// waste, service, lockouts or switches. A change to
 // the pool rules that loses one of these fails here; -update records new
 // numbers after a deliberate change.
 func TestSimGate(t *testing.T) {
@@ -181,10 +188,10 @@ func TestSimGate(t *testing.T) {
 		gated[g.Group] = true
 		gen := WithSeeds(WithTiming(g, gateStep, DefaultLag), gateSeeds)
 		sums := Evaluate(gen, []Strategy{RealToday(), RealRecommended()}, DefaultWeights)
-		got[g.Name] = map[string]gateMetrics{string(pool.StrategyDeadline): of(sums[0].Mean), string(pool.StrategyExpiring): of(sums[1].Mean)}
+		got[g.Name] = map[string]gateMetrics{gateClassic: of(sums[0].Mean), gateDefaults: of(sums[1].Mean)}
 		a, r := sums[0].Mean, sums[1].Mean
 		if r.WasteTotal > a.WasteTotal+wasteSlack || r.Served < a.Served-servedSlack || r.LockoutHours > a.LockoutHours+lockoutSlack || r.Switches > a.Switches+switchSlack {
-			t.Errorf("%s: expiring %+v loses to deadline %+v", g.Name, of(r), of(a))
+			t.Errorf("%s: the defaults %+v lose to the classic preset %+v", g.Name, of(r), of(a))
 		}
 	}
 	for _, grp := range GroupOrder {

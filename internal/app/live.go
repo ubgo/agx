@@ -14,7 +14,6 @@ import (
 	"github.com/ubgo/agx/internal/report"
 	"github.com/ubgo/agx/internal/resolve"
 	"github.com/ubgo/agx/live"
-	"github.com/ubgo/agx/pool"
 )
 
 // credentialVerb is the hidden command the live-login helper runs (spec
@@ -175,10 +174,10 @@ func (a *App) poolPlanNotes(ctx context.Context, o LaunchOptions, res resolve.Re
 	out = append(out,
 		report.Decision{Name: decPool, Value: "key ttl " + ttl.String(), Source: src(pl.KeyTTL != "", "key_ttl")},
 		report.Decision{Name: decPool, Value: "usage max age " + maxAge.String(), Source: src(pl.UsageMaxAge != "", "usage_max_age")},
-		report.Decision{Name: decPool, Value: "shared borrow window " + pool.Hours(rules.BorrowWindow), Source: src(pl.SharedBorrowWindow != "", "shared_borrow_window")},
-		report.Decision{Name: decPool, Value: fmt.Sprintf("5h cutoff %g%%", rules.ShortUnavailableAt), Source: src(pl.ShortUnavailableAtPercent != nil, "short_unavailable_at_percent")},
-		report.Decision{Name: decPool, Value: fmt.Sprintf("default caps 5h %g%%, week %g%%", rules.Defaults.Short, rules.Defaults.Week), Source: src(pl.Defaults.Short != nil || pl.Defaults.Week != nil, "defaults")},
 	)
+	for _, s := range poolRuleSettings(*pl) {
+		out = append(out, report.Decision{Name: decPool, Value: s.Key + " " + s.Value, Source: src(s.Source != SourceDefault, s.Key)})
+	}
 	if len(pl.Accounts) > 0 {
 		out = append(out, report.Decision{Name: decPool, Value: fmt.Sprintf("member entries: %d", len(pl.Accounts)), Source: key + ".accounts"})
 	}

@@ -119,11 +119,11 @@ func TestPoolMembersOrder(t *testing.T) {
 	}
 }
 
-// TestPoolStrategyLoads: the strategy keys load into the rules, each
+// TestPoolRulesLoad: the rule keys load into the rules, each
 // omitted one at its default, and a bad one is refused with its key.
-func TestPoolStrategyLoads(t *testing.T) {
+func TestPoolRulesLoad(t *testing.T) {
 	l, err := parsePool(t, `"auto": { "agents": ["claude"], "kind": "pool", "pool": {
-      "own": ["alice", "bob"], "shared": ["carol", "derek"], "strategy": "expiring",
+      "own": ["alice", "bob"], "shared": ["carol", "derek"], "order": "deadline",
       "week_relax_window": "12h", "max_sessions": 2, "sticky": false, "sticky_leave_ratio": 5,
       "defaults": { "week_relax_max": 90 }, "own_caps": { "short": 95, "week": 98 },
       "shared_caps": { "week": 60, "week_relax_max": 85 },
@@ -135,8 +135,8 @@ func TestPoolStrategyLoads(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r.Strategy != "expiring" || r.WeekRelaxWindow != 12*time.Hour || r.MaxSessions != 2 || r.Sticky || r.WeekRelaxMax != 90 || r.StickyLeaveRatio != 5 {
-		t.Errorf("rules: strategy %s, window %s, sessions %d, sticky %v, relax %v", r.Strategy, r.WeekRelaxWindow, r.MaxSessions, r.Sticky, r.WeekRelaxMax)
+	if r.Order != "deadline" || r.WeekRelaxWindow != 12*time.Hour || r.MaxSessions != 2 || r.Sticky || r.WeekRelaxMax != 90 || r.StickyLeaveRatio != 5 {
+		t.Errorf("rules: order %s, window %s, sessions %d, sticky %v, relax %v", r.Order, r.WeekRelaxWindow, r.MaxSessions, r.Sticky, r.WeekRelaxMax)
 	}
 	if c := r.CapsFor("alice"); c.Short != 95 || c.Week != 98 {
 		t.Errorf("alice caps %v (own_caps)", c)
@@ -155,11 +155,15 @@ func TestPoolStrategyLoads(t *testing.T) {
 		t.Fatal(err)
 	}
 	dr, _ := d.Config.Logins["auto"].Pool.Rules()
-	if dr.Strategy != "deadline" || dr.WeekRelaxWindow != 24*time.Hour || dr.MaxSessions != 4 || !dr.Sticky || dr.WeekRelaxMax != 95 {
+	if dr.Order != "urgency" || dr.WeekRelaxWindow != 24*time.Hour || dr.MaxSessions != 4 || !dr.Sticky || dr.WeekRelaxMax != 95 {
 		t.Errorf("defaults: %+v", dr)
 	}
+	if c := dr.CapsFor("alice"); c.Short != 95 || c.Week != 98 {
+		t.Errorf("own member without own_caps: %v, want 95/98", c)
+	}
 	for _, bad := range []struct{ block, want string }{
-		{`"strategy": "soonest"`, "strategy"},
+		{`"order": "soonest"`, "order"},
+		{`"strategy": "expiring"`, "strategy"},
 		{`"week_relax_window": "soon"`, "week_relax_window"},
 		{`"max_sessions": -1`, "max_sessions"},
 		{`"max_sessions": 1.5`, "max_sessions"},

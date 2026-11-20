@@ -1,6 +1,6 @@
 {
   "large-mixed": {
-    "deadline": {
+    "classic": {
       "waste_total": 44.74023145042128,
       "hits_429": 12.125,
       "stall_hours": 54.53124999999633,
@@ -8,7 +8,7 @@
       "served": 0.9339316225190601,
       "switches": 9.41452471139971
     },
-    "expiring": {
+    "defaults": {
       "waste_total": 43.168219930569904,
       "hits_429": 0,
       "stall_hours": 38.18750000000004,
@@ -18,7 +18,7 @@
     }
   },
   "small-all-shared": {
-    "deadline": {
+    "classic": {
       "waste_total": 53.48747087591979,
       "hits_429": 0,
       "stall_hours": 0,
@@ -26,7 +26,7 @@
       "served": 0.9999999999999609,
       "switches": 3.5273809523809527
     },
-    "expiring": {
+    "defaults": {
       "waste_total": 53.48747087591979,
       "hits_429": 0,
       "stall_hours": 0,
@@ -36,7 +36,7 @@
     }
   },
   "small-mixed": {
-    "deadline": {
+    "classic": {
       "waste_total": 48.271999192180616,
       "hits_429": 0,
       "stall_hours": 32.60416666666798,
@@ -44,7 +44,7 @@
       "served": 0.8915904682737787,
       "switches": 2.849702380952381
     },
-    "expiring": {
+    "defaults": {
       "waste_total": 48.01537040430183,
       "hits_429": 0,
       "stall_hours": 31.947916666668114,
@@ -54,7 +54,7 @@
     }
   },
   "snapshot-12-busy": {
-    "deadline": {
+    "classic": {
       "waste_total": 14.30295138888889,
       "hits_429": 17.75,
       "stall_hours": 195.8437499999904,
@@ -62,7 +62,7 @@
       "served": 0.7416382491640919,
       "switches": 17.262500000000003
     },
-    "expiring": {
+    "defaults": {
       "waste_total": 11.56423611111111,
       "hits_429": 4,
       "stall_hours": 173.02083333332888,
@@ -72,7 +72,7 @@
     }
   },
   "solo-2-max20": {
-    "deadline": {
+    "classic": {
       "waste_total": 52.70578708844841,
       "hits_429": 0,
       "stall_hours": 0,
@@ -80,7 +80,7 @@
       "served": 0.9999999999999378,
       "switches": 0.2857142857142857
     },
-    "expiring": {
+    "defaults": {
       "waste_total": 52.70578708844841,
       "hits_429": 0,
       "stall_hours": 0,
@@ -90,7 +90,7 @@
     }
   },
   "team-15": {
-    "deadline": {
+    "classic": {
       "waste_total": 45.54732294505784,
       "hits_429": 0,
       "stall_hours": 1.4791666666666685,
@@ -98,7 +98,7 @@
       "served": 0.9981741500798977,
       "switches": 15.46497113997114
     },
-    "expiring": {
+    "defaults": {
       "waste_total": 45.15250446636988,
       "hits_429": 0,
       "stall_hours": 0,

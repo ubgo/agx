@@ -8,41 +8,43 @@ import (
 	"time"
 )
 
-// The expiring strategy (docs/guides/pool-simulator.md; the simulator in
-// internal/poolsim chose it and its defaults). It keeps the deadline
-// strategy's block reasons and tiers and changes three things:
+// The rule values beyond the caps (docs/guides/pool-rules.md; the
+// simulator in internal/poolsim chose the defaults). Each is a Config
+// value with a default, and a Preset is a named set of them:
 //
 //  1. Weekly relax: over the last WeekRelaxWindow before a member's
 //     weekly reset its weekly cap rises linearly from the configured cap
 //     to its relax max (RelaxMaxFor), so room that is about to be lost
 //     can be used; the 5-hour cap never relaxes (that window outlives
-//     the weekly reset and is the teammate's working time).
-//  2. Order: the pool is sorted by urgency, the room under the weekly
+//     the weekly reset and is the teammate's working time). 0 = off.
+//  2. Order: OrderUrgency sorts the pool by the room under the weekly
 //     cap divided by the hours to the reset (the rate needed to use it
-//     all), highest first; an unknown or passed reset sorts last.
+//     all), highest first; OrderDeadline by the soonest reset. An
+//     unknown or passed reset sorts last.
 //  3. A pick per session: a session stays on its member while that
 //     member is still ready, fewer than MaxSessions older sessions hold
 //     it and no member is StickyLeaveRatio times more urgent (Sticky);
-//     otherwise it takes the most urgent member with
-//     fewer than MaxSessions other sessions, ready members first, then
-//     the waiting ones (held back only by the borrow window); when every
-//     member is full, the least loaded ready member.
+//     otherwise it takes the first member in order with fewer than
+//     MaxSessions other sessions, ready members first, then the waiting
+//     ones (held back only by the borrow window); when every member is
+//     full, the least loaded ready member. MaxSessions 0 and Sticky
+//     false give every session the pool's first member.
 
 // minUrgencyHours keeps a reset minutes away from dividing by zero.
 const minUrgencyHours = 0.25
 
-// strategy is the configured strategy ("" = the default).
-func (c Config) strategy() Strategy {
-	if c.Strategy == "" {
-		return DefaultStrategy
+// order is the configured order ("" = the default).
+func (c Config) order() Order {
+	if c.Order == "" {
+		return DefaultOrder
 	}
-	return c.Strategy
+	return c.Order
 }
 
-// validateStrategy checks the strategy and its knobs.
-func (c Config) validateStrategy() error {
-	if c.Strategy != "" && !slices.Contains(StrategyValues(), string(c.Strategy)) {
-		return fmt.Errorf("pool: strategy %q is not one of %v", c.Strategy, StrategyValues())
+// validateRules checks the order and the rule values.
+func (c Config) validateRules() error {
+	if c.Order != "" && !slices.Contains(OrderValues(), string(c.Order)) {
+		return fmt.Errorf("pool: order %q is not one of %v", c.Order, OrderValues())
 	}
 	if c.WeekRelaxWindow < 0 {
 		return errors.New("pool: week_relax_window is negative")
@@ -54,6 +56,82 @@ func (c Config) validateStrategy() error {
 		return fmt.Errorf("pool: sticky_leave_ratio %v is not a number of 0 or more", c.StickyLeaveRatio)
 	}
 	return nil
+}
+
+// Rules are a pool's rule values beyond its members and caps: what a
+// Preset sets.
+type Rules struct {
+	Order            Order
+	BorrowWindow     time.Duration
+	WeekRelaxWindow  time.Duration
+	WeekRelaxMax     float64
+	MaxSessions      int
+	Sticky           bool
+	StickyLeaveRatio float64
+}
+
+// Rules are c's rule values.
+func (c Config) Rules() Rules {
+	return Rules{Order: c.order(), BorrowWindow: c.BorrowWindow, WeekRelaxWindow: c.WeekRelaxWindow, WeekRelaxMax: c.WeekRelaxMax,
+		MaxSessions: c.MaxSessions, Sticky: c.Sticky, StickyLeaveRatio: c.StickyLeaveRatio}
+}
+
+// WithRules is c with r's rule values.
+func (c Config) WithRules(r Rules) Config {
+	c.Order, c.BorrowWindow, c.WeekRelaxWindow, c.WeekRelaxMax = r.Order, r.BorrowWindow, r.WeekRelaxWindow, r.WeekRelaxMax
+	c.MaxSessions, c.Sticky, c.StickyLeaveRatio = r.MaxSessions, r.Sticky, r.StickyLeaveRatio
+	return c
+}
+
+// Preset names.
+const (
+	// PresetRecommended is the defaults, chosen by the simulator.
+	PresetRecommended = "recommended"
+	// PresetClassic is the rules before v0.4.16: soonest weekly reset
+	// first, no relax, every session on the pool's first member.
+	PresetClassic = "classic"
+)
+
+// Preset is a named set of rule values. agx pool preset writes them into
+// a pool's config, where each stays an ordinary key.
+type Preset struct {
+	Name  string
+	About string
+	Rules Rules
+}
+
+// DefaultRules are the rule values of New.
+func DefaultRules() Rules {
+	return Rules{Order: DefaultOrder, BorrowWindow: DefaultBorrowWindow, WeekRelaxWindow: DefaultWeekRelaxWindow, WeekRelaxMax: DefaultWeekRelaxMax,
+		MaxSessions: DefaultMaxSessions, Sticky: DefaultSticky, StickyLeaveRatio: DefaultStickyLeaveRatio}
+}
+
+// Presets are the named rule sets, recommended first.
+func Presets() []Preset {
+	classic := DefaultRules()
+	classic.Order, classic.WeekRelaxWindow, classic.MaxSessions, classic.Sticky, classic.StickyLeaveRatio = OrderDeadline, 0, 0, false, 0
+	return []Preset{
+		{Name: PresetRecommended, About: "the defaults: urgency order, weekly cap rising to 95% over the last 24h, at most 4 sessions per member, sticky sessions that leave for a member 3 times as urgent", Rules: DefaultRules()},
+		{Name: PresetClassic, About: "the rules before v0.4.16: soonest weekly reset first, no relax, no session limit, not sticky", Rules: classic},
+	}
+}
+
+// PresetNamed is the preset called name.
+func PresetNamed(name string) (Preset, bool) {
+	i := slices.IndexFunc(Presets(), func(p Preset) bool { return p.Name == name })
+	if i < 0 {
+		return Preset{}, false
+	}
+	return Presets()[i], true
+}
+
+// PresetNames are the presets' names.
+func PresetNames() []string {
+	out := []string{}
+	for _, p := range Presets() {
+		out = append(out, p.Name)
+	}
+	return out
 }
 
 // validateGroups checks the group entries: only own and shared, every
@@ -93,8 +171,8 @@ func (c Config) groupOf(name string) Group {
 	return GroupUnlisted
 }
 
-// RelaxMaxFor is the weekly cap member name reaches at its reset under
-// the expiring strategy: its own entry, else its group's, else the
+// RelaxMaxFor is the weekly cap member name reaches at its reset: its
+// own entry, else its group's, else the
 // pool's WeekRelaxMax. A value at or below the member's weekly cap means
 // it is never relaxed.
 func (c Config) RelaxMaxFor(name string) float64 {
@@ -180,9 +258,8 @@ func urgencyKey(c *Candidate) float64 {
 	return c.urgency
 }
 
-// assign is the expiring strategy's pick for one session (rule 3 of the
-// file comment).
-func assign(cfg Config, ready, waiting []*Candidate, o Options) *Selection {
+// assign is the pick for one session (rule 3 of the file comment).
+func assign(cfg Config, ready, waiting []*Candidate, o Options, ownUsable bool) *Selection {
 	limit := cfg.MaxSessions
 	full := func(c *Candidate) bool { return limit > 0 && c.Load >= limit }
 	leaving := ""
@@ -201,6 +278,9 @@ func assign(cfg Config, ready, waiting []*Candidate, o Options) *Selection {
 				continue
 			}
 			reason := urgencyReason(c)
+			if cfg.order() == OrderDeadline {
+				reason = pickReason(c.Group, ownUsable, cfg.BorrowWindow)
+			}
 			switch {
 			case c != first && c.State == StateWaiting:
 				reason = fmt.Sprintf("the pool's first members each have %d sessions (max_sessions %d); %s, held back only by the borrow window", limit, limit, reason)

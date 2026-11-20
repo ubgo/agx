@@ -72,7 +72,7 @@ func usage(logins map[string]rd) map[string]pool.Reading {
 // portConfig is the JavaScript config(): own o1, o2 (caps 99/100), shared
 // s1, s2 (default 50/70), window 48 h, cutoff 99.
 func portConfig(edit ...func(*pool.Config)) pool.Config {
-	c := pool.New([]string{"o1", "o2"}, []string{"s1", "s2"})
+	c := classicNew([]string{"o1", "o2"}, []string{"s1", "s2"})
 	c.Accounts = map[string]pool.Account{"o1": {Short: p(99), Week: p(100)}, "o2": {Short: p(99), Week: p(100)}}
 	for _, e := range edit {
 		e(&c)
@@ -453,7 +453,7 @@ func Snapshot(t *testing.T) map[string]pool.Reading {
 // carol (caps 99/100); shared derek, erin, frank, grace, heidi, ivan,
 // judy, mallory, niaj.
 func snapshotConfig() pool.Config {
-	c := pool.New([]string{"alice", "bob", "carol"}, []string{"derek", "erin", "frank", "grace", "heidi", "ivan", "judy", "mallory", "niaj"})
+	c := classicNew([]string{"alice", "bob", "carol"}, []string{"derek", "erin", "frank", "grace", "heidi", "ivan", "judy", "mallory", "niaj"})
 	c.Accounts = map[string]pool.Account{"alice": {Short: p(99), Week: p(100)}, "bob": {Short: p(99), Week: p(100)}, "carol": {Short: p(99), Week: p(100)}}
 	return c
 }
@@ -610,7 +610,7 @@ func TestPortOddData(t *testing.T) {
 // out"): New gives the documented defaults.
 func TestPortDefaults(t *testing.T) {
 	minimal := func(own []string) pool.Config {
-		c := pool.New(own, []string{"s1"})
+		c := classicNew(own, []string{"s1"})
 		c.Accounts = map[string]pool.Account{"o1": {Short: p(100), Week: p(100)}}
 		return c
 	}

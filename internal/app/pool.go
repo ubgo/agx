@@ -93,8 +93,8 @@ type PoolPickOptions struct {
 	// Now replaces the clock (--now, for reading old caches); zero = now.
 	Now time.Time
 	// RunID is the live run asking for a key (agx credential); "" for a
-	// pick outside a run. The expiring strategy keeps that run on its
-	// member (sticky) and counts the other runs on each member.
+	// pick outside a run. Sticky keeps that run on its member, and
+	// max_sessions counts the other runs on each member.
 	RunID string
 }
 
@@ -109,9 +109,9 @@ type PoolSelection struct {
 	Only bool `json:"only,omitempty"`
 	// PickedBy is rules, force, picker or only.
 	PickedBy string `json:"picked_by"`
-	// Sticky is true when the run stayed on its member (expiring).
+	// Sticky is true when the run stayed on its member.
 	Sticky bool `json:"sticky,omitempty"`
-	// Sessions is how many other live runs use the member (expiring).
+	// Sessions is how many other live runs use the member.
 	Sessions int `json:"sessions"`
 	// Reason is one sentence: what chose it.
 	Reason string `json:"reason"`
@@ -141,13 +141,16 @@ type PoolCandidate struct {
 	HoursToReset *float64  `json:"hours_to_reset"`
 	RoomPercent  *float64  `json:"room_percent"`
 	Caps         pool.Caps `json:"caps"`
+	// CapsSource says where each cap comes from: member, group, pool
+	// (defaults) or default.
+	CapsSource CapSources `json:"caps_source"`
 	// WeekCapConfigured is the configured weekly cap when caps.week is
-	// relaxed above it near the reset (expiring); nil otherwise.
+	// relaxed above it near the reset; nil otherwise.
 	WeekCapConfigured *float64 `json:"week_cap_configured,omitempty"`
-	// UrgencyPercentPerHour is room ÷ hours to the reset, the pick order
-	// of the expiring strategy; nil under deadline or when unknown.
+	// UrgencyPercentPerHour is room ÷ hours to the reset times the
+	// capacity, the urgency order's key; nil when unknown.
 	UrgencyPercentPerHour *float64 `json:"urgency_percent_per_hour,omitempty"`
-	// Sessions is how many other live runs use the member (expiring).
+	// Sessions is how many other live runs use the member.
 	Sessions int      `json:"sessions"`
 	Reasons  []string `json:"reasons"`
 	Notes    []string `json:"notes"`
@@ -157,12 +160,20 @@ type PoolCandidate struct {
 	AgeSeconds *float64 `json:"age_seconds"`
 }
 
+// CapSources are where a member's 5-hour and weekly caps come from.
+type CapSources struct {
+	Short string `json:"short"`
+	Week  string `json:"week"`
+}
+
 // PoolReport is agx pool pick's result.
 type PoolReport struct {
 	Pool  string `json:"pool"`
 	Agent string `json:"agent"`
-	// Strategy is the rules that picked: deadline or expiring.
-	Strategy pool.Strategy `json:"strategy"`
+	// Order is how the pool ranked its members: urgency or deadline.
+	Order pool.Order `json:"order"`
+	// Settings are the rule values in effect, each with its source.
+	Settings []PoolSetting `json:"settings"`
 	// Selected is nil when no member is usable.
 	Selected *PoolSelection `json:"selected"`
 	// Source sums up where the usage came from: "live agx result",
@@ -275,7 +286,7 @@ func (a *App) notAPool(cmd, name string, lg config.Login) string {
 // poolPick reads the members' usage and decides. The error is nil only
 // when a member was selected.
 func (a *App) poolPick(ctx context.Context, name string, lg config.Login, o PoolPickOptions) (PoolReport, error) {
-	rep := PoolReport{Pool: name, Warnings: []string{}, Candidates: []PoolCandidate{}}
+	rep := PoolReport{Pool: name, Warnings: []string{}, Candidates: []PoolCandidate{}, Settings: []PoolSetting{}}
 	if lg.Pool == nil || len(lg.Agents) != 1 {
 		return rep, apperr.Failure(apperr.CodeConfig, "login "+name+" is a pool without a pool block or one agent (agx config check)")
 	}
@@ -301,7 +312,8 @@ func (a *App) poolPick(ctx context.Context, name string, lg config.Login, o Pool
 	}
 	rep.Agent, rep.Now, rep.ShortUnavailableAt = string(ag.ID()), now, rules.ShortUnavailableAt
 	rep.BorrowWindowHours = rules.BorrowWindow.Hours()
-	rep.Strategy = rules.Strategy
+	rep.Order = rules.Rules().Order
+	rep.Settings = poolRuleSettings(*lg.Pool)
 
 	if err := checkPoolOnly(name, lg.Pool, rules, o.Only, o.Force, false); err != nil {
 		// A refused flag is not a pick: no report to print.
@@ -343,7 +355,7 @@ func (a *App) poolPick(ctx context.Context, name string, lg config.Login, o Pool
 		readings[m] = withPerUse(readings[m], cfg.Config.Logins[m], e)
 	}
 	sel := pool.Options{Now: now, Force: o.Force, Only: o.Only.Member, OnlyCaps: o.Only.Caps}
-	if rules.Strategy == pool.StrategyExpiring {
+	if rules.MaxSessions > 0 || rules.Sticky {
 		sel.Load, sel.Current, sel.CurrentAhead = a.poolLoad(name, lg, o.RunID, now, rep.warn)
 	}
 	res, err := pool.Select(rules, readings, sel)
@@ -354,7 +366,16 @@ func (a *App) poolPick(ctx context.Context, name string, lg config.Login, o Pool
 		return rep, apperr.Wrap(err, apperr.CodeAutoPick, apperr.ClassFailure, err.Error())
 	}
 	for _, c := range res.Candidates {
-		rep.Candidates = append(rep.Candidates, candidateOf(c, cfg.Config.Logins[c.Name].Account, sources[c.Name]))
+		pc := candidateOf(c, cfg.Config.Logins[c.Name].Account, sources[c.Name])
+		_, pc.CapsSource.Short, _ = memberValue(*lg.Pool, c.Name, c.Group, memberShort)
+		_, pc.CapsSource.Week, _ = memberValue(*lg.Pool, c.Name, c.Group, memberWeek)
+		if c.Name == o.Only.Member && o.Only.Caps.Short != nil {
+			pc.CapsSource.Short = flagPoolOnlyShort
+		}
+		if c.Name == o.Only.Member && o.Only.Caps.Week != nil {
+			pc.CapsSource.Week = flagPoolOnlyWeek
+		}
+		rep.Candidates = append(rep.Candidates, pc)
 	}
 	rep.Source = sourceSummary(sources)
 	switch s := res.Selected; {
@@ -841,7 +862,7 @@ func (a *App) logPoolInto(rep *PoolReport, lg config.Login, mode string, err err
 // key_ttl, an idle or ended one stops asking.
 const activeRunTTLs = 2
 
-// poolLoad reads the live runs of pool name (expiring strategy): how many
+// poolLoad reads the live runs of pool name (max_sessions, sticky): how many
 // runs other than runID use each member now (they asked within
 // activeRunTTLs key_ttls), runID's own member, and how many of the runs
 // on that member started before runID (run ids begin with their start
