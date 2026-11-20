@@ -179,6 +179,9 @@ func UpdateUsageCache(ctx context.Context, paths config.Paths, entries map[strin
 	if err := atomicfile.Write(file, append(b, '\n'), atomicfile.Options{Mode: config.TokensFileMode}); err != nil {
 		return UsageCache{}, err
 	}
+	// The history rides on the same write and lock; it only helps later
+	// calibration, so its failure never fails the cache.
+	_ = recordHistory(paths, entries)
 	return c, nil
 }
 

@@ -2,6 +2,8 @@ package app
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -108,6 +110,10 @@ func TestPoolFableWindow(t *testing.T) {
 	if fv.count("/v1/messages") != probes {
 		t.Errorf("a fresh cache for both models still probed: %d → %d", probes, fv.count("/v1/messages"))
 	}
+	logb, _ := os.ReadFile(filepath.Join(m.f.Home, "pool.log"))
+	if !strings.Contains(string(logb), `picked="bob" group="own" forced=false by="rules" source="live agx result" usage="5h=5 week=30" models="fable"`) {
+		t.Errorf("pool log:\n%s", logb)
+	}
 	cache, _ := login.ReadUsageCache(a.paths)
 	e := cache.Logins["alice"]
 	if len(e.Models["fable"].Windows) != 1 || e.Models["fable"].Windows[0].ID != "7d_oi" || len(e.Models["opus"].Windows) != 0 {
@@ -202,5 +208,22 @@ func TestPoolProbeModelsKey(t *testing.T) {
 	a2, _ := fixtureApp(t, flagConfig, nil, nil)
 	if _, err := a2.ConfigSet(context.Background(), "logins.auto.pool.probe_models", `["claude-fable-5-2"]`); err == nil || !strings.Contains(err.Error(), "is a list") {
 		t.Errorf("config set probe_models: %v", err)
+	}
+}
+
+// TestPickedUsage: the log's usage names every window of the picked
+// member, per-model ones included; none without a pick.
+func TestPickedUsage(t *testing.T) {
+	f := func(v float64) *float64 { return &v }
+	rep := PoolReport{Selected: &PoolSelection{Name: "alice"}, Candidates: []PoolCandidate{
+		{Name: "bob", Week: f(1)},
+		{Name: "alice", Short: f(12.4), Week: f(40), Scoped: []pool.ScopedState{{Name: "fable week", Percent: f(61.5)}}},
+	}}
+	if got := pickedUsage(rep); got != "5h=12 week=40 fable_week=62" {
+		t.Errorf("usage %q", got)
+	}
+	rep.Selected = nil
+	if got := pickedUsage(rep); got != "" {
+		t.Errorf("no pick: %q", got)
 	}
 }

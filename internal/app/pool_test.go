@@ -220,8 +220,12 @@ func TestPoolCredential(t *testing.T) {
 		t.Errorf("state %+v", st)
 	}
 	logb, err := os.ReadFile(filepath.Join(m.f.Home, "pool.log"))
-	if err != nil || !strings.Contains(string(logb), `mode=credential pool="auto" picked="bob" group="own" forced=false by="rules"`) || strings.Contains(string(logb), tokWork) {
+	if err != nil || !strings.Contains(string(logb), `mode=credential pool="auto" picked="bob" group="own" forced=false by="rules"`) || strings.Contains(string(logb), tokWork) ||
+		!strings.Contains(string(logb), ` usage="5h=0 week=20"`) {
 		t.Fatalf("log %q %v", logb, err)
+	}
+	if h, err := login.ReadUsageHistory(a.paths); err != nil || len(h.Logins["bob"]) != 1 || len(h.Logins["bob"][0].Windows) != 2 {
+		t.Errorf("history after the first probe: %+v %v", h, err)
 	}
 	if _, err := a.LiveUse(context.Background(), LiveUseOptions{ID: id, Login: "carol"}); err != nil {
 		t.Fatal(err)

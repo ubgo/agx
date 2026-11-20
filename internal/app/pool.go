@@ -801,9 +801,11 @@ const (
 )
 
 // poolLog appends one line per pick to the pool's log when it sets one:
-// time, mode, pool, pick (null when none), group, who picked, source, and
-// the error's first words when it failed. Login names and agx's own words
-// only, never a token. A write failure is a warning in the result.
+// time, mode, pool, pick (null when none), group, who picked, source, the
+// picked member's usage in percent (5h, week and each per-model window)
+// with the probe models, and the error's first words when it failed.
+// Login names, numbers and agx's own words only, never a token. A write
+// failure is a warning in the result.
 func (a *App) poolLog(lg config.Login, mode string, rep PoolReport, pickErr error) []report.Warning {
 	if lg.Pool == nil || lg.Pool.Log == "" {
 		return nil
@@ -815,6 +817,12 @@ func (a *App) poolLog(lg config.Login, mode string, rep PoolReport, pickErr erro
 	}
 	line := fmt.Sprintf("%s mode=%s pool=%s picked=%s group=%s forced=%t by=%s source=%q",
 		a.Now().UTC().Format(time.RFC3339), mode, quote(rep.Pool), picked, group, forced, by, rep.Source)
+	if usage := pickedUsage(rep); usage != "" {
+		line += " usage=" + quote(usage)
+	}
+	if len(rep.ProbeModels) > 0 {
+		line += " models=" + quote(strings.Join(rep.ProbeModels, ","))
+	}
 	if pickErr != nil {
 		line += " error=" + quote(trimTo(apperr.As(pickErr).Message, maxLogError))
 	}
@@ -822,6 +830,33 @@ func (a *App) poolLog(lg config.Login, mode string, rep PoolReport, pickErr erro
 		return []report.Warning{{Code: WarnPool, Message: "pool log " + a.tilde(path) + ": " + err.Error()}}
 	}
 	return nil
+}
+
+// pickedUsage is the picked member's usage for the log: "5h=12 week=40
+// fable_week=33" (whole percents; a window the reading lacks is left
+// out); "" with no pick.
+func pickedUsage(rep PoolReport) string {
+	if rep.Selected == nil {
+		return ""
+	}
+	for _, c := range rep.Candidates {
+		if c.Name != rep.Selected.Name {
+			continue
+		}
+		var parts []string
+		pct := func(label string, v *float64) {
+			if v != nil {
+				parts = append(parts, fmt.Sprintf("%s=%.0f", label, math.Round(*v)))
+			}
+		}
+		pct("5h", c.Short)
+		pct("week", c.Week)
+		for _, w := range c.Scoped {
+			pct(strings.ReplaceAll(w.Name, " ", "_"), w.Percent)
+		}
+		return strings.Join(parts, " ")
+	}
+	return ""
 }
 
 // maxLogError bounds the error text in a log line.
