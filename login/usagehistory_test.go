@@ -48,11 +48,13 @@ func TestUsageHistoryBounds(t *testing.T) {
 	if pts := h.Logins["alice"]; len(pts) != 1 || pts[0].Windows[0].Percent != 2 {
 		t.Errorf("after the maximum age: %+v", pts)
 	}
+	// A reset that changes every minute keeps every point: only the
+	// count bounds them.
 	var big login.UsageHistory
 	for i := range login.HistoryMaxPoints + 50 {
-		big.Add("bob", point(i*int(login.HistoryMinGap/time.Minute), float64(i%100), reset))
+		big.Add("bob", point(i, float64(i%100), reset.Add(time.Duration(i)*time.Minute)))
 	}
-	if pts := big.Logins["bob"]; len(pts) > login.HistoryMaxPoints {
+	if pts := big.Logins["bob"]; len(pts) != login.HistoryMaxPoints {
 		t.Errorf("%d points, at most %d", len(pts), login.HistoryMaxPoints)
 	}
 }

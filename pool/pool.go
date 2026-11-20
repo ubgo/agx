@@ -701,8 +701,9 @@ func candidate(cfg Config, name string, g Group, order int, rd Reading, found bo
 		return c
 	}
 	if readable(rd.Week) {
+		// Room is set with the urgency (setUrgency): the least over the
+		// weekly window and the per-model ones.
 		c.Week = ptr(round(rd.Week.Percent))
-		c.Room = ptr(round(math.Max(0, c.Caps.Week-rd.Week.Percent)))
 	}
 	if rd.Week.ResetsAt != nil && rd.Week.ResetsAt.IsZero() {
 		// A reset that could not be read carries no deadline.

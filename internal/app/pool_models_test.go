@@ -134,7 +134,12 @@ func TestPoolFableRejected(t *testing.T) {
 		t.Errorf("alice %+v", alice)
 	}
 	m2, _ := fablePool(t, 100, false, "")
-	rep, err = m2.app(t).PoolPick(context.Background(), PoolPickOptions{ID: "auto", Model: "opus"}, TimeOptions{})
+	if _, err := m2.app(t).PoolPick(context.Background(), PoolPickOptions{ID: "auto", Model: "fable"}, TimeOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	// The cached entry is the Fable probe's: its full Fable window must
+	// not make alice limit-reached for an Opus session.
+	rep, err = m2.app(t).PoolPick(context.Background(), PoolPickOptions{ID: "auto", Model: "opus", Cached: true}, TimeOptions{})
 	if err != nil || rep.Selected.Name != "alice" || candidateNamed(t, rep, "alice").Status != string(StatusOK) {
 		t.Errorf("opus after a full fable probe: %+v %v", rep.Selected, err)
 	}
