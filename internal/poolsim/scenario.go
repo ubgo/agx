@@ -596,3 +596,23 @@ func WithSeeds(gen Generator, n int) Generator {
 	gen.Seeds = min(gen.Seeds, n)
 	return gen
 }
+
+// WithLoadScale returns gen with our sessions' burn scaled by burn and
+// every teammate's by mates (the sensitivity of the results to the
+// guessed burn rates; 1 = unchanged).
+func WithLoadScale(gen Generator, burn, mates float64) Generator {
+	mk := gen.Make
+	gen.Make = func(seed uint64) Scenario {
+		sc := mk(seed)
+		sc.Load.Burn *= burn
+		for i := range sc.Accounts {
+			if m := sc.Accounts[i].Mate; m != nil {
+				scaled := *m
+				scaled.Burn *= mates
+				sc.Accounts[i].Mate = &scaled
+			}
+		}
+		return sc
+	}
+	return gen
+}

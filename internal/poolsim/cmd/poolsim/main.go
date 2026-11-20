@@ -28,7 +28,7 @@ type options struct {
 	seeds, sweepSeeds, lag    int
 	step, sweepStep           time.Duration
 	sweep, accounts           bool
-	ratio                     float64
+	ratio, burn, mates        float64
 }
 
 func main() {
@@ -40,6 +40,8 @@ func main() {
 	flag.DurationVar(&o.step, "step", poolsim.DefaultStep, "simulation step = how often the pool re-picks")
 	flag.IntVar(&o.lag, "lag", poolsim.DefaultLag, "how many steps old the readings a pick sees are")
 	flag.Float64Var(&o.ratio, "ratio", 0, "override how many full 5-hour windows one week holds (0 = each file's)")
+	flag.Float64Var(&o.burn, "burn", 1, "scale every session's burn rate by this")
+	flag.Float64Var(&o.mates, "mates", 1, "scale every teammate's burn rate by this")
 	flag.BoolVar(&o.sweep, "sweep", false, "also sweep every knob around the recommended policy")
 	flag.DurationVar(&o.sweepStep, "sweep-step", defaultSweepStep, "step of the sweeps")
 	flag.IntVar(&o.sweepSeeds, "sweep-seeds", defaultSweepSeeds, "at most this many seeds per scenario in the sweeps")
@@ -72,6 +74,9 @@ func run(o options) error {
 		}
 		if o.ratio > 0 {
 			g = poolsim.WithWeekRatio(g, o.ratio)
+		}
+		if o.burn != 1 || o.mates != 1 {
+			g = poolsim.WithLoadScale(g, o.burn, o.mates)
 		}
 		gens = append(gens, g)
 	}

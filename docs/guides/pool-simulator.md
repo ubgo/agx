@@ -13,6 +13,7 @@ task sim -- -strategies A,REC -seeds 4     # two strategies, fewer seeds
 task sim -- -step 15m                      # re-pick every 15 minutes instead of every minute
 task sim -- -ratio 5                       # assume a week holds five full 5-hour windows
 task sim -- -accounts -scenario solo-busy  # room left per account at each weekly reset
+task sim -- -burn 2 -mates 0.5             # sessions burn twice as fast, teammates half as fast
 ```
 
 A fast subset runs inside `go test` (and so `task check`) as a regression gate: the scenarios marked `"gate": true` run with both shipped strategies (`deadline` and `expiring`) and must not waste more quota, hit more limits, stall more, lock teammates out more or serve less than the recorded numbers in `pool/testdata/sim/baseline.json`. After a deliberate change of the rules, review the new numbers and record them with `go test ./internal/poolsim/ -run TestSimGate -args -update`.
