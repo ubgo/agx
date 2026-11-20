@@ -1,10 +1,11 @@
-// Command poolsim runs the login-pool simulator and prints the results
-// tables as markdown (task poolsim).
+// Command poolsim runs the login-pool simulator over the scenario files
+// and prints the results as markdown (task sim).
 package main
 
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"slices"
 	"strings"
@@ -13,31 +14,36 @@ import (
 	"github.com/ubgo/agx/internal/poolsim"
 )
 
-// defaultSeeds is how many randomised weeks each scenario runs.
-const defaultSeeds = 40
+// Defaults of the command: the scenario files, and the sweeps' cheaper
+// timing (each sweep runs every scenario once per knob value).
+const (
+	defaultDir        = "pool/testdata/sim"
+	defaultSweepStep  = 5 * time.Minute
+	defaultSweepSeeds = 6
+)
 
 // options are the command's flags.
 type options struct {
-	seeds      int
-	scenario   string
-	strategies string
-	step       time.Duration
-	lag        int
-	sweep      string
-	accounts   bool
-	ratio      float64
+	dir, scenario, strategies string
+	seeds, sweepSeeds, lag    int
+	step, sweepStep           time.Duration
+	sweep, accounts           bool
+	ratio                     float64
 }
 
 func main() {
 	var o options
-	flag.IntVar(&o.seeds, "seeds", defaultSeeds, "randomised runs per scenario")
-	flag.StringVar(&o.scenario, "scenario", "", "run only these scenarios (comma-separated)")
+	flag.StringVar(&o.dir, "dir", defaultDir, "folder of scenario files (*.jsonc)")
+	flag.StringVar(&o.scenario, "scenario", "", "run only these scenarios (comma-separated names)")
 	flag.StringVar(&o.strategies, "strategies", "", "run only these strategies (comma-separated)")
+	flag.IntVar(&o.seeds, "seeds", 0, "at most this many seeds per scenario (0 = each file's seeds)")
 	flag.DurationVar(&o.step, "step", poolsim.DefaultStep, "simulation step = how often the pool re-picks")
 	flag.IntVar(&o.lag, "lag", poolsim.DefaultLag, "how many steps old the readings a pick sees are")
-	flag.StringVar(&o.sweep, "sweep", "", "sweep the knobs whose name starts with this (\"all\" = every knob) around the candidate policy")
-	flag.BoolVar(&o.accounts, "accounts", false, "print each account's room left at each weekly reset (per strategy)")
-	flag.Float64Var(&o.ratio, "ratio", poolsim.DefaultWeekRatio, "how many full 5-hour windows one week holds")
+	flag.Float64Var(&o.ratio, "ratio", 0, "override how many full 5-hour windows one week holds (0 = each file's)")
+	flag.BoolVar(&o.sweep, "sweep", false, "also sweep every knob around the recommended policy")
+	flag.DurationVar(&o.sweepStep, "sweep-step", defaultSweepStep, "step of the sweeps")
+	flag.IntVar(&o.sweepSeeds, "sweep-seeds", defaultSweepSeeds, "at most this many seeds per scenario in the sweeps")
+	flag.BoolVar(&o.accounts, "accounts", false, "print each account's room left at each weekly reset (per strategy) instead")
 	flag.Parse()
 	if err := run(o); err != nil {
 		fmt.Fprintln(os.Stderr, "poolsim:", err)
@@ -50,65 +56,95 @@ func listed(filter, name string) bool {
 	return filter == "" || slices.Contains(strings.Split(filter, ","), name)
 }
 
-// run prints one table per scenario, or the sweeps.
+// run loads the scenarios and writes the report.
 func run(o options) error {
-	if o.sweep != "" {
-		return sweep(o)
+	all, err := poolsim.LoadDir(o.dir)
+	if err != nil {
+		return err
 	}
-	for _, gen := range poolsim.Scenarios() {
-		if !listed(o.scenario, gen.Name) {
+	var gens []poolsim.Generator
+	for _, g := range all {
+		if !listed(o.scenario, g.Name) {
 			continue
 		}
-		gen = poolsim.WithWeekRatio(poolsim.WithTiming(gen, o.step, o.lag), o.ratio)
-		sc := gen.Make(1)
-		members := make([]poolsim.Member, len(sc.Accounts))
-		for i, a := range sc.Accounts {
-			members[i] = poolsim.Member{Name: a.Name, Group: a.Group}
+		if o.seeds > 0 {
+			g = poolsim.WithSeeds(g, o.seeds)
 		}
-		var strategies []poolsim.Strategy
-		for _, st := range append(poolsim.Strategies(), poolsim.RealToday(members), poolsim.RealRecommended(members)) {
-			if listed(o.strategies, st.Name) {
-				strategies = append(strategies, st)
+		if o.ratio > 0 {
+			g = poolsim.WithWeekRatio(g, o.ratio)
+		}
+		gens = append(gens, g)
+	}
+	var strategies []poolsim.Strategy
+	for _, st := range poolsim.Strategies() {
+		if listed(o.strategies, st.Name) {
+			strategies = append(strategies, st)
+		}
+	}
+	// The report goes to stdout (task sim redirects it into the results
+	// file): only the owning packages write files.
+	w := io.Writer(os.Stdout)
+	// The report is built in memory and written once, so a write error
+	// is one error, not one per line.
+	var b strings.Builder
+	if o.accounts {
+		writeAccounts(&b, gens, strategies, o)
+	} else if err := writeReport(&b, gens, strategies, o); err != nil {
+		return err
+	}
+	_, err = io.WriteString(w, b.String())
+	return err
+}
+
+// writeReport writes the group tables, the sweeps and every scenario.
+func writeReport(w *strings.Builder, gens []poolsim.Generator, strategies []poolsim.Strategy, o options) error {
+	timed := make([]poolsim.Generator, len(gens))
+	seeds := 0
+	for i, g := range gens {
+		timed[i] = poolsim.WithTiming(g, o.step, o.lag)
+		seeds += g.Seeds
+	}
+	res := poolsim.EvaluateAll(timed, strategies, poolsim.DefaultWeights)
+	fmt.Fprintf(w, "# Pool simulator results\n\nGenerated by `task sim` from the scenario files in `%s`: %d scenarios, %d seeded runs each strategy, %s steps. Every cell is a mean; \"cost vs A\" is each scenario's weighted cost relative to today's rules (A), averaged over the group and at its worst scenario. See docs/guides/pool-simulator.md for the metrics.\n\n## By group\n", o.dir, len(gens), seeds, o.step)
+	if err := poolsim.WriteGroups(w, res.Groups("A")); err != nil {
+		return err
+	}
+	if o.sweep {
+		fmt.Fprintf(w, "\n## Knob sweeps\n\nEach knob varied alone around the recommended policy (REC) on every scenario (at most %d seeds, %s steps); cost relative to today's rules on the same scenario.\n", o.sweepSeeds, o.sweepStep)
+		var sweepGens []poolsim.Generator
+		for _, g := range gens {
+			sweepGens = append(sweepGens, poolsim.WithSeeds(poolsim.WithTiming(g, o.sweepStep, o.lag), o.sweepSeeds))
+		}
+		for _, k := range poolsim.Knobs() {
+			fmt.Fprintf(w, "\n#### %s\n\n", k.Name)
+			if err := poolsim.WriteSweep(w, k, poolsim.Sweep(sweepGens, poolsim.Candidate(), k, poolsim.DefaultWeights)); err != nil {
+				return err
 			}
 		}
-		if o.accounts {
-			for _, st := range strategies {
-				fmt.Printf("\n#### %s, %s: room left / our use at each weekly reset\n\n", gen.Name, st.Name)
-				for _, aw := range poolsim.AccountWastes(gen, st, o.seeds) {
-					fmt.Printf("- %s:", aw.Account)
-					for i := range aw.Left {
-						fmt.Printf(" reset %d left %.0f%% (ours %.0f%%);", i+1, aw.Left[i], aw.Ours[i])
-					}
-					fmt.Println()
-				}
-			}
-			continue
-		}
-		fmt.Printf("\n### %s: %s (%d seeds, step %s, lag %d, week ratio %g)\n\n", gen.Name, gen.About, o.seeds, o.step, o.lag, o.ratio)
-		if err := poolsim.WriteTable(os.Stdout, poolsim.Evaluate(gen, strategies, o.seeds, poolsim.DefaultWeights)); err != nil {
+	}
+	fmt.Fprint(w, "\n## Every scenario\n\nEach cell is the mean, then the worst run after a slash.\n")
+	for gi, g := range gens {
+		fmt.Fprintf(w, "\n### %s (%s, %d seeds)\n\n%s\n\n", g.Name, g.Group, g.Seeds, g.About)
+		if err := poolsim.WriteTable(w, res.Sums[gi]); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// sweep prints one table per knob.
-func sweep(o options) error {
-	var gens []poolsim.Generator
-	for _, g := range poolsim.SweepScenarios() {
-		if listed(o.scenario, g.Name) {
-			gens = append(gens, poolsim.WithWeekRatio(poolsim.WithTiming(g, o.step, o.lag), o.ratio))
+// writeAccounts writes each account's room left at each weekly reset.
+func writeAccounts(w *strings.Builder, gens []poolsim.Generator, strategies []poolsim.Strategy, o options) {
+	for _, g := range gens {
+		g = poolsim.WithTiming(g, o.step, o.lag)
+		for _, st := range strategies {
+			fmt.Fprintf(w, "\n#### %s, %s: room left / our use at each weekly reset\n\n", g.Name, st.Name)
+			for _, aw := range poolsim.AccountWastes(g, st) {
+				fmt.Fprintf(w, "- %s:", aw.Account)
+				for i := range aw.Left {
+					fmt.Fprintf(w, " reset %d left %.0f%% (ours %.0f%%);", i+1, aw.Left[i], aw.Ours[i])
+				}
+				fmt.Fprintln(w)
+			}
 		}
 	}
-	for _, k := range poolsim.Knobs() {
-		if o.sweep != "all" && !strings.HasPrefix(k.Name, o.sweep) {
-			continue
-		}
-		fmt.Printf("\n#### %s (%d seeds, step %s)\n\n", k.Name, o.seeds, o.step)
-		rows := poolsim.Sweep(gens, poolsim.Candidate(), k, o.seeds, poolsim.DefaultWeights)
-		if err := poolsim.WriteSweep(os.Stdout, k, gens, rows); err != nil {
-			return err
-		}
-	}
-	return nil
 }

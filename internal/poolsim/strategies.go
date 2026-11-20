@@ -6,31 +6,47 @@ import (
 	"github.com/ubgo/agx/pool"
 )
 
-// Today's rules as a Policy (strategy A): own 95/98, shared 50/70, the
-// 99% cutoff, the 48h borrow window, soonest reset first.
+// Today's rules as a Policy (strategy A): the pool's configured caps
+// (filled per scenario), the 99% cutoff, the 48h borrow window, soonest
+// reset first.
 func Today() Policy {
-	return Policy{
-		Own:    pool.Caps{Short: ownShortCap, Week: ownWeekCap},
-		Shared: pool.Caps{Short: pool.DefaultShortCap, Week: pool.DefaultWeekCap},
-		Cutoff: pool.DefaultShortUnavailableAt, Borrow: pool.DefaultBorrowWindow,
-	}
+	return Policy{Cutoff: pool.DefaultShortUnavailableAt, Borrow: pool.DefaultBorrowWindow}
 }
 
-// TodayConfig is today's rules as the real pool.Config of the members.
-func TodayConfig(members []Member) pool.Config {
+// members are a scenario's members as pickers see them.
+func members(sc Scenario) []Member {
+	out := make([]Member, len(sc.Accounts))
+	for i, a := range sc.Accounts {
+		out[i] = Member{Name: a.Name, Group: a.Group, Capacity: a.Capacity}
+	}
+	return out
+}
+
+// TodayConfig is a scenario's pool as the real pool.Config under
+// today's rules: its members and its configured caps per group.
+func TodayConfig(sc Scenario) pool.Config {
 	var own, shared []string
-	accounts := map[string]pool.Account{}
-	for _, m := range members {
+	for _, m := range members(sc) {
 		if m.Group == pool.GroupOwn {
 			own = append(own, m.Name)
-			s, w := ownShortCap, ownWeekCap
-			accounts[m.Name] = pool.Account{Short: &s, Week: &w}
-			continue
+		} else {
+			shared = append(shared, m.Name)
 		}
-		shared = append(shared, m.Name)
 	}
 	c := pool.New(own, shared)
-	c.Accounts = accounts
+	o, s := sc.BaseCaps[pool.GroupOwn], sc.BaseCaps[pool.GroupShared]
+	c.Groups = map[pool.Group]pool.GroupCaps{
+		pool.GroupOwn:    {Short: &o.Short, Week: &o.Week},
+		pool.GroupShared: {Short: &s.Short, Week: &s.Week},
+	}
+	return c
+}
+
+// RecommendedConfig is the recommendation as the real pool.Config: the
+// scenario's caps with the expiring strategy at its defaults.
+func RecommendedConfig(sc Scenario) pool.Config {
+	c := TodayConfig(sc)
+	c.Strategy = pool.StrategyExpiring
 	return c
 }
 
@@ -46,16 +62,38 @@ const (
 	paceSlack     = 10.0
 	spreadPer     = 3
 	stickMargin   = 0.0
+	stickRatio    = 0.0
+	leaveRatio    = 3.0
 )
 
-// policy wraps a Policy as a Strategy.
+// Overrides are caps a sweep sets instead of the scenario's (0 = the
+// scenario's).
+type Overrides struct {
+	OwnWeek, SharedShort, SharedWeek float64
+}
+
+// policy wraps a Policy as a Strategy: the scenario's configured caps
+// fill the Policy's caps, then any override.
 func policy(name, about string, p Policy) Strategy {
-	return Strategy{Name: name, About: about, New: func() Picker { return NewPolicy(p) }}
+	return Strategy{Name: name, About: about, New: func(sc Scenario) Picker {
+		q := p
+		q.Own, q.Shared = sc.BaseCaps[pool.GroupOwn], sc.BaseCaps[pool.GroupShared]
+		if q.Override.OwnWeek > 0 {
+			q.Own.Week = q.Override.OwnWeek
+		}
+		if q.Override.SharedShort > 0 {
+			q.Shared.Short = q.Override.SharedShort
+		}
+		if q.Override.SharedWeek > 0 {
+			q.Shared.Week = q.Override.SharedWeek
+		}
+		return NewPolicy(q)
+	}}
 }
 
 // Strategies are the named strategies of the brief (A to H), the
-// recommendation (REC) and its ablations (REC without one part, REC with
-// one more).
+// recommendation (REC), its ablations and additions, and the shipped
+// code (A-real, REC-real).
 func Strategies() []Strategy {
 	urgent := func(p *Policy) { p.Urgent = UrgentTier{Window: urgentWindow, Short: urgentShort, Week: urgentWeek} }
 	relax := func(p *Policy) { p.Relax = WeekRelax{Start: relaxStart, Max: relaxMax} }
@@ -75,7 +113,7 @@ func Strategies() []Strategy {
 	return []Strategy{
 		policy("A", "today's rules (control)", Today()),
 		policy("B", "A + urgent tier: shared reset within 6h, caps 80/95", from(Today(), urgent)),
-		policy("C", "A + shared weekly cap rising from 70 to 95 over the last 24h", from(Today(), relax)),
+		policy("C", "A + weekly cap rising to 95 over the last 24h", from(Today(), relax)),
 		policy("D", "A + 5h cap 80 while the teammate looks idle (no rise we did not cause for 2h)", from(Today(), idle)),
 		policy("E", "use-it-or-lose-it: room / hours to reset, own and shared ranked together", from(Today(), flat)),
 		policy("E2", "A with use-it-or-lose-it order inside the borrow tiers", from(Today(), urgency)),
@@ -87,59 +125,40 @@ func Strategies() []Strategy {
 		policy("REC-E2", "REC with soonest-reset order", from(rec, func(p *Policy) { p.Order = OrderReset })),
 		policy("REC-G", "REC without spread", from(rec, func(p *Policy) { p.Spread = 0 })),
 		policy("REC-H", "REC without sticky", from(rec, func(p *Policy) { p.Stick = Hysteresis{} })),
+		policy("REC+L", "REC with sticky sessions leaving for a member 3 times as urgent", from(rec, func(p *Policy) { p.Stick.Ratio = leaveRatio })),
 		policy("REC+B", "REC + urgent tier", from(rec, urgent)),
 		policy("REC+D", "REC + idle 5h cap", from(rec, idle)),
 		policy("REC+F", "REC + own pacing", from(rec, pace)),
-		policy("REC+T", "REC with the spread kept in the first tier", from(rec, func(p *Policy) { p.SpreadInTier = true })),
+		policy("REC+W", "REC ranking by room in work (plan size known)", from(rec, func(p *Policy) { p.Weighted = true })),
+		RealToday(), RealRecommended(),
 	}
 }
 
-// Recommended is the recommended policy: today's caps and tiers, the
-// shared weekly cap rising from its cap to 95 over the last 24h before
-// the reset, use-it-or-lose-it order, at most 3 busy sessions per
-// account, and sessions kept on their account while it is usable and in
-// the first tier.
+// Recommended is the recommended policy: the configured caps and
+// tiers, the weekly cap rising to 95 over the last 24h before the
+// reset, use-it-or-lose-it order, at most 3 busy sessions per account,
+// and sessions kept on their account while it is usable and in the
+// first tier.
 func Recommended() Policy {
 	p := Today()
 	p.Relax = WeekRelax{Start: relaxStart, Max: relaxMax}
 	p.Order = OrderUrgency
 	p.Spread = spreadPer
-	p.Stick = Hysteresis{On: true, Margin: stickMargin}
+	p.Stick = Hysteresis{On: true, Margin: stickMargin, Ratio: stickRatio}
 	return p
-}
-
-// RealToday runs the real pool.Select with today's config, to check the
-// Policy's A against the shipped code.
-func RealToday(members []Member) Strategy {
-	return Strategy{Name: "A-real", About: "pool.Select with today's config", New: func() Picker { return NewPoolRules(TodayConfig(members)) }}
 }
 
 // Candidate is the policy the sweeps vary one knob at a time.
 func Candidate() Policy { return Recommended() }
 
-// SweepScenarios are the scenarios a sweep scores on: the realistic
-// ones and the stress cases where the knobs matter.
-func SweepScenarios() []Generator {
-	var out []Generator
-	for _, g := range Scenarios() {
-		switch g.Name {
-		case "snapshot", "snapshot-busy", "normal", "heavy", "mate-on-preferred", "near-caps":
-			out = append(out, g)
-		}
-	}
-	return out
+// RealToday runs the real pool.Select with today's config, to check the
+// Policy's A against the shipped code.
+func RealToday() Strategy {
+	return Strategy{Name: "A-real", About: "pool.Select, deadline strategy", New: func(sc Scenario) Picker { return NewPoolRules(TodayConfig(sc)) }}
 }
 
-// RecommendedConfig is the recommendation as the real pool.Config of
-// the members: today's caps with the expiring strategy at its defaults.
-func RecommendedConfig(members []Member) pool.Config {
-	c := TodayConfig(members)
-	c.Strategy = pool.StrategyExpiring
-	return c
-}
-
-// RealRecommended runs the real pool.Select with the recommended config,
-// to check the shipped expiring strategy against the Policy's REC.
-func RealRecommended(members []Member) Strategy {
-	return Strategy{Name: "REC-real", About: "pool.Select with the expiring strategy", New: func() Picker { return NewPoolRules(RecommendedConfig(members)) }}
+// RealRecommended runs the real pool.Select with the expiring strategy
+// at its defaults, to check it against the Policy's REC.
+func RealRecommended() Strategy {
+	return Strategy{Name: "REC-real", About: "pool.Select, expiring strategy at its defaults", New: func(sc Scenario) Picker { return NewPoolRules(RecommendedConfig(sc)) }}
 }

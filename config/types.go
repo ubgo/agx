@@ -317,6 +317,10 @@ type Pool struct {
 	// Sticky (expiring) keeps a session on its member while that member
 	// is still in the pool (default true).
 	Sticky *bool `json:"sticky,omitempty"`
+	// StickyLeaveRatio (expiring): a sticky session leaves its member
+	// when the most urgent member's urgency is at least this many times
+	// its own (default 0 = never).
+	StickyLeaveRatio *float64 `json:"sticky_leave_ratio,omitempty"`
 	// Accounts are per-member caps and enabled false, keyed by member.
 	Accounts map[string]PoolAccount `json:"accounts,omitempty"`
 	// UsageMaxAge is how old the shared usage cache may be before the

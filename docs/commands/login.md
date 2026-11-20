@@ -73,6 +73,7 @@ Add a login. Cost W (X with `--login-setup`). Guide: [Adding a login](../logins.
 | `--pool-week-relax-window` | `expiring`: a member's weekly cap rises to its relax max over this long before its reset, like `24h`; `0s` never; empty: default `24h` |
 | `--pool-max-sessions` | `expiring`: how many sessions one member takes before the next is used; `0` no limit; empty: default 3 |
 | `--pool-sticky` | `expiring`: keep a session on its member while it is still in the pool, `true` or `false`; empty: default `true` |
+| `--pool-sticky-leave-ratio` | `expiring`: a sticky session leaves its member when another member is at least this many times as urgent; `0` never; empty: default 0 |
 | `--pool-default-week-relax` | `expiring`: the weekly cap members reach at their reset, in percent; empty: default 95 |
 | `--pool-cap-week-relax` | `expiring`: a member's own weekly cap at its reset, `NAME=PERCENT`; `NAME=` removes it (repeat) |
 | `--pool-group-cap-short` | the 5-hour cap of a group's members without their own, `own=PERCENT` or `shared=PERCENT`; `GROUP=` removes it (repeat) |
@@ -190,6 +191,7 @@ Rotate or change a login. Every profile, default and binding that uses it keeps 
 | `--pool-week-relax-window` | `expiring`: a member's weekly cap rises to its relax max over this long before its reset, like `24h`; `0s` never; empty: default `24h` |
 | `--pool-max-sessions` | `expiring`: how many sessions one member takes before the next is used; `0` no limit; empty: default 3 |
 | `--pool-sticky` | `expiring`: keep a session on its member while it is still in the pool, `true` or `false`; empty: default `true` |
+| `--pool-sticky-leave-ratio` | `expiring`: a sticky session leaves its member when another member is at least this many times as urgent; `0` never; empty: default 0 |
 | `--pool-default-week-relax` | `expiring`: the weekly cap members reach at their reset, in percent; empty: default 95 |
 | `--pool-cap-week-relax` | `expiring`: a member's own weekly cap at its reset, `NAME=PERCENT`; `NAME=` removes it (repeat) |
 | `--pool-group-cap-short` | the 5-hour cap of a group's members without their own, `own=PERCENT` or `shared=PERCENT`; `GROUP=` removes it (repeat) |

@@ -97,6 +97,7 @@ var poolValueKeys = []struct {
 	{[]string{"defaults", "week_relax_max"}, SchemaNumber, true},
 	{[]string{"max_sessions"}, SchemaInteger, false},
 	{[]string{"sticky"}, SchemaBoolean, false},
+	{[]string{"sticky_leave_ratio"}, SchemaNumber, false},
 }
 
 // tightenPoolSchema states in the schema what the pool rules need, so the
@@ -112,8 +113,8 @@ func tightenPoolSchema(root *schema.Schema) error {
 			return err
 		}
 		n.Types = []string{k.typ}
-		if k.typ == SchemaInteger {
-			// A count (max_sessions): never negative.
+		if k.typ == SchemaInteger || (k.typ == SchemaNumber && !k.percent) {
+			// A count (max_sessions) or a ratio: never negative.
 			n.Minimum = jsonNumber(0)
 		}
 		if k.percent {

@@ -332,6 +332,7 @@ agx login add --name auto --agent claude --kind pool --pool-own alice --pool-sha
 | `--pool-shared VALUE` | a pool member that is a teammate's account, borrowed up to its caps (repeat; --kind pool) (repeatable) |
 | `--pool-short-cutoff VALUE` | the 5-hour safety cutoff for every member, in percent (empty: default 99) |
 | `--pool-sticky VALUE` | expiring: keep a session on its member while it is still in the pool: true or false (empty: default true) |
+| `--pool-sticky-leave-ratio VALUE` | expiring: a sticky session leaves its member when another is at least this many times as urgent; 0 = never (empty: default 0) |
 | `--pool-strategy VALUE` | the rules that pick: deadline (soonest weekly reset first, one pick for every session) or expiring (relaxed weekly caps near the reset, use-it-or-lose-it order, a pick per session) (empty: default deadline) |
 | `--pool-usage-max-age VALUE` | how old the usage cache may be before members are probed again, like 60s (empty: default 60s) |
 | `--pool-week-relax-window VALUE` | expiring: a member's weekly cap rises to its relax max over this long before its reset, like 24h; 0s = never (empty: default 24h) |
@@ -389,6 +390,7 @@ agx login edit --id auto --pool-cap-short alice=95 --pool-cap-week alice=98 --po
 | `--pool-shared VALUE` | replace a pool's shared members (repeat) (repeatable) |
 | `--pool-short-cutoff VALUE` | the 5-hour safety cutoff for every member, in percent (empty: default 99) |
 | `--pool-sticky VALUE` | expiring: keep a session on its member while it is still in the pool: true or false (empty: default true) |
+| `--pool-sticky-leave-ratio VALUE` | expiring: a sticky session leaves its member when another is at least this many times as urgent; 0 = never (empty: default 0) |
 | `--pool-strategy VALUE` | the rules that pick: deadline (soonest weekly reset first, one pick for every session) or expiring (relaxed weekly caps near the reset, use-it-or-lose-it order, a pick per session) (empty: default deadline) |
 | `--pool-usage-max-age VALUE` | how old the usage cache may be before members are probed again, like 60s (empty: default 60s) |
 | `--pool-week-relax-window VALUE` | expiring: a member's weekly cap rises to its relax max over this long before its reset, like 24h; 0s = never (empty: default 24h) |

@@ -1,0 +1,27 @@
+// Pool simulator scenario (task sim; docs/guides/pool-simulator.md).
+{
+  "about": "Shared accounts nobody else uses (a pooled set), plus one or two own; three to six sessions.",
+  "seed": 221,
+  "seeds": 12,
+  "own": {
+    "count": [
+      1,
+      2
+    ]
+  },
+  "shared": {
+    "count": [
+      2,
+      4
+    ],
+    "mates": [
+      "none"
+    ]
+  },
+  "sessions": {
+    "count": [
+      3,
+      6
+    ]
+  }
+}

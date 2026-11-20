@@ -8,10 +8,11 @@ import (
 	"sync"
 )
 
-// Evaluate runs every strategy on seeds 1..seeds of the generator and
-// summarises each strategy; seeds run in parallel, results are the same
-// in any order.
-func Evaluate(gen Generator, strategies []Strategy, seeds int, w Weights) []Summary {
+// Evaluate runs every strategy on the generator's seeds (Seed,
+// Seed+1, … Seeds of them) and summarises each strategy; seeds run in
+// parallel, results are the same in any order.
+func Evaluate(gen Generator, strategies []Strategy, w Weights) []Summary {
+	seeds := max(gen.Seeds, 1)
 	runs := make([][]Metrics, len(strategies))
 	for i := range runs {
 		runs[i] = make([]Metrics, seeds)
@@ -23,7 +24,7 @@ func Evaluate(gen Generator, strategies []Strategy, seeds int, w Weights) []Summ
 		sem <- struct{}{}
 		go func() {
 			defer func() { <-sem; wg.Done() }()
-			sc := gen.Make(uint64(s + 1))
+			sc := gen.Make(gen.Seed + uint64(s))
 			for i, st := range strategies {
 				runs[i][s] = Run(sc, st)
 			}
@@ -75,12 +76,12 @@ type AccountWaste struct {
 
 // AccountWastes runs one strategy on seeds of gen and averages each
 // account's leftover per reset, accounts in config order.
-func AccountWastes(gen Generator, st Strategy, seeds int) []AccountWaste {
+func AccountWastes(gen Generator, st Strategy) []AccountWaste {
 	var out []AccountWaste
 	idx := map[string]int{}
 	counts := map[string][]float64{}
-	for s := range seeds {
-		sc := gen.Make(uint64(s + 1))
+	for s := range max(gen.Seeds, 1) {
+		sc := gen.Make(gen.Seed + uint64(s))
 		if out == nil {
 			for i, a := range sc.Accounts {
 				idx[a.Name] = i

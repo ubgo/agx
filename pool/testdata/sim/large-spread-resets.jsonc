@@ -1,0 +1,25 @@
+// Pool simulator scenario (task sim; docs/guides/pool-simulator.md).
+{
+  "about": "A large team whose weekly resets are spaced evenly over the week.",
+  "seed": 341,
+  "seeds": 12,
+  "own": {
+    "count": [
+      2,
+      3
+    ]
+  },
+  "shared": {
+    "count": [
+      8,
+      12
+    ]
+  },
+  "resets": "spread",
+  "sessions": {
+    "count": [
+      5,
+      12
+    ]
+  }
+}

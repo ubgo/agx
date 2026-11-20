@@ -15,8 +15,9 @@ type Metrics struct {
 	Accounts int     `json:"accounts"`
 	// WasteShared and WasteOwn are the weekly quota left unused when a
 	// weekly window reset (100 minus the week's use), averaged over the
-	// account-weeks of each group; WasteTotal over every account-week.
-	// Goal 1.
+	// account-weeks of each group weighted by plan capacity (a Max 20x
+	// account's percent is four times a Max 5x one's work);
+	// WasteTotal over every account-week. Goal 1.
 	WasteShared float64 `json:"waste_shared"`
 	WasteOwn    float64 `json:"waste_own"`
 	WasteTotal  float64 `json:"waste_total"`
@@ -53,6 +54,7 @@ type Metrics struct {
 	// Raw counters, normalised by finish.
 	DemandHours, ServedHours float64 `json:"-"`
 	ownResets, sharedResets  float64
+	ownCap, sharedCap        float64
 }
 
 // ResetRecord is one account's weekly reset: how much of the week was
@@ -67,13 +69,19 @@ type ResetRecord struct {
 func (m *Metrics) reset(a *account, sc Scenario) {
 	left := math.Max(0, Full-a.week)
 	m.Resets = append(m.Resets, ResetRecord{Account: a.Name, Left: left, Ours: a.ourWeek})
+	capacity := a.Capacity
+	if capacity <= 0 {
+		capacity = 1
+	}
 	if a.Group == pool.GroupOwn {
-		m.WasteOwn += left
+		m.WasteOwn += left * capacity
+		m.ownCap += capacity
 		m.OwnRoom += math.Max(0, sc.BaseCaps[pool.GroupOwn].Week-a.week)
 		m.ownResets++
 		return
 	}
-	m.WasteShared += left
+	m.WasteShared += left * capacity
+	m.sharedCap += capacity
 	m.sharedResets++
 }
 
@@ -88,9 +96,15 @@ func (m *Metrics) finish(sc Scenario) {
 		}
 	}
 	ownWeeks := own * weeks
-	m.WasteTotal = (m.WasteShared + m.WasteOwn) / math.Max(1, m.sharedResets+m.ownResets)
-	m.WasteShared /= math.Max(1, m.sharedResets)
-	m.WasteOwn /= math.Max(1, m.ownResets)
+	if total := m.sharedCap + m.ownCap; total > 0 {
+		m.WasteTotal = (m.WasteShared + m.WasteOwn) / total
+	}
+	if m.sharedCap > 0 {
+		m.WasteShared /= m.sharedCap
+	}
+	if m.ownCap > 0 {
+		m.WasteOwn /= m.ownCap
+	}
 	m.Hits429 /= weeks
 	m.StallHours /= weeks
 	m.SqueezeHours /= weeks

@@ -124,6 +124,11 @@ var mutants = []mutant{
 	{"no overflow to waiting members", "pool/expiring.go", "[][]*Candidate{ready, waiting}", "[][]*Candidate{ready}", nil},
 	{"most loaded when all are full", "pool/expiring.go", "if c.Load < least.Load {", "if c.Load > least.Load {", nil},
 	{"one-run weekly cap relaxed", "pool/pool.go", "a.WeekRelaxMax = o.OnlyCaps.Week", "a.WeekRelaxMax = nil", nil},
+	{"sticky never leaves", "pool/expiring.go", "if !outranked(cfg, ready[0], ready[i]) {", "if true {", nil},
+	{"sticky leave ratio ignored", "pool/expiring.go", "return best.urgency >= cfg.StickyLeaveRatio*curUrgency", "return true", nil},
+	{"negative leave ratio allowed", "pool/expiring.go", "if c.StickyLeaveRatio < 0 || math.IsNaN(c.StickyLeaveRatio) || math.IsInf(c.StickyLeaveRatio, 0) {", "if false {", nil},
+	{"config leave ratio ignored", "config/pool.go", "c.StickyLeaveRatio = *p.StickyLeaveRatio", "_ = p.StickyLeaveRatio", nil},
+	{"default leave ratio changed", "pool/pool.go", "DefaultStickyLeaveRatio = 0.0", "DefaultStickyLeaveRatio = 2.0", nil},
 	{"unknown strategy allowed", "pool/expiring.go", "if c.Strategy != \"\" && !slices.Contains(StrategyValues(), string(c.Strategy)) {", "if false {", nil},
 	{"negative max_sessions allowed", "pool/expiring.go", "if c.MaxSessions < 0 {", "if false {", nil},
 	{"bad group allowed", "pool/expiring.go", "if g != GroupOwn && g != GroupShared {", "if false {", nil},
@@ -147,7 +152,7 @@ var mutants = []mutant{
 var appExpiring = []string{"-run", "PoolExpiring|PoolDeadline", "./internal/app/"}
 
 // simRegression runs the simulator's regression of the shipped rules.
-var simRegression = []string{"-run", "Regression|PolicyMatchesPool", "./internal/poolsim/"}
+var simRegression = []string{"-run", "SimGate|PolicyMatchesPool", "./internal/poolsim/"}
 
 // TestMutation runs every mutant and fails unless each is caught.
 func TestMutation(t *testing.T) {

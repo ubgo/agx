@@ -12,6 +12,9 @@ import (
 type Member struct {
 	Name  string
 	Group pool.Group
+	// Capacity is the plan size relative to Max 5x when the user told
+	// agx; 0 = unknown. Only the weighted strategy reads it.
+	Capacity float64
 }
 
 // SessionView is one of our sessions as a picker sees it.
@@ -53,7 +56,9 @@ type Strategy struct {
 	Name string
 	// About is one line for the report.
 	About string
-	New   func() Picker
+	// New makes the picker for one run of sc (it reads the pool's
+	// configured caps and members from it).
+	New func(sc Scenario) Picker
 }
 
 // statusLimit is the reading status of an account at a limit.
@@ -82,7 +87,7 @@ const teammateActiveFor = time.Hour
 
 // Run simulates one scenario with one strategy and returns its metrics.
 func Run(sc Scenario, st Strategy) Metrics {
-	p := st.New()
+	p := st.New(sc)
 	accts := make([]*account, len(sc.Accounts))
 	members := make([]Member, len(sc.Accounts))
 	for i, a := range sc.Accounts {
@@ -98,7 +103,7 @@ func Run(sc Scenario, st Strategy) Metrics {
 			ac.weekMate, ac.shortMate = a.Week, a.Short
 		}
 		accts[i] = ac
-		members[i] = Member{Name: a.Name, Group: a.Group}
+		members[i] = Member{Name: a.Name, Group: a.Group, Capacity: a.Capacity}
 	}
 	steps := int(sc.Horizon / sc.Step)
 	stepH := sc.Step.Hours()
@@ -126,11 +131,13 @@ func Run(sc Scenario, st Strategy) Metrics {
 				}
 			}
 		}
-		if k >= steps && now.After(tailEnd) {
-			break
-		}
 		for _, a := range accts {
 			a.advance(now, sc, &m)
+		}
+		if k >= steps && !now.Before(tailEnd) {
+			// The last reset is at or before this step: every week is
+			// closed (a reset between two steps is applied at the next).
+			break
 		}
 		if k >= steps {
 			for _, a := range accts {
@@ -290,13 +297,26 @@ func (l Load) busy(sc Scenario, i int, now time.Time) bool {
 	if !inHours(now.Add(l.UTCOffset), l.ActiveStart, l.ActiveEnd) {
 		return false
 	}
-	return unit(sc.Seed, streamSession, uint64(i), block(now)) < l.Duty
+	duty := l.Duty
+	if l.Bursty {
+		// Every session works hard in a burst and little outside one,
+		// the average staying at Duty.
+		burst := unit(sc.Seed, streamBurst, 0, uint64(now.Unix()/int64(burstBlock/time.Second))) < burstShare
+		duty = math.Max(0, (l.Duty-burstShare*burstDuty)/(1-burstShare))
+		if burst {
+			duty = burstDuty
+		}
+	}
+	return unit(sc.Seed, streamSession, uint64(i), block(now)) < duty
 }
 
 // burn is the teammate's use now, in percent of a standard 5-hour
 // window per hour (0 when not working).
 func (t *Teammate) burn(seed uint64, idx int, now time.Time) float64 {
 	local := now.Add(t.UTCOffset)
+	if t.Irregular {
+		return t.irregularBurn(seed, idx, local)
+	}
 	if !t.Workdays[local.Weekday()] || !inHours(local, t.WorkStart, t.WorkEnd) {
 		return 0
 	}
@@ -352,6 +372,8 @@ const (
 	streamHeavyDay
 	streamMateStep
 	streamScenario
+	streamBurst
+	streamIrregular
 )
 
 // unit is a deterministic number in [0, 1) for one draw.
@@ -367,3 +389,25 @@ func splitmix(x uint64) uint64 {
 	x = (x ^ (x >> 27)) * 0x94D049BB133111EB
 	return x ^ (x >> 31)
 }
+
+// irregularBurn is an irregular teammate's use: each local day works
+// with irregularDay chance, from a random hour, for a random shift.
+func (t *Teammate) irregularBurn(seed uint64, idx int, local time.Time) float64 {
+	day := uint64(local.Unix() / int64(24*time.Hour/time.Second))
+	if unit(seed, streamIrregular, uint64(idx), day*irregularDraws) >= irregularDay {
+		return 0
+	}
+	start := int(unit(seed, streamIrregular, uint64(idx), day*irregularDraws+1) * hoursPerDay)
+	length := irregularMinHours + int(unit(seed, streamIrregular, uint64(idx), day*irregularDraws+2)*(irregularMaxHours-irregularMinHours+1))
+	h := local.Hour()
+	if h < start || h >= start+length {
+		return 0
+	}
+	if unit(seed, streamMateStep, uint64(idx), block(local)) >= t.Duty {
+		return 0
+	}
+	return t.Burn
+}
+
+// irregularDraws are the draws per day of an irregular teammate.
+const irregularDraws = 4

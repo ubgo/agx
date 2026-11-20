@@ -1,0 +1,109 @@
+// Pool simulator scenario (task sim; docs/guides/pool-simulator.md).
+{
+  "about": "A recorded 12-member pool (3 own at 95/98, 9 shared; names replaced, numbers kept), ten sessions busy 60% of the time.",
+  "group": "large-team",
+  "seed": 411,
+  "seeds": 12,
+  "gate": true,
+  "accounts": [
+    {
+      "name": "alice",
+      "group": "own",
+      "short": -1,
+      "week": 52,
+      "reset_hours": 118.3
+    },
+    {
+      "name": "bob",
+      "group": "own",
+      "short": 0,
+      "week": 0,
+      "reset_hours": 154.3
+    },
+    {
+      "name": "carol",
+      "group": "own",
+      "short": 56,
+      "week": 98,
+      "reset_hours": 20.3
+    },
+    {
+      "name": "derek",
+      "group": "shared",
+      "short": 4,
+      "week": 7,
+      "reset_hours": 128.3
+    },
+    {
+      "name": "erin",
+      "group": "shared",
+      "short": 6,
+      "week": 7,
+      "reset_hours": 115.3
+    },
+    {
+      "name": "frank",
+      "group": "shared",
+      "short": 12,
+      "week": 19,
+      "reset_hours": 49.3
+    },
+    {
+      "name": "grace",
+      "group": "shared",
+      "short": 52,
+      "week": 36,
+      "reset_hours": 0.3
+    },
+    {
+      "name": "heidi",
+      "group": "shared",
+      "short": 46,
+      "week": 48,
+      "reset_hours": 43.3
+    },
+    {
+      "name": "ivan",
+      "group": "shared",
+      "short": 66,
+      "week": 70,
+      "reset_hours": 4.3
+    },
+    {
+      "name": "judy",
+      "group": "shared",
+      "short": 15,
+      "week": 90,
+      "reset_hours": 19.3
+    },
+    {
+      "name": "ken",
+      "group": "shared",
+      "short": 2,
+      "week": 73,
+      "reset_hours": 88.3
+    },
+    {
+      "name": "liam",
+      "group": "shared",
+      "short": 3,
+      "week": 4,
+      "reset_hours": 148.3
+    }
+  ],
+  "sessions": {
+    "count": [
+      10,
+      10
+    ],
+    "duty": [
+      0.6,
+      0.6
+    ],
+    "hours": [
+      8,
+      2
+    ],
+    "utc_offset": "5h30m"
+  }
+}

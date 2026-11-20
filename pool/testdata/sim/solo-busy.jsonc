@@ -1,0 +1,25 @@
+// Pool simulator scenario (task sim; docs/guides/pool-simulator.md).
+{
+  "about": "Two or three own Max 5x accounts and six to ten busy sessions: more demand than quota.",
+  "seed": 151,
+  "seeds": 12,
+  "own": {
+    "count": [
+      2,
+      3
+    ],
+    "plans": [
+      "max5"
+    ]
+  },
+  "sessions": {
+    "count": [
+      6,
+      10
+    ],
+    "duty": [
+      0.6,
+      0.8
+    ]
+  }
+}

@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// The expiring strategy (docs: POOL_STRATEGY; the simulator in
+// The expiring strategy (docs/guides/pool-simulator.md; the simulator in
 // internal/poolsim chose it and its defaults). It keeps the deadline
 // strategy's block reasons and tiers and changes three things:
 //
@@ -21,8 +21,9 @@ import (
 //     cap divided by the hours to the reset (the rate needed to use it
 //     all), highest first; an unknown or passed reset sorts last.
 //  3. A pick per session: a session stays on its member while that
-//     member is still ready and fewer than MaxSessions older sessions
-//     hold it (Sticky); otherwise it takes the most urgent member with
+//     member is still ready, fewer than MaxSessions older sessions hold
+//     it and no member is StickyLeaveRatio times more urgent (Sticky);
+//     otherwise it takes the most urgent member with
 //     fewer than MaxSessions other sessions, ready members first, then
 //     the waiting ones (held back only by the borrow window); when every
 //     member is full, the least loaded ready member.
@@ -48,6 +49,9 @@ func (c Config) validateStrategy() error {
 	}
 	if c.MaxSessions < 0 {
 		return errors.New("pool: max_sessions is negative")
+	}
+	if c.StickyLeaveRatio < 0 || math.IsNaN(c.StickyLeaveRatio) || math.IsInf(c.StickyLeaveRatio, 0) {
+		return fmt.Errorf("pool: sticky_leave_ratio %v is not a number of 0 or more", c.StickyLeaveRatio)
 	}
 	return nil
 }
@@ -172,9 +176,13 @@ func urgencyKey(c *Candidate) float64 {
 func assign(cfg Config, ready, waiting []*Candidate, o Options) *Selection {
 	limit := cfg.MaxSessions
 	full := func(c *Candidate) bool { return limit > 0 && c.Load >= limit }
+	leaving := ""
 	if cfg.Sticky && o.Current != "" {
 		if i := slices.IndexFunc(ready, func(c *Candidate) bool { return c.Name == o.Current }); i >= 0 && (limit == 0 || o.CurrentAhead < limit) {
-			return selection(ready[i], true, reasonSticky)
+			if !outranked(cfg, ready[0], ready[i]) {
+				return selection(ready[i], true, reasonSticky)
+			}
+			leaving = fmt.Sprintf("left %s: %s is at least %g times as urgent (sticky_leave_ratio); ", o.Current, ready[0].Name, cfg.StickyLeaveRatio)
 		}
 	}
 	first := ready[0]
@@ -190,7 +198,7 @@ func assign(cfg Config, ready, waiting []*Candidate, o Options) *Selection {
 			case c != first:
 				reason = fmt.Sprintf("%s has %d other sessions (max_sessions %d); next: %s", first.Name, first.Load, limit, reason)
 			}
-			return selection(c, false, reason)
+			return selection(c, false, leaving+reason)
 		}
 	}
 	least := ready[0]
@@ -200,6 +208,20 @@ func assign(cfg Config, ready, waiting []*Candidate, o Options) *Selection {
 		}
 	}
 	return selection(least, false, fmt.Sprintf("every usable member has %d or more other sessions (max_sessions %d); the least loaded", limit, limit))
+}
+
+// outranked reports whether a sticky session should leave cur for
+// best: best's urgency is at least StickyLeaveRatio times cur's (an
+// unknown urgency counts as 0; best must have one).
+func outranked(cfg Config, best, cur *Candidate) bool {
+	if cfg.StickyLeaveRatio <= 0 || best == cur || !best.hasUrgency || best.urgency <= 0 {
+		return false
+	}
+	curUrgency := 0.0
+	if cur.hasUrgency {
+		curUrgency = cur.urgency
+	}
+	return best.urgency >= cfg.StickyLeaveRatio*curUrgency
 }
 
 // reasonSticky is a sticky pick's reason.

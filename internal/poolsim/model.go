@@ -49,12 +49,17 @@ type Teammate struct {
 	IdleDay float64
 	// HeavyDay is the chance a workday burns twice as fast.
 	HeavyDay float64
+	// Irregular works any day with irregularDay chance, from a random
+	// hour for a random shift, instead of the fixed hours.
+	Irregular bool
 }
 
 // Account is one member of the pool and its state when the run starts.
 type Account struct {
 	Name  string
 	Group pool.Group
+	// Plan is the account's plan (pro, max5, max20), for the report.
+	Plan string
 	// Capacity scales the account's limits: 1 is the standard plan, 2
 	// is twice the room (a bigger plan burns half the percent).
 	Capacity float64
@@ -83,6 +88,9 @@ type Load struct {
 	// work (local hours; equal values = around the clock).
 	UTCOffset              time.Duration
 	ActiveStart, ActiveEnd int
+	// Bursty sessions work together in bursts (burstShare of the
+	// burstBlock blocks) instead of each on its own.
+	Bursty bool
 }
 
 // Scenario is one simulated situation; a Generator makes a fresh one for
@@ -107,24 +115,23 @@ type Scenario struct {
 	Seed uint64
 }
 
-// Generator builds a scenario for one seed.
+// Generator builds a scenario for one seed: one scenario file.
 type Generator struct {
 	Name string
 	// About is one line for the report.
 	About string
-	Make  func(seed uint64) Scenario
+	// Group is solo, small-team or large-team.
+	Group string
+	// Seed is the first seed and Seeds how many a full run uses.
+	Seed  uint64
+	Seeds int
+	// Gate puts the scenario in the regression gate.
+	Gate bool
+	Make func(seed uint64) Scenario
 }
 
-// defaultBaseCaps are today's caps: own 5h 95 / week 98, shared 50 / 70.
+// defaultBaseCaps are the default configured caps: own 95/98, shared
+// 50/70.
 func defaultBaseCaps() map[pool.Group]pool.Caps {
-	return map[pool.Group]pool.Caps{
-		pool.GroupOwn:    {Short: ownShortCap, Week: ownWeekCap},
-		pool.GroupShared: {Short: pool.DefaultShortCap, Week: pool.DefaultWeekCap},
-	}
+	return map[pool.Group]pool.Caps{pool.GroupOwn: defaultOwnCaps, pool.GroupShared: defaultSharedCaps}
 }
-
-// Today's own-account caps on the owner's machines.
-const (
-	ownShortCap = 95.0
-	ownWeekCap  = 98.0
-)

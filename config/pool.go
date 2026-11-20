@@ -155,5 +155,8 @@ func (p Pool) strategyRules(c *pool.Config) error {
 	if p.Sticky != nil {
 		c.Sticky = *p.Sticky
 	}
+	if p.StickyLeaveRatio != nil {
+		c.StickyLeaveRatio = *p.StickyLeaveRatio
+	}
 	return nil
 }

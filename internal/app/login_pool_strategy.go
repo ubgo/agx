@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"math"
 	"slices"
 	"strconv"
 	"strings"
@@ -20,6 +21,7 @@ const (
 	flagPoolWeekRelaxWindow   = "--pool-week-relax-window"
 	flagPoolMaxSessions       = "--pool-max-sessions"
 	flagPoolSticky            = "--pool-sticky"
+	flagPoolStickyLeaveRatio  = "--pool-sticky-leave-ratio"
 	flagPoolDefaultWeekRelax  = "--pool-default-week-relax"
 	flagPoolCapWeekRelax      = "--pool-cap-week-relax"
 	flagPoolGroupCapShort     = "--pool-group-cap-short"
@@ -28,7 +30,7 @@ const (
 )
 
 // poolStrategyFlagsText names the strategy flags in "nothing to change".
-const poolStrategyFlagsText = flagPoolStrategy + ", " + flagPoolWeekRelaxWindow + ", " + flagPoolMaxSessions + ", " + flagPoolSticky + ", " +
+const poolStrategyFlagsText = flagPoolStrategy + ", " + flagPoolWeekRelaxWindow + ", " + flagPoolMaxSessions + ", " + flagPoolSticky + ", " + flagPoolStickyLeaveRatio + ", " +
 	flagPoolDefaultWeekRelax + ", " + flagPoolCapWeekRelax + ", " + flagPoolGroupCapShort + ", " + flagPoolGroupCapWeek + ", " + flagPoolGroupCapWeekRelax
 
 // Keys the strategy flags write inside logins.<name>.pool.
@@ -37,6 +39,7 @@ const (
 	keyPoolWeekRelaxWindow = "week_relax_window"
 	keyPoolMaxSessions     = "max_sessions"
 	keyPoolSticky          = "sticky"
+	keyPoolStickyLeave     = "sticky_leave_ratio"
 	keyPoolWeekRelaxMax    = "week_relax_max"
 	keyPoolOwnCaps         = "own_caps"
 	keyPoolSharedCaps      = "shared_caps"
@@ -52,6 +55,8 @@ type PoolStrategySettings struct {
 	MaxSessions *string
 	// Sticky is "true" or "false" (sticky).
 	Sticky *string
+	// StickyLeaveRatio is a number of 0 or more (sticky_leave_ratio).
+	StickyLeaveRatio *string
 	// DefaultWeekRelax is defaults.week_relax_max.
 	DefaultWeekRelax *string
 	// CapWeekRelax sets accounts.NAME.week_relax_max: NAME=N.
@@ -65,7 +70,7 @@ type PoolStrategySettings struct {
 
 // given reports any strategy flag.
 func (s PoolStrategySettings) given() bool {
-	return s.Strategy != nil || s.WeekRelaxWindow != nil || s.MaxSessions != nil || s.Sticky != nil ||
+	return s.Strategy != nil || s.WeekRelaxWindow != nil || s.MaxSessions != nil || s.Sticky != nil || s.StickyLeaveRatio != nil ||
 		s.DefaultWeekRelax != nil || s.CapWeekRelax != nil || s.GroupCapShort != nil || s.GroupCapWeek != nil || s.GroupCapWeekRelax != nil
 }
 
@@ -107,6 +112,21 @@ func (p *poolPlan) planStrategy(cur config.Pool, s PoolStrategySettings) error {
 			e = setTo(p.at(keyPoolSticky), b)
 		}
 		p.change(keyPoolSticky, old, orAbsent(*v), e)
+	}
+	if v := s.StickyLeaveRatio; v != nil {
+		old := absent
+		if cur.StickyLeaveRatio != nil {
+			old = percentText(*cur.StickyLeaveRatio)
+		}
+		e := deleteIf(p.at(keyPoolStickyLeave), cur.StickyLeaveRatio != nil)
+		if *v != "" {
+			n, err := strconv.ParseFloat(*v, 64)
+			if err != nil || n < 0 || math.IsNaN(n) || math.IsInf(n, 0) {
+				return apperr.Usage(fmt.Sprintf("%s %q is not a number of 0 or more (0 = never leave)", flagPoolStickyLeaveRatio, *v))
+			}
+			e = setNumber(p.at(keyPoolStickyLeave), n)
+		}
+		p.change(keyPoolStickyLeave, old, orAbsent(*v), e)
 	}
 	return p.planGroupCaps(cur, s)
 }

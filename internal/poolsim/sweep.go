@@ -15,35 +15,44 @@ type Knob struct {
 	Apply  func(p *Policy, i int)
 }
 
-// SweepRow is one knob value's result over the sweep's scenarios.
+// SweepRow is one knob value's result over every scenario, its cost
+// relative to today's rules (A) on the same scenario.
 type SweepRow struct {
 	Value string
-	// Scores are the per-scenario scores, in the scenarios' order.
-	Scores []float64
+	// MeanRatio and WorstRatio are over every scenario; WorstFile is
+	// the scenario of the worst.
+	MeanRatio, WorstRatio float64
+	WorstFile             string
+	// Groups are the mean ratio per group (GroupOrder).
+	Groups map[string]float64
 	// Mean is the average of the per-scenario metrics.
 	Mean Metrics
-	// Score is the average score.
-	Score float64
 }
 
-// Sweep runs base with each value of k on every generator and returns
-// one row per value.
-func Sweep(gens []Generator, base Policy, k Knob, seeds int, w Weights) []SweepRow {
-	rows := make([]SweepRow, len(k.Values))
-	strategies := make([]Strategy, len(k.Values))
+// Sweep runs base with each value of k, and today's rules, on every
+// generator and returns one row per value.
+func Sweep(gens []Generator, base Policy, k Knob, w Weights) []SweepRow {
+	strategies := []Strategy{policy("A", "", Today())}
 	for i, v := range k.Values {
 		p := base
 		k.Apply(&p, i)
-		strategies[i] = policy(v, "", p)
-		rows[i].Value = v
+		strategies = append(strategies, policy(v, "", p))
 	}
-	for _, gen := range gens {
-		sums := Evaluate(gen, strategies, seeds, w)
-		for i, s := range sums {
-			rows[i].Scores = append(rows[i].Scores, s.Score)
-			rows[i].Score += s.Score / float64(len(gens))
-			addScaled(&rows[i].Mean, s.Mean, 1/float64(len(gens)))
+	res := EvaluateAll(gens, strategies, w)
+	byGroup := map[string]GroupRow{}
+	for _, g := range res.Groups("A") {
+		byGroup[g.Group+"\x00"+g.Strategy] = g
+	}
+	var rows []SweepRow
+	for _, v := range k.Values {
+		all := byGroup[GroupAll+"\x00"+v]
+		row := SweepRow{Value: v, MeanRatio: all.MeanRatio, WorstRatio: all.WorstRatio, WorstFile: all.WorstFile, Mean: all.Mean, Groups: map[string]float64{}}
+		for _, grp := range GroupOrder {
+			if g, ok := byGroup[grp+"\x00"+v]; ok {
+				row.Groups[grp] = g.MeanRatio
+			}
 		}
+		rows = append(rows, row)
 	}
 	return rows
 }
@@ -55,27 +64,22 @@ func addScaled(dst *Metrics, m Metrics, f float64) {
 	}
 }
 
-// WriteSweep writes a sweep as a markdown table: per-scenario scores,
-// the average score and the average metrics that move.
-func WriteSweep(w io.Writer, k Knob, gens []Generator, rows []SweepRow) error {
+// WriteSweep writes a sweep as a markdown table: the cost relative to
+// today's rules (mean, worst, per group) and the mean metrics.
+func WriteSweep(w io.Writer, k Knob, rows []SweepRow) error {
 	var b strings.Builder
-	fmt.Fprintf(&b, "| %s |", k.Name)
-	for _, g := range gens {
-		fmt.Fprintf(&b, " %s |", g.Name)
+	fmt.Fprintf(&b, "| %s | cost vs A: mean | worst (at) |", k.Name)
+	for _, g := range GroupOrder {
+		fmt.Fprintf(&b, " %s |", g)
 	}
-	b.WriteString(" mean score | waste % | served | lockout h | squeeze h | switches | own drained h |\n|---|")
-	for range gens {
-		b.WriteString("---|")
-	}
-	b.WriteString("---|---|---|---|---|---|---|\n")
+	b.WriteString(" waste % | served | lockout h | squeeze h | switches | own drained h |\n|---|---|---|---|---|---|---|---|---|---|---|---|\n")
 	for _, r := range rows {
-		fmt.Fprintf(&b, "| %s |", r.Value)
-		for _, s := range r.Scores {
-			fmt.Fprintf(&b, " %.0f |", s)
+		fmt.Fprintf(&b, "| %s | **%.3f** | %.3f (%s) |", r.Value, r.MeanRatio, r.WorstRatio, r.WorstFile)
+		for _, g := range GroupOrder {
+			fmt.Fprintf(&b, " %.3f |", r.Groups[g])
 		}
 		m := r.Mean
-		fmt.Fprintf(&b, " **%.0f** | %.1f | %.1f%% | %.2f | %.1f | %.2f | %.1f |\n", r.Score, m.WasteTotal, m.Served*100,
-			m.LockoutHours, m.SqueezeHours, m.Switches, m.OwnDrainedHours)
+		fmt.Fprintf(&b, " %.1f | %.1f%% | %.2f | %.1f | %.2f | %.1f |\n", m.WasteTotal, m.Served*100, m.LockoutHours, m.SqueezeHours, m.Switches, m.OwnDrainedHours)
 	}
 	_, err := io.WriteString(w, b.String())
 	return err
@@ -115,13 +119,14 @@ func Knobs() []Knob {
 			func(p *Policy, d time.Duration) { p.Relax.Start = d }),
 		numbers("relax.max (C)", []float64{80, 85, 90, 95, 98}, func(p *Policy, v float64) { p.Relax.Max = v }),
 		numbers("relax.short (C, 5h at reset)", []float64{0, 60, 70, 80, 90}, func(p *Policy, v float64) { p.Relax.Short = v }),
-		numbers("shared week cap", []float64{50, 60, 70, 80}, func(p *Policy, v float64) { p.Shared.Week = v }),
-		numbers("shared 5h cap", []float64{30, 40, 50, 60, 70}, func(p *Policy, v float64) { p.Shared.Short = v }),
-		numbers("own week cap", []float64{90, 95, 98, 99}, func(p *Policy, v float64) { p.Own.Week = v }),
+		numbers("shared week cap", []float64{50, 60, 70, 80}, func(p *Policy, v float64) { p.Override.SharedWeek = v }),
+		numbers("shared 5h cap", []float64{30, 40, 50, 60, 70}, func(p *Policy, v float64) { p.Override.SharedShort = v }),
+		numbers("own week cap", []float64{90, 95, 98, 99}, func(p *Policy, v float64) { p.Override.OwnWeek = v }),
 		numbers("spread per account (G)", []float64{0, 1, 2, 3, 4, 6}, func(p *Policy, v float64) { p.Spread = int(v) }),
 		numbers("stick margin (H, -1 = off)", []float64{-1, 0, 2, 5, 10}, func(p *Policy, v float64) {
 			p.Stick = Hysteresis{On: v >= 0, Margin: max(0, v)}
 		}),
+		numbers("sticky leave ratio (0 = never)", []float64{0, 1.5, 2, 3, 5}, func(p *Policy, v float64) { p.Stick.Ratio = v }),
 		durations("borrow window", []time.Duration{0, 24 * time.Hour, 48 * time.Hour, 72 * time.Hour, 96 * time.Hour},
 			func(p *Policy, d time.Duration) { p.Borrow = d }),
 		numbers("order (0 reset, 1 urgency)", []float64{0, 1}, func(p *Policy, v float64) { p.Order = Order(v) }),
@@ -132,6 +137,7 @@ func Knobs() []Knob {
 			func(p *Policy, d time.Duration) {
 				p.Urgent = UrgentTier{Window: d, Short: urgentShort, Week: urgentWeek}
 			}),
+		numbers("weighted by plan size (W, 0 off, 1 on)", []float64{0, 1}, func(p *Policy, v float64) { p.Weighted = v > 0 }),
 		numbers("idle 5h cap (D, 0 = off)", []float64{0, 60, 70, 80}, func(p *Policy, v float64) {
 			p.Idle = IdleShort{Short: v, ActiveFor: idleActiveFor}
 		}),

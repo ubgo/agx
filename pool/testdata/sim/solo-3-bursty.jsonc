@@ -1,0 +1,22 @@
+// Pool simulator scenario (task sim; docs/guides/pool-simulator.md).
+{
+  "about": "Three own Max 5x accounts, three to eight sessions working in bursts.",
+  "seed": 141,
+  "seeds": 12,
+  "own": {
+    "count": [
+      3,
+      3
+    ],
+    "plans": [
+      "max5"
+    ]
+  },
+  "sessions": {
+    "count": [
+      3,
+      8
+    ],
+    "pattern": "bursty"
+  }
+}

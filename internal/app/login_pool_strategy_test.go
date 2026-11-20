@@ -14,7 +14,7 @@ import (
 func TestPoolStrategyFlags(t *testing.T) {
 	a, home := fixtureApp(t, flagConfig, nil, nil)
 	ch, err := a.LoginEdit(context.Background(), LoginEditOptions{ID: "auto", Pool: PoolSettings{Strategy: PoolStrategySettings{
-		Strategy: strp("expiring"), WeekRelaxWindow: strp("12h"), MaxSessions: strp("2"), Sticky: strp("false"),
+		Strategy: strp("expiring"), WeekRelaxWindow: strp("12h"), MaxSessions: strp("2"), Sticky: strp("false"), StickyLeaveRatio: strp("3"),
 		DefaultWeekRelax: strp("90"), CapWeekRelax: []string{"carol=70"},
 		GroupCapShort: []string{"own=95"}, GroupCapWeek: []string{"own=98", "shared=60"}, GroupCapWeekRelax: []string{"shared=85"},
 	}}})
@@ -23,7 +23,7 @@ func TestPoolStrategyFlags(t *testing.T) {
 	}
 	want := []Change{
 		{"pool.accounts.carol.week_relax_max", "", "70"}, {"pool.defaults.week_relax_max", "", "90"},
-		{"pool.strategy", "", "expiring"}, {"pool.max_sessions", "", "2"}, {"pool.sticky", "", "false"},
+		{"pool.strategy", "", "expiring"}, {"pool.max_sessions", "", "2"}, {"pool.sticky", "", "false"}, {"pool.sticky_leave_ratio", "", "3"},
 		{"pool.own_caps.short", "", "95"}, {"pool.own_caps.week", "", "98"},
 		{"pool.shared_caps.week", "", "60"}, {"pool.shared_caps.week_relax_max", "", "85"},
 		{"pool.week_relax_window", "", "12h"},
@@ -42,7 +42,7 @@ func TestPoolStrategyFlags(t *testing.T) {
 	}
 	empty := ""
 	if _, err := a.LoginEdit(context.Background(), LoginEditOptions{ID: "auto", Pool: PoolSettings{Strategy: PoolStrategySettings{
-		Strategy: &empty, WeekRelaxWindow: &empty, MaxSessions: &empty, Sticky: &empty, DefaultWeekRelax: &empty,
+		Strategy: &empty, WeekRelaxWindow: &empty, MaxSessions: &empty, Sticky: &empty, StickyLeaveRatio: &empty, DefaultWeekRelax: &empty,
 		CapWeekRelax: []string{"carol="}, GroupCapShort: []string{"own="}, GroupCapWeek: []string{"own=", "shared="}, GroupCapWeekRelax: []string{"shared="},
 	}}}); err != nil {
 		t.Fatal(err)
@@ -68,6 +68,7 @@ func TestPoolStrategyFlagsRefused(t *testing.T) {
 		{"max sessions word", PoolStrategySettings{MaxSessions: strp("lots")}, "--pool-max-sessions"},
 		{"max sessions negative", PoolStrategySettings{MaxSessions: strp("-1")}, "--pool-max-sessions"},
 		{"sticky", PoolStrategySettings{Sticky: strp("maybe")}, `--pool-sticky "maybe": use true or false`},
+		{"leave ratio", PoolStrategySettings{StickyLeaveRatio: strp("-2")}, "--pool-sticky-leave-ratio"},
 		{"window", PoolStrategySettings{WeekRelaxWindow: strp("soon")}, "--pool-week-relax-window"},
 		{"relax over 100", PoolStrategySettings{DefaultWeekRelax: strp("120")}, "--pool-default-week-relax 120"},
 		{"group name", PoolStrategySettings{GroupCapShort: []string{"team=10"}}, `--pool-group-cap-short "team=10": use own=N or shared=N`},
@@ -102,6 +103,8 @@ func TestPoolStrategyConfigSet(t *testing.T) {
 		{"logins.auto.pool.max_sessions", "1.5", false},
 		{"logins.auto.pool.sticky", "false", true},
 		{"logins.auto.pool.sticky", "null", false},
+		{"logins.auto.pool.sticky_leave_ratio", "3", true},
+		{"logins.auto.pool.sticky_leave_ratio", "-1", false},
 		{"logins.auto.pool.defaults.week_relax_max", "98", true},
 		{"logins.auto.pool.shared_caps.week", "101", false},
 		{"logins.auto.pool.accounts.alice.week_relax_max", "90", true},

@@ -124,7 +124,7 @@ func TestPoolMembersOrder(t *testing.T) {
 func TestPoolStrategyLoads(t *testing.T) {
 	l, err := parsePool(t, `"auto": { "agents": ["claude"], "kind": "pool", "pool": {
       "own": ["alice", "bob"], "shared": ["carol", "derek"], "strategy": "expiring",
-      "week_relax_window": "12h", "max_sessions": 2, "sticky": false,
+      "week_relax_window": "12h", "max_sessions": 2, "sticky": false, "sticky_leave_ratio": 3,
       "defaults": { "week_relax_max": 90 }, "own_caps": { "short": 95, "week": 98 },
       "shared_caps": { "week": 60, "week_relax_max": 85 },
       "accounts": { "derek": { "week_relax_max": 60 } } } }`)
@@ -135,7 +135,7 @@ func TestPoolStrategyLoads(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r.Strategy != "expiring" || r.WeekRelaxWindow != 12*time.Hour || r.MaxSessions != 2 || r.Sticky || r.WeekRelaxMax != 90 {
+	if r.Strategy != "expiring" || r.WeekRelaxWindow != 12*time.Hour || r.MaxSessions != 2 || r.Sticky || r.WeekRelaxMax != 90 || r.StickyLeaveRatio != 3 {
 		t.Errorf("rules: strategy %s, window %s, sessions %d, sticky %v, relax %v", r.Strategy, r.WeekRelaxWindow, r.MaxSessions, r.Sticky, r.WeekRelaxMax)
 	}
 	if c := r.CapsFor("alice"); c.Short != 95 || c.Week != 98 {
@@ -161,6 +161,7 @@ func TestPoolStrategyLoads(t *testing.T) {
 		{`"max_sessions": -1`, "max_sessions"},
 		{`"max_sessions": 1.5`, "max_sessions"},
 		{`"sticky": null`, "sticky"},
+		{`"sticky_leave_ratio": -1`, "sticky_leave_ratio"},
 		{`"own_caps": { "short": 101 }`, "own_caps"},
 		{`"defaults": { "week_relax_max": null }`, "week_relax_max"},
 	} {

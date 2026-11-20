@@ -82,6 +82,12 @@ const (
 	// DefaultSticky keeps a session on its member while that member is
 	// still in the pool (expiring strategy).
 	DefaultSticky = true
+	// DefaultStickyLeaveRatio lets a sticky session leave its member
+	// when the most urgent member's urgency is at least this many times
+	// its own (expiring strategy); 0 = never (the simulator: leaving
+	// helps a short-of-quota solo pool at low week ratios and costs
+	// switches everywhere else).
+	DefaultStickyLeaveRatio = 0.0
 )
 
 // Strategy names the rules Select applies.
@@ -231,6 +237,10 @@ type Config struct {
 	WeekRelaxMax    float64
 	MaxSessions     int
 	Sticky          bool
+	// StickyLeaveRatio: a sticky session leaves its member when the most
+	// urgent member's urgency is at least this many times its own; 0 =
+	// never.
+	StickyLeaveRatio float64
 }
 
 // New returns a Config with the documented defaults, for callers that
@@ -241,7 +251,7 @@ func New(own, shared []string) Config {
 		ShortUnavailableAt: DefaultShortUnavailableAt,
 		Defaults:           Caps{Short: DefaultShortCap, Week: DefaultWeekCap},
 		Strategy:           DefaultStrategy, WeekRelaxWindow: DefaultWeekRelaxWindow, WeekRelaxMax: DefaultWeekRelaxMax,
-		MaxSessions: DefaultMaxSessions, Sticky: DefaultSticky,
+		MaxSessions: DefaultMaxSessions, Sticky: DefaultSticky, StickyLeaveRatio: DefaultStickyLeaveRatio,
 	}
 }
 

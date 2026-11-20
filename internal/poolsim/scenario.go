@@ -1,17 +1,28 @@
 package poolsim
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
+	"math"
+	"os"
+	"path/filepath"
+	"slices"
+	"strings"
 	"time"
+
+	"github.com/ubgo/textdata/jsonc"
 
 	"github.com/ubgo/agx/pool"
 )
 
-// Scenario defaults: one-minute steps (the pool's key_ttl and
+// Scenario defaults: one-minute steps (a pool's key_ttl and
 // usage_max_age are 60s, so a running session re-picks about once a
-// minute; 15-minute steps make every strategy hit limits it would not
-// hit for real) over two weeks, readings one step old, eight full
-// 5-hour windows to a week.
+// minute; coarser steps make every strategy hit limits it would not hit
+// for real) over two weeks, readings one step old, eight full 5-hour
+// windows to a week.
 const (
 	DefaultStep      = time.Minute
 	DefaultHorizon   = 2 * WeekPeriod
@@ -19,76 +30,338 @@ const (
 	DefaultWeekRatio = 8.0
 )
 
-// Our sessions' defaults: one busy session burns 12% of a standard
-// 5-hour window an hour (1.5% of a week), busy 60% of the steps between
-// 08:00 and 02:00 India time.
+// Plans and their capacity relative to Max 5x: the same work burns five
+// times the percent on Pro and a quarter of it on Max 20x.
+const (
+	PlanPro   = "pro"
+	PlanMax5  = "max5"
+	PlanMax20 = "max20"
+)
+
+// planCapacity is each plan's room relative to Max 5x.
+var planCapacity = map[string]float64{PlanPro: 0.2, PlanMax5: 1, PlanMax20: 4}
+
+// Teammate profiles a scenario file may name.
+const (
+	MateNone      = "none"
+	MateLight     = "light"
+	MateMedium    = "medium"
+	MateHeavy     = "heavy"
+	MateIrregular = "irregular"
+)
+
+// Teammate burns in percent of a Max 5x 5-hour window per hour while
+// working.
+var mateBurn = map[string]float64{MateLight: 6, MateMedium: 12, MateHeavy: 24, MateIrregular: 15}
+
+// Session patterns.
+const (
+	PatternSteady = "steady"
+	PatternBursty = "bursty"
+)
+
+// Reset layouts.
+const (
+	ResetsRandom  = "random"
+	ResetsSpread  = "spread"
+	ResetsBunched = "bunched"
+)
+
+// Groups of the report: who the pool belongs to, by its members.
+const (
+	GroupSolo      = "solo"
+	GroupSmallTeam = "small-team"
+	GroupLargeTeam = "large-team"
+)
+
+// GroupOrder is the report's group order.
+var GroupOrder = []string{GroupSolo, GroupSmallTeam, GroupLargeTeam}
+
+// smallTeamMax is the most members a pool with teammates may have and
+// still count as a small team.
+const smallTeamMax = 6
+
+// Our sessions' defaults: one busy session burns 12% of a Max 5x 5-hour
+// window an hour (1.5% of a week), busy 60% of the steps in its hours.
 const (
 	defaultSessionBurn = 12.0
 	defaultSessionDuty = 0.6
-	istOffset          = 5*time.Hour + 30*time.Minute
-	ourStart, ourEnd   = 8, 2
 )
 
-// Teammates: Turkey time, 09:00 to 18:00 on weekdays (their start moves
-// by up to two hours per account), working 60% of those steps; a light,
-// medium or heavy burn; one workday in seven idle, one in ten heavy.
+// Teammate defaults: working hours start at 09:00 local (moved by up
+// to two hours per account) and last nine hours on weekdays, 60% of the
+// steps; one workday in seven idle, one in ten heavy; one teammate in
+// five also works Saturdays.
 const (
-	trOffset        = 3 * time.Hour
 	mateStart       = 9
 	mateDay         = 9
 	mateDuty        = 0.6
 	mateIdleDay     = 0.15
 	mateHeavyDay    = 0.1
-	mateBurnLight   = 6.0
-	mateBurnMedium  = 12.0
-	mateBurnHeavy   = 24.0
 	mateStartJitter = 2
+	saturdayShare   = 0.2
 )
 
-// snapshotAt is when a real pool cache was read (agx pool pick
-// --cached --json, 2026-11-20).
-var snapshotAt = time.Date(2026, 11, 20, 7, 30, 0, 0, time.UTC)
+// Irregular teammates: any day with this chance, a random start hour, a
+// shift of irregularMinHours to irregularMaxHours.
+const (
+	irregularDay      = 0.6
+	irregularMinHours = 2
+	irregularMaxHours = 10
+)
 
-// snapMember is one member of the real snapshot under a made-up name:
-// its group, 5-hour and weekly use and hours to the weekly reset.
-type snapMember struct {
-	name       string
-	group      pool.Group
-	short      float64
-	hasShort   bool
-	week       float64
-	resetHours float64
+// Bursty sessions: bursts of burstBlock, each a burst with burstShare;
+// in a burst a session is busy with burstDuty, outside it with what
+// keeps the average at the file's duty.
+const (
+	burstBlock = 2 * time.Hour
+	burstShare = 0.25
+	burstDuty  = 0.95
+)
+
+// Default configured caps of a scenario's pool: own 95/98 (what the
+// guide recommends for your own accounts), shared 50/70 (agx's
+// defaults).
+var (
+	defaultOwnCaps    = pool.Caps{Short: 95, Week: 98}
+	defaultSharedCaps = pool.Caps{Short: pool.DefaultShortCap, Week: pool.DefaultWeekCap}
+)
+
+// Made-up account names, in order: own members first, then shared.
+var names = []string{
+	"alice", "bob", "carol", "derek", "erin", "frank", "grace", "heidi", "ivan", "judy", "ken", "liam", "mallory",
+	"niaj", "olivia", "peggy", "quinn", "rupert", "sybil", "trent", "uma", "victor", "walter", "xena", "yara", "zoe",
 }
 
-// snapshotMembers is the real pool of 2026-11-20 in config order: three
-// own accounts and nine shared ones. "gus" is the account whose week
-// reset 27 minutes after the read with 36% used, skipped for its 5-hour
-// 52% (cap 50); "ivy" reset 4.3 hours later at 5-hour 66%, week 70%.
-var snapshotMembers = []snapMember{
-	{"ava", pool.GroupOwn, 0, false, 52, 118.3},
-	{"ben", pool.GroupOwn, 0, true, 0, 154.3},
-	{"cara", pool.GroupOwn, 56, true, 98, 20.3},
-	{"dan", pool.GroupShared, 4, true, 7, 128.3},
-	{"eli", pool.GroupShared, 6, true, 7, 115.3},
-	{"fay", pool.GroupShared, 12, true, 19, 49.3},
-	{"gus", pool.GroupShared, 52, true, 36, 0.3},
-	{"hal", pool.GroupShared, 46, true, 48, 43.3},
-	{"ivy", pool.GroupShared, 66, true, 70, 4.3},
-	{"jon", pool.GroupShared, 15, true, 90, 19.3},
-	{"kim", pool.GroupShared, 2, true, 73, 88.3},
-	{"lea", pool.GroupShared, 3, true, 4, 148.3},
+// File is one scenario file (pool/testdata/sim/*.jsonc): a family of
+// pools drawn per seed from the ranges it gives, or fixed accounts.
+type File struct {
+	// Name is the scenario's name (the file name without .jsonc when
+	// omitted).
+	Name  string `json:"name,omitempty"`
+	About string `json:"about"`
+	// Group is solo, small-team or large-team; derived from the members
+	// when omitted (no shared member = solo; up to six members = small).
+	Group string `json:"group,omitempty"`
+	// Seed is the first seed; Seeds how many runs (seeds Seed, Seed+1…).
+	Seed  uint64 `json:"seed"`
+	Seeds int    `json:"seeds"`
+	// Gate puts the scenario in the regression gate (go test).
+	Gate bool `json:"gate,omitempty"`
+	// Horizon is how long our sessions run (default "336h").
+	Horizon string `json:"horizon,omitempty"`
+	// Own and Shared are the drawn members; Accounts replaces both with
+	// fixed members.
+	Own      Members `json:"own,omitzero"`
+	Shared   Members `json:"shared,omitzero"`
+	Accounts []Fixed `json:"accounts,omitempty"`
+	// Resets is random, spread or bunched (default random).
+	Resets   string   `json:"resets,omitempty"`
+	Sessions Sessions `json:"sessions"`
+	// Caps are the pool's configured caps per group.
+	Caps FileCaps `json:"caps,omitzero"`
+	// WeekRatio overrides DefaultWeekRatio.
+	WeekRatio float64 `json:"week_ratio,omitempty"`
 }
 
-// base is a scenario with the defaults and our load.
-func base(name string, seed uint64, start time.Time, sessions int, duty float64) Scenario {
-	return Scenario{
-		Name: name, Start: start, Horizon: DefaultHorizon, Step: DefaultStep, WeekRatio: DefaultWeekRatio,
-		Lag: DefaultLag, BaseCaps: defaultBaseCaps(), Seed: seed,
-		Load: Load{
-			Sessions: sessions, Burn: defaultSessionBurn, Duty: duty,
-			UTCOffset: istOffset, ActiveStart: ourStart, ActiveEnd: ourEnd,
-		},
+// Members are drawn members of one group.
+type Members struct {
+	// Count is [min, max] members, drawn per seed.
+	Count [2]int `json:"count"`
+	// Plans are drawn per member (default max5).
+	Plans []string `json:"plans,omitempty"`
+	// Mates are drawn per shared member (default light, medium, medium,
+	// heavy).
+	Mates []string `json:"mates,omitempty"`
+}
+
+// Sessions are our sessions.
+type Sessions struct {
+	// Count and Duty are [min, max], drawn per seed.
+	Count [2]int     `json:"count"`
+	Duty  [2]float64 `json:"duty,omitempty"`
+	// Pattern is steady or bursty (default steady).
+	Pattern string `json:"pattern,omitempty"`
+	// Hours are the local [start, end) hours they work; equal = all day
+	// (default [8, 2]).
+	Hours *[2]int `json:"hours,omitempty"`
+	// UTCOffset is their zone, a Go duration ("5h30m"; default 0).
+	UTCOffset string `json:"utc_offset,omitempty"`
+}
+
+// FileCaps are the configured caps per group.
+type FileCaps struct {
+	Own    *pool.Caps `json:"own,omitempty"`
+	Shared *pool.Caps `json:"shared,omitempty"`
+}
+
+// Fixed is one fixed member (a recorded pool, anonymised).
+type Fixed struct {
+	Name  string     `json:"name"`
+	Group pool.Group `json:"group"`
+	Plan  string     `json:"plan,omitempty"`
+	Week  float64    `json:"week"`
+	// Short is the 5-hour use; a negative value is no window running.
+	Short float64 `json:"short"`
+	// ResetHours is the time to the weekly reset.
+	ResetHours float64 `json:"reset_hours"`
+	// Mate is the teammate profile of a shared member (drawn from the
+	// defaults when empty).
+	Mate string `json:"mate,omitempty"`
+}
+
+// fileStart is the fixed start of every scenario (a Monday 06:00 UTC).
+var fileStart = time.Date(2026, 11, 16, 6, 0, 0, 0, time.UTC)
+
+// LoadDir reads every scenario file of dir, sorted by name.
+func LoadDir(dir string) ([]Generator, error) {
+	paths, err := filepath.Glob(filepath.Join(dir, "*.jsonc"))
+	if err != nil {
+		return nil, err
 	}
+	slices.Sort(paths)
+	var out []Generator
+	for _, p := range paths {
+		g, err := LoadFile(p)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, g)
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("%s: no scenario files: %w", dir, fs.ErrNotExist)
+	}
+	return out, nil
+}
+
+// LoadFile reads one scenario file: JSONC, unknown keys refused.
+func LoadFile(path string) (Generator, error) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return Generator{}, err
+	}
+	doc, err := jsonc.Parse(b)
+	if err != nil {
+		return Generator{}, fmt.Errorf("%s: %w", path, err)
+	}
+	v, err := doc.Get("")
+	if err != nil {
+		return Generator{}, fmt.Errorf("%s: %w", path, err)
+	}
+	plain, err := json.Marshal(v)
+	if err != nil {
+		return Generator{}, fmt.Errorf("%s: %w", path, err)
+	}
+	dec := json.NewDecoder(bytes.NewReader(plain))
+	dec.DisallowUnknownFields()
+	var f File
+	if err := dec.Decode(&f); err != nil {
+		return Generator{}, fmt.Errorf("%s: %w", path, err)
+	}
+	if f.Name == "" {
+		f.Name = strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
+	}
+	if err := f.check(); err != nil {
+		return Generator{}, fmt.Errorf("%s: %w", path, err)
+	}
+	return f.Generator(), nil
+}
+
+// check refuses a file the generator cannot draw from.
+func (f File) check() error {
+	if f.Seeds <= 0 {
+		return errors.New("seeds must be 1 or more")
+	}
+	if len(f.Accounts) == 0 && f.Own.Count[1]+f.Shared.Count[1] == 0 {
+		return errors.New("no members: give own, shared or accounts")
+	}
+	for _, m := range []Members{f.Own, f.Shared} {
+		if m.Count[0] > m.Count[1] || m.Count[0] < 0 {
+			return fmt.Errorf("count %v is not [min, max]", m.Count)
+		}
+		for _, p := range m.Plans {
+			if _, ok := planCapacity[p]; !ok {
+				return fmt.Errorf("unknown plan %q", p)
+			}
+		}
+		for _, mt := range m.Mates {
+			if _, ok := mateBurn[mt]; !ok && mt != MateNone {
+				return fmt.Errorf("unknown teammate profile %q", mt)
+			}
+		}
+	}
+	if f.Own.Count[1]+f.Shared.Count[1] > len(names) {
+		return fmt.Errorf("at most %d members", len(names))
+	}
+	if f.Sessions.Count[0] > f.Sessions.Count[1] || f.Sessions.Count[1] <= 0 {
+		return fmt.Errorf("sessions count %v is not [min, max] with max 1 or more", f.Sessions.Count)
+	}
+	switch f.Resets {
+	case "", ResetsRandom, ResetsSpread, ResetsBunched:
+	default:
+		return fmt.Errorf("resets %q is not random, spread or bunched", f.Resets)
+	}
+	switch f.Sessions.Pattern {
+	case "", PatternSteady, PatternBursty:
+	default:
+		return fmt.Errorf("pattern %q is not steady or bursty", f.Sessions.Pattern)
+	}
+	switch f.Group {
+	case "", GroupSolo, GroupSmallTeam, GroupLargeTeam:
+	default:
+		return fmt.Errorf("group %q is not solo, small-team or large-team", f.Group)
+	}
+	if _, err := f.offset(); err != nil {
+		return err
+	}
+	_, err := f.horizon()
+	return err
+}
+
+// offset is the sessions' zone.
+func (f File) offset() (time.Duration, error) {
+	if f.Sessions.UTCOffset == "" {
+		return 0, nil
+	}
+	return time.ParseDuration(f.Sessions.UTCOffset)
+}
+
+// horizon is how long sessions run.
+func (f File) horizon() (time.Duration, error) {
+	if f.Horizon == "" {
+		return DefaultHorizon, nil
+	}
+	return time.ParseDuration(f.Horizon)
+}
+
+// Generator makes the file's scenario for each seed.
+func (f File) Generator() Generator {
+	return Generator{Name: f.Name, About: f.About, Group: f.group(), Seed: f.Seed, Seeds: f.Seeds, Gate: f.Gate, Make: f.make}
+}
+
+// group is the file's report group.
+func (f File) group() string {
+	if f.Group != "" {
+		return f.Group
+	}
+	own, shared := f.Own.Count[1], f.Shared.Count[1]
+	if len(f.Accounts) > 0 {
+		own, shared = 0, 0
+		for _, a := range f.Accounts {
+			if a.Group == pool.GroupShared {
+				shared++
+			} else {
+				own++
+			}
+		}
+	}
+	switch {
+	case shared == 0:
+		return GroupSolo
+	case own+shared <= smallTeamMax:
+		return GroupSmallTeam
+	}
+	return GroupLargeTeam
 }
 
 // draw is a seeded number in [0, 1) for scenario building.
@@ -96,199 +369,182 @@ func draw(seed uint64, entity, n int) float64 {
 	return unit(seed, streamScenario, uint64(entity), uint64(n))
 }
 
-// mate is a random teammate for account idx.
-func mate(seed uint64, idx int) *Teammate {
-	burns := []float64{mateBurnLight, mateBurnMedium, mateBurnMedium, mateBurnHeavy}
-	start := mateStart + int(draw(seed, idx, 1)*float64(2*mateStartJitter+1)) - mateStartJitter
-	t := &Teammate{
-		UTCOffset: trOffset, WorkStart: start, WorkEnd: start + mateDay,
-		Burn: burns[int(draw(seed, idx, 2)*float64(len(burns)))], Duty: mateDuty,
-		IdleDay: mateIdleDay, HeavyDay: mateHeavyDay,
-	}
-	for d := time.Monday; d <= time.Friday; d++ {
-		t.Workdays[d] = true
-	}
-	// One teammate in five also works Saturdays.
-	t.Workdays[time.Saturday] = draw(seed, idx, 3) < saturdayShare
-	return t
+// pickInt draws an int in [lo, hi].
+func pickInt(seed uint64, entity, n int, r [2]int) int {
+	return r[0] + int(draw(seed, entity, n)*float64(r[1]-r[0]+1))
 }
 
-// saturdayShare is the part of teammates who also work on Saturday.
-const saturdayShare = 0.2
-
-// shortReset is a seeded end for a running 5-hour window: between half
-// an hour and four and a half hours away.
-func shortReset(seed uint64, idx int, at time.Time) *time.Time {
-	t := at.Add(time.Duration((0.5 + 4*draw(seed, idx, 4)) * float64(time.Hour)))
-	return &t
+// pickFloat draws a float in [lo, hi].
+func pickFloat(seed uint64, entity, n int, r [2]float64) float64 {
+	return r[0] + draw(seed, entity, n)*(r[1]-r[0])
 }
 
-// Snapshot is a real 12-member pool as cached on 2026-11-20, with sessions of
-// ours busy duty of the steps; the teammates are drawn per seed.
-func Snapshot(name string, sessions int, duty float64) Generator {
-	return Generator{
-		Name:  name,
-		About: fmt.Sprintf("real pool cache of 2026-11-20 (3 own, 9 shared), %d sessions busy %.0f%%", sessions, duty*100),
-		Make: func(seed uint64) Scenario {
-			sc := base(name, seed, snapshotAt, sessions, duty)
-			for i, m := range snapshotMembers {
-				a := Account{
-					Name: m.name, Group: m.group, Capacity: 1, Week: m.week,
-					WeekResetAt: snapshotAt.Add(time.Duration(m.resetHours * float64(time.Hour))),
-				}
-				if m.hasShort && m.short > 0 {
-					a.Short, a.ShortResetAt = m.short, shortReset(seed, i, snapshotAt)
-				}
-				if m.group == pool.GroupShared {
-					a.Mate = mate(seed, i)
-				}
-				sc.Accounts = append(sc.Accounts, a)
-			}
-			return sc
-		},
+// pickOne draws one of opts (def when opts is empty).
+func pickOne(seed uint64, entity, n int, opts []string, def []string) string {
+	if len(opts) == 0 {
+		opts = def
 	}
+	return opts[int(draw(seed, entity, n)*float64(len(opts)))]
 }
 
-// Resets says how a synthetic pool's weekly resets fall.
-type Resets int
+// defaultMates is the teammate mix when a file names none.
+var defaultMates = []string{MateLight, MateMedium, MateMedium, MateHeavy}
 
-// Reset layouts.
+// Draw indices: each property of a member or session is its own
+// stream, so adding one does not shift the others.
 const (
-	// ResetsRandom draws each account's reset anywhere in the week.
-	ResetsRandom Resets = iota
-	// ResetsSpread spaces them evenly over the week.
-	ResetsSpread
-	// ResetsBunched puts every shared reset inside one 12-hour band.
-	ResetsBunched
+	drawCount = iota + 1
+	drawPlan
+	drawMate
+	drawReset
+	drawWeekRate
+	drawShortOn
+	drawShortPct
+	drawShortEnd
+	drawMateStart
+	drawMateSat
+	drawSessions
+	drawDuty
+	drawBand
 )
 
-// bunchBand is the width of the band of bunched resets.
-const bunchBand = 12 * time.Hour
+// Weekly use so far at the start, as the part of a full week the
+// account's pace would reach: own and shared accounts.
+var (
+	ownWeekRate    = [2]float64{30, 90}
+	sharedWeekRate = [2]float64{20, 75}
+)
 
-// Synthetic options.
-type Synthetic struct {
-	Name     string
-	About    string
-	Own      int
-	Shared   int
-	Sessions int
-	Duty     float64
-	Resets   Resets
-	// NearCaps starts most shared accounts close to their caps.
-	NearCaps bool
-	// MateOnPreferred gives the shared account that resets soonest a
-	// heavy teammate who works during our hours.
-	MateOnPreferred bool
-}
+// Running 5-hour windows at the start: this share of accounts, up to
+// runningShortMax percent, ending in half an hour to four and a half.
+const (
+	runningShortShare = 0.4
+	runningShortMax   = 45.0
+	spreadJitter      = 0.5
+	bunchBand         = 12 * time.Hour
+)
 
-// syntheticStart is a fixed Monday for synthetic weeks.
-var syntheticStart = time.Date(2026, 11, 16, 6, 0, 0, 0, time.UTC)
-
-// Generator makes the synthetic scenario for each seed.
-func (s Synthetic) Generator() Generator {
-	return Generator{Name: s.Name, About: s.About, Make: s.make}
-}
-
-// make builds one seed's pool: resets as laid out, each account's use
-// so far in line with how much of its week has gone.
-func (s Synthetic) make(seed uint64) Scenario {
-	sc := base(s.Name, seed, syntheticStart, s.Sessions, s.Duty)
-	n := s.Own + s.Shared
-	bandStart := draw(seed, n, 5) * WeekPeriod.Hours()
-	soonest, soonestIdx := WeekPeriod, -1
+// make builds one seed's scenario.
+func (f File) make(seed uint64) Scenario {
+	horizon, _ := f.horizon() // check validated it
+	offset, _ := f.offset()
+	sc := Scenario{
+		Name: f.Name, Start: fileStart, Horizon: horizon, Step: DefaultStep, WeekRatio: DefaultWeekRatio, Lag: DefaultLag,
+		Seed: seed, BaseCaps: map[pool.Group]pool.Caps{pool.GroupOwn: defaultOwnCaps, pool.GroupShared: defaultSharedCaps},
+	}
+	if f.WeekRatio > 0 {
+		sc.WeekRatio = f.WeekRatio
+	}
+	if f.Caps.Own != nil {
+		sc.BaseCaps[pool.GroupOwn] = *f.Caps.Own
+	}
+	if f.Caps.Shared != nil {
+		sc.BaseCaps[pool.GroupShared] = *f.Caps.Shared
+	}
+	hours := [2]int{8, 2}
+	if f.Sessions.Hours != nil {
+		hours = *f.Sessions.Hours
+	}
+	duty := f.Sessions.Duty
+	if duty == [2]float64{} {
+		duty = [2]float64{defaultSessionDuty, defaultSessionDuty}
+	}
+	sc.Load = Load{
+		Sessions: pickInt(seed, 0, drawSessions, f.Sessions.Count), Burn: defaultSessionBurn,
+		Duty: pickFloat(seed, 0, drawDuty, duty), UTCOffset: offset, ActiveStart: hours[0], ActiveEnd: hours[1],
+		Bursty: f.Sessions.Pattern == PatternBursty,
+	}
+	if len(f.Accounts) > 0 {
+		for i, a := range f.Accounts {
+			sc.Accounts = append(sc.Accounts, f.fixed(seed, i, a))
+		}
+		return sc
+	}
+	own := pickInt(seed, 0, drawCount, f.Own.Count)
+	shared := pickInt(seed, 1, drawCount, f.Shared.Count)
+	n := own + shared
+	band := draw(seed, 0, drawBand) * WeekPeriod.Hours()
 	for i := range n {
-		group := pool.GroupOwn
-		if i >= s.Own {
-			group = pool.GroupShared
+		spec, group := f.Own, pool.GroupOwn
+		if i >= own {
+			spec, group = f.Shared, pool.GroupShared
 		}
-		var hours float64
-		switch {
-		case s.Resets == ResetsSpread:
-			hours = (float64(i) + draw(seed, i, 6)*spreadJitter) * WeekPeriod.Hours() / float64(n)
-		case s.Resets == ResetsBunched && group == pool.GroupShared:
-			hours = bandStart + draw(seed, i, 6)*bunchBand.Hours()
+		var h float64
+		switch f.Resets {
+		case ResetsSpread:
+			h = (float64(i) + draw(seed, i, drawReset)*spreadJitter) * WeekPeriod.Hours() / float64(n)
+		case ResetsBunched:
+			h = band + draw(seed, i, drawReset)*bunchBand.Hours()
 		default:
-			hours = draw(seed, i, 6) * WeekPeriod.Hours()
+			h = draw(seed, i, drawReset) * WeekPeriod.Hours()
 		}
-		for hours >= WeekPeriod.Hours() {
-			hours -= WeekPeriod.Hours()
+		h = math.Mod(h, WeekPeriod.Hours())
+		plan := pickOne(seed, i, drawPlan, spec.Plans, []string{PlanMax5})
+		a := Account{
+			Name: names[i], Group: group, Plan: plan, Capacity: planCapacity[plan],
+			WeekResetAt: sc.Start.Add(time.Duration(h * float64(time.Hour))),
 		}
-		gone := 1 - hours/WeekPeriod.Hours()
-		a := Account{Name: fmt.Sprintf("m%02d", i+1), Group: group, Capacity: 1,
-			WeekResetAt: sc.Start.Add(time.Duration(hours * float64(time.Hour)))}
-		rate := ownWeekRate[0] + draw(seed, i, 7)*(ownWeekRate[1]-ownWeekRate[0])
+		rate := ownWeekRate
 		if group == pool.GroupShared {
-			rate = sharedWeekRate[0] + draw(seed, i, 7)*(sharedWeekRate[1]-sharedWeekRate[0])
-			a.Mate = mate(seed, i)
+			rate = sharedWeekRate
+			a.Mate = mateOf(seed, i, pickOne(seed, i, drawMate, spec.Mates, defaultMates))
 		}
-		a.Week = rate * gone
-		if s.NearCaps && group == pool.GroupShared {
-			a.Week = nearCapsWeek[0] + draw(seed, i, 8)*(nearCapsWeek[1]-nearCapsWeek[0])
-			a.Short = nearCapsShort[0] + draw(seed, i, 9)*(nearCapsShort[1]-nearCapsShort[0])
+		a.Week = pickFloat(seed, i, drawWeekRate, rate) * (1 - h/WeekPeriod.Hours())
+		if draw(seed, i, drawShortOn) < runningShortShare {
+			a.Short = draw(seed, i, drawShortPct) * runningShortMax
 			a.ShortResetAt = shortReset(seed, i, sc.Start)
-		} else if draw(seed, i, 10) < runningShortShare {
-			a.Short = draw(seed, i, 9) * runningShortMax
-			a.ShortResetAt = shortReset(seed, i, sc.Start)
-		}
-		if group == pool.GroupShared && time.Duration(hours*float64(time.Hour)) < soonest {
-			soonest, soonestIdx = time.Duration(hours*float64(time.Hour)), i
 		}
 		sc.Accounts = append(sc.Accounts, a)
-	}
-	if s.MateOnPreferred && soonestIdx >= 0 {
-		m := sc.Accounts[soonestIdx].Mate
-		m.Burn, m.Duty, m.UTCOffset, m.WorkStart, m.WorkEnd = mateBurnHeavy, preferredMateDuty, istOffset, ourStart, ourEnd
-		for d := range m.Workdays {
-			m.Workdays[d] = true
-		}
-		m.IdleDay = 0
 	}
 	return sc
 }
 
-// Synthetic ranges.
-var (
-	// ownWeekRate and sharedWeekRate are the week's use a full week
-	// would reach at the account's pace so far (percent).
-	ownWeekRate    = [2]float64{30, 90}
-	sharedWeekRate = [2]float64{20, 75}
-	// nearCapsWeek and nearCapsShort start a near-caps shared account.
-	nearCapsWeek  = [2]float64{55, 72}
-	nearCapsShort = [2]float64{30, 55}
-)
-
-// Synthetic constants.
-const (
-	// spreadJitter moves an evenly spaced reset by up to this part of
-	// its slot.
-	spreadJitter = 0.5
-	// runningShortShare of accounts have a 5-hour window running at the
-	// start, up to runningShortMax percent used.
-	runningShortShare = 0.4
-	runningShortMax   = 45.0
-	// preferredMateDuty is the heavy teammate's duty on the preferred
-	// account.
-	preferredMateDuty = 0.8
-)
-
-// Scenarios are the report's scenarios, realistic first.
-func Scenarios() []Generator {
-	return []Generator{
-		Snapshot("snapshot", 10, snapshotDuty),
-		Snapshot("snapshot-busy", 10, defaultSessionDuty),
-		Synthetic{Name: "light", About: "2 sessions, random resets", Own: 3, Shared: 9, Sessions: 2, Duty: defaultSessionDuty}.Generator(),
-		Synthetic{Name: "normal", About: "5 sessions, random resets", Own: 3, Shared: 9, Sessions: 5, Duty: defaultSessionDuty}.Generator(),
-		Synthetic{Name: "heavy", About: "11 sessions, random resets", Own: 3, Shared: 9, Sessions: 11, Duty: defaultSessionDuty}.Generator(),
-		Synthetic{Name: "mate-on-preferred", About: "5 sessions; a heavy teammate works our hours on the soonest-reset shared account", Own: 3, Shared: 9, Sessions: 5, Duty: defaultSessionDuty, MateOnPreferred: true}.Generator(),
-		Synthetic{Name: "near-caps", About: "5 sessions; shared accounts start at week 55-72%, 5h 30-55%", Own: 3, Shared: 9, Sessions: 5, Duty: defaultSessionDuty, NearCaps: true}.Generator(),
-		Synthetic{Name: "bunched", About: "5 sessions; every shared reset inside one 12h band", Own: 3, Shared: 9, Sessions: 5, Duty: defaultSessionDuty, Resets: ResetsBunched}.Generator(),
-		Synthetic{Name: "spread", About: "5 sessions; resets evenly spaced over the week", Own: 3, Shared: 9, Sessions: 5, Duty: defaultSessionDuty, Resets: ResetsSpread}.Generator(),
+// fixed is a recorded member at the start.
+func (f File) fixed(seed uint64, i int, x Fixed) Account {
+	plan := x.Plan
+	if plan == "" {
+		plan = PlanMax5
 	}
+	a := Account{
+		Name: x.Name, Group: x.Group, Plan: plan, Capacity: planCapacity[plan], Week: x.Week,
+		WeekResetAt: fileStart.Add(time.Duration(x.ResetHours * float64(time.Hour))),
+	}
+	if x.Short > 0 {
+		a.Short, a.ShortResetAt = x.Short, shortReset(seed, i, fileStart)
+	}
+	if x.Group == pool.GroupShared {
+		profile := x.Mate
+		if profile == "" {
+			profile = pickOne(seed, i, drawMate, nil, defaultMates)
+		}
+		a.Mate = mateOf(seed, i, profile)
+	}
+	return a
 }
 
-// snapshotDuty: ten sessions that are busy 30% of the time (most wait
-// on the owner) spend about what five busy-60% sessions do.
-const snapshotDuty = 0.3
+// shortReset is a seeded end for a running 5-hour window: between half
+// an hour and four and a half hours away.
+func shortReset(seed uint64, idx int, at time.Time) *time.Time {
+	t := at.Add(time.Duration((0.5 + 4*draw(seed, idx, drawShortEnd)) * float64(time.Hour)))
+	return &t
+}
+
+// mateOf is the teammate of profile p for account idx (nil for none).
+func mateOf(seed uint64, idx int, p string) *Teammate {
+	if p == MateNone {
+		return nil
+	}
+	start := mateStart + int(draw(seed, idx, drawMateStart)*float64(2*mateStartJitter+1)) - mateStartJitter
+	t := &Teammate{
+		UTCOffset: 3 * time.Hour, WorkStart: start, WorkEnd: start + mateDay, Burn: mateBurn[p], Duty: mateDuty,
+		IdleDay: mateIdleDay, HeavyDay: mateHeavyDay, Irregular: p == MateIrregular,
+	}
+	for d := time.Monday; d <= time.Friday; d++ {
+		t.Workdays[d] = true
+	}
+	t.Workdays[time.Saturday] = draw(seed, idx, drawMateSat) < saturdayShare
+	return t
+}
 
 // WithTiming returns gen with every scenario's step and lag replaced.
 func WithTiming(gen Generator, step time.Duration, lag int) Generator {
@@ -311,5 +567,11 @@ func WithWeekRatio(gen Generator, ratio float64) Generator {
 		sc.WeekRatio = ratio
 		return sc
 	}
+	return gen
+}
+
+// WithSeeds returns gen limited to at most n seeds (the fast gate).
+func WithSeeds(gen Generator, n int) Generator {
+	gen.Seeds = min(gen.Seeds, n)
 	return gen
 }

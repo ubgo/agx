@@ -205,8 +205,8 @@ type poolSettingFlags struct {
 	capShort, capWeek, disable, enable                        []string
 	defShort, defWeek, cutoff, borrow, maxAge, keyTTL, picker string
 	// The strategy flags.
-	strategy, relaxWindow, maxSessions, sticky, defRelax string
-	capRelax, groupShort, groupWeek, groupRelax          []string
+	strategy, relaxWindow, maxSessions, sticky, defRelax, leaveRatio string
+	capRelax, groupShort, groupWeek, groupRelax                      []string
 }
 
 // addPoolSettingFlags declares the pool setting flags add and edit share.
@@ -227,6 +227,7 @@ func addPoolSettingFlags(cmd *cobra.Command, ps *poolSettingFlags) {
 	f.StringVar(&ps.relaxWindow, "pool-week-relax-window", "", "expiring: a member's weekly cap rises to its relax max over this long before its reset, like 24h; 0s = never (empty: default 24h)")
 	f.StringVar(&ps.maxSessions, "pool-max-sessions", "", "expiring: how many sessions one member takes before the next is used; 0 = no limit (empty: default 3)")
 	f.StringVar(&ps.sticky, "pool-sticky", "", "expiring: keep a session on its member while it is still in the pool: true or false (empty: default true)")
+	f.StringVar(&ps.leaveRatio, "pool-sticky-leave-ratio", "", "expiring: a sticky session leaves its member when another is at least this many times as urgent; 0 = never (empty: default 0)")
 	f.StringVar(&ps.defRelax, "pool-default-week-relax", "", "expiring: the weekly cap members reach at their reset, in percent (empty: default 95)")
 	f.StringArrayVar(&ps.capRelax, "pool-cap-week-relax", nil, "expiring: a member's own weekly cap at its reset: NAME=PERCENT; NAME= removes it (repeat)")
 	f.StringArrayVar(&ps.groupShort, "pool-group-cap-short", nil, "the 5-hour cap of a group's members without their own: own=PERCENT or shared=PERCENT; GROUP= removes it (repeat)")
@@ -260,6 +261,7 @@ func (ps *poolSettingFlags) settings(cmd *cobra.Command) app.PoolSettings {
 	s.Strategy = app.PoolStrategySettings{
 		Strategy: one("pool-strategy", ps.strategy), WeekRelaxWindow: one("pool-week-relax-window", ps.relaxWindow),
 		MaxSessions: one("pool-max-sessions", ps.maxSessions), Sticky: one("pool-sticky", ps.sticky),
+		StickyLeaveRatio: one("pool-sticky-leave-ratio", ps.leaveRatio),
 		DefaultWeekRelax: one("pool-default-week-relax", ps.defRelax), CapWeekRelax: list("pool-cap-week-relax", ps.capRelax),
 		GroupCapShort: list("pool-group-cap-short", ps.groupShort), GroupCapWeek: list("pool-group-cap-week", ps.groupWeek),
 		GroupCapWeekRelax: list("pool-group-cap-week-relax", ps.groupRelax),

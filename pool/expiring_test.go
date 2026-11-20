@@ -233,6 +233,12 @@ func TestExpiringAssign(t *testing.T) {
 			pool.Options{Load: map[string]int{"derek": 50}}, "derek", false, ""},
 		{"max_sessions 0 keeps a sticky member at any load", func() pool.Config { c := expiring(); c.MaxSessions = 0; return c },
 			pool.Options{Current: "bob", CurrentAhead: 40}, "bob", true, ""},
+		{"sticky leaves for a member at least sticky_leave_ratio times as urgent", func() pool.Config { c := expiring(); c.StickyLeaveRatio = 2; return c },
+			pool.Options{Current: "bob"}, "derek", false, "left bob: derek is at least 2 times as urgent"},
+		{"sticky stays below sticky_leave_ratio", func() pool.Config { c := expiring(); c.StickyLeaveRatio = 4; return c },
+			pool.Options{Current: "bob"}, "bob", true, "sticky"},
+		{"sticky on the most urgent member stays", func() pool.Config { c := expiring(); c.StickyLeaveRatio = 1; return c },
+			pool.Options{Current: "derek"}, "derek", true, "sticky"},
 		{"deadline ignores load and current", team,
 			pool.Options{Current: "bob", Load: map[string]int{"derek": 9}}, "derek", false, "shared account resets within"},
 	}
@@ -302,6 +308,8 @@ func TestExpiringValidate(t *testing.T) {
 		{"unknown strategy", func(c *pool.Config) { c.Strategy = "soonest" }, `strategy "soonest" is not one of`},
 		{"negative relax window", func(c *pool.Config) { c.WeekRelaxWindow = -time.Hour }, "week_relax_window is negative"},
 		{"negative max sessions", func(c *pool.Config) { c.MaxSessions = -1 }, "max_sessions is negative"},
+		{"negative leave ratio", func(c *pool.Config) { c.StickyLeaveRatio = -1 }, "sticky_leave_ratio -1 is not a number of 0 or more"},
+		{"infinite leave ratio", func(c *pool.Config) { c.StickyLeaveRatio = math.Inf(1) }, "sticky_leave_ratio +Inf"},
 		{"relax max over 100", func(c *pool.Config) { c.WeekRelaxMax = 101 }, "defaults.week_relax_max 101 is outside 0..100"},
 		{"relax max NaN", func(c *pool.Config) { c.WeekRelaxMax = math.NaN() }, "defaults.week_relax_max NaN is outside 0..100"},
 		{"member relax max", func(c *pool.Config) { c.Accounts["alice"] = pool.Account{WeekRelaxMax: f(-1)} }, "accounts.alice.week_relax_max -1"},
@@ -336,7 +344,7 @@ func TestExpiringValidate(t *testing.T) {
 // TestExpiringDefaults pins the defaults the simulator chose.
 func TestExpiringDefaults(t *testing.T) {
 	c := pool.New(nil, nil)
-	if c.WeekRelaxWindow != 24*time.Hour || c.WeekRelaxMax != 95 || c.MaxSessions != 3 || !c.Sticky {
+	if c.WeekRelaxWindow != 24*time.Hour || c.WeekRelaxMax != 95 || c.MaxSessions != 3 || !c.Sticky || c.StickyLeaveRatio != 0 {
 		t.Errorf("defaults: window %s, max %v, sessions %d, sticky %v", c.WeekRelaxWindow, c.WeekRelaxMax, c.MaxSessions, c.Sticky)
 	}
 }

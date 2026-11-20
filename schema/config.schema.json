@@ -972,6 +972,10 @@
                   "sticky": {
                     "type": "boolean"
                   },
+                  "sticky_leave_ratio": {
+                    "type": "number",
+                    "minimum": 0
+                  },
                   "accounts": {
                     "type": "object",
                     "additionalProperties": {

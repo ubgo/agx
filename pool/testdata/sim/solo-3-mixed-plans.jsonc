@@ -1,0 +1,23 @@
+// Pool simulator scenario (task sim; docs/guides/pool-simulator.md).
+{
+  "about": "Three own accounts of mixed plans (Pro, Max 5x, Max 20x), two to six sessions.",
+  "seed": 131,
+  "seeds": 12,
+  "own": {
+    "count": [
+      3,
+      3
+    ],
+    "plans": [
+      "pro",
+      "max5",
+      "max20"
+    ]
+  },
+  "sessions": {
+    "count": [
+      2,
+      6
+    ]
+  }
+}

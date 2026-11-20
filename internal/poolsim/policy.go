@@ -53,6 +53,11 @@ type Policy struct {
 	// accounts are full the least loaded of them takes the session,
 	// rather than an account of a later tier.
 	SpreadInTier bool
+	// Weighted (W) ranks by room in work: the urgency times the
+	// member's known capacity (plan size); unknown capacity counts as 1.
+	Weighted bool
+	// Override sets caps instead of the scenario's (sweeps).
+	Override Overrides
 	// Stick (H) keeps a session on its account while it is usable, not
 	// near a cap and still in the best tier.
 	Stick Hysteresis
@@ -98,6 +103,9 @@ type OwnPace struct {
 // Hysteresis is strategy H's knobs.
 type Hysteresis struct {
 	On bool
+	// Ratio > 0 leaves the account when the best one's urgency (room ÷
+	// hours to its reset) is at least Ratio times the current one's.
+	Ratio float64
 	// Margin is how close to a cap (percent) an account may get before a
 	// session leaves it for a better one.
 	Margin float64
@@ -135,9 +143,11 @@ type option struct {
 	order int
 	tier  int
 	key   float64
-	caps  pool.Caps
-	short float64
-	week  float64
+	// urgency is room ÷ hours to the reset, whatever the order.
+	urgency float64
+	caps    pool.Caps
+	short   float64
+	week    float64
 }
 
 // Assign implements Picker. Each busy session asks in turn (session
@@ -231,6 +241,9 @@ func (pp *policyPicker) keep(cur, best option) bool {
 	if cur.tier > best.tier {
 		return false
 	}
+	if r := pp.p.Stick.Ratio; r > 0 && best.name != cur.name && best.urgency > 0 && best.urgency >= r*cur.urgency {
+		return false
+	}
 	m := pp.p.Stick.Margin
 	return cur.short < math.Min(cur.caps.Short, pp.p.Cutoff)-m && cur.week < cur.caps.Week-m
 }
@@ -297,7 +310,16 @@ func (pp *policyPicker) options(v View) []option {
 		if mb.Group == pool.GroupOwn && o.tier == tierMain {
 			ownUsable = true
 		}
-		o.key = sortKey(p.Order, caps.Week-week, until, known)
+		room := caps.Week - week
+		if p.Weighted && mb.Capacity > 0 {
+			// Room in work, not percent: a bigger plan's percent is
+			// worth more sessions.
+			room *= mb.Capacity
+		}
+		o.key = sortKey(p.Order, room, until, known)
+		if known && until >= 0 {
+			o.urgency = room / math.Max(until.Hours(), minUrgencyHours)
+		}
 		opts = append(opts, o)
 	}
 	if !ownUsable && !p.Flat {
@@ -323,22 +345,32 @@ func (pp *policyPicker) options(v View) []option {
 	return opts
 }
 
-// caps are an account's caps now under the policy.
+// caps are an account's caps now under the policy. The weekly relax
+// applies to any member whose weekly cap is below the relax max, as in
+// package pool; the 5-hour relax, the urgent tier and the idle cap only
+// to shared members.
 func (pp *policyPicker) caps(mb Member, until time.Duration, known bool, now time.Time) pool.Caps {
 	p := pp.p
+	base := p.Shared
 	if mb.Group == pool.GroupOwn {
-		return p.Own
+		base = p.Own
 	}
-	c := p.Shared
-	if p.Relax.Start > 0 && known && until >= 0 && until < p.Relax.Start {
+	c := base
+	inRelax := p.Relax.Start > 0 && known && until >= 0 && until < p.Relax.Start
+	if inRelax {
 		f := 1 - until.Hours()/p.Relax.Start.Hours()
 		if p.Relax.Steps > 0 {
 			f = math.Floor(f*float64(p.Relax.Steps)) / float64(p.Relax.Steps)
 		}
-		c.Week = math.Max(c.Week, p.Shared.Week+(p.Relax.Max-p.Shared.Week)*f)
-		if p.Relax.Short > 0 {
-			c.Short = math.Max(c.Short, p.Shared.Short+(p.Relax.Short-p.Shared.Short)*f)
+		if p.Relax.Max > base.Week {
+			c.Week = base.Week + (p.Relax.Max-base.Week)*f
 		}
+		if p.Relax.Short > base.Short && mb.Group == pool.GroupShared {
+			c.Short = base.Short + (p.Relax.Short-base.Short)*f
+		}
+	}
+	if mb.Group == pool.GroupOwn {
+		return c
 	}
 	if p.Urgent.Window > 0 && known && until >= 0 && until <= p.Urgent.Window {
 		c.Short = math.Max(c.Short, p.Urgent.Short)
