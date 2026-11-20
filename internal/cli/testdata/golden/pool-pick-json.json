@@ -5,11 +5,13 @@
   "data": {
     "pool": "auto",
     "agent": "claude",
+    "strategy": "deadline",
     "selected": {
       "name": "grace",
       "group": "shared",
       "forced": false,
       "picked_by": "rules",
+      "sessions": 0,
       "reason": "shared account resets within 48h, before any usable own account; using its room before it is lost",
       "warnings": [],
       "weekly_resets_at": "<time>",
@@ -39,6 +41,7 @@
           "short": 50,
           "week": 70
         },
+        "sessions": 0,
         "reasons": [],
         "notes": [],
         "source": "cache",
@@ -62,6 +65,7 @@
           "short": 50,
           "week": 70
         },
+        "sessions": 0,
         "reasons": [],
         "notes": [],
         "source": "cache",
@@ -85,6 +89,7 @@
           "short": 99,
           "week": 100
         },
+        "sessions": 0,
         "reasons": [],
         "notes": [],
         "source": "cache",
@@ -108,6 +113,7 @@
           "short": 99,
           "week": 100
         },
+        "sessions": 0,
         "reasons": [],
         "notes": [],
         "source": "cache",
@@ -131,6 +137,7 @@
           "short": 50,
           "week": 70
         },
+        "sessions": 0,
         "reasons": [],
         "notes": [
           "shared reset not within 48h while an own account is usable"
@@ -156,6 +163,7 @@
           "short": 50,
           "week": 70
         },
+        "sessions": 0,
         "reasons": [],
         "notes": [
           "shared reset not within 48h while an own account is usable"
@@ -181,6 +189,7 @@
           "short": 50,
           "week": 70
         },
+        "sessions": 0,
         "reasons": [],
         "notes": [
           "shared reset not within 48h while an own account is usable"
@@ -206,6 +215,7 @@
           "short": 50,
           "week": 70
         },
+        "sessions": 0,
         "reasons": [],
         "notes": [
           "shared reset not within 48h while an own account is usable"
@@ -231,6 +241,7 @@
           "short": 50,
           "week": 70
         },
+        "sessions": 0,
         "reasons": [],
         "notes": [
           "shared reset not within 48h while an own account is usable"
@@ -256,6 +267,7 @@
           "short": 50,
           "week": 70
         },
+        "sessions": 0,
         "reasons": [],
         "notes": [
           "shared reset not within 48h while an own account is usable"
@@ -281,6 +293,7 @@
           "short": 99,
           "week": 100
         },
+        "sessions": 0,
         "reasons": [
           "status is limit-reached",
           "week is 100% (cap 100%)"
@@ -307,6 +320,7 @@
           "short": 50,
           "week": 70
         },
+        "sessions": 0,
         "reasons": [
           "week is 80% (cap 70%)"
         ],

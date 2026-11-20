@@ -152,7 +152,7 @@ Candidates (ready accounts in pick order):
 - erin [shared] skip: 5h is 55% (cap 50%) (5h 55%, week 43%, resets in 3 hr 0 min (13:00), room 27%)
 
 $ agx pool pick --id auto --duration-format minutes --json --field data.selected
-{"name":"carol","group":"shared","forced":false,"picked_by":"rules","reason":"shared account resets within 48h, before any usable own account; using its room before it is lost","warnings":[],"weekly_resets_at":"2026-11-21T00:00:00Z","room_percent":44}
+{"name":"carol","group":"shared","forced":false,"picked_by":"rules","sessions":0,"reason":"shared account resets within 48h, before any usable own account; using its room before it is lost","warnings":[],"weekly_resets_at":"2026-11-21T00:00:00Z","room_percent":44}
 ```
 
 `--json` carries the selector's `--json` fields in agx's envelope (snake_case): `selected` (`name`, `group`, `forced`, `forced_by`, `picked_by` `rules`/`force`/`picker`/`only`, `only` (true for a `--pool-only` pick), `reason`, `warnings`, `weekly_resets_at`, `room_percent`), `source`, `now`, `warnings`, `short_unavailable_at_percent`, `shared_borrow_window_hours`, and `candidates` (each with `state` `ready`, `waiting` or `blocked`, `rank` (null unless ready), `eligible`, `enabled`, `status`, `account`, `short`, `week`, `weekly_resets_at`, `hours_to_reset`, `room_percent`, `caps`, `reasons`, `notes`, `source`, `age_seconds`); `--field` reads any of them.

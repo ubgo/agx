@@ -118,3 +118,55 @@ func TestPoolMembersOrder(t *testing.T) {
 		t.Errorf("members %s", got)
 	}
 }
+
+// TestPoolStrategyLoads: the strategy keys load into the rules, each
+// omitted one at its default, and a bad one is refused with its key.
+func TestPoolStrategyLoads(t *testing.T) {
+	l, err := parsePool(t, `"auto": { "agents": ["claude"], "kind": "pool", "pool": {
+      "own": ["alice", "bob"], "shared": ["carol", "derek"], "strategy": "expiring",
+      "week_relax_window": "12h", "max_sessions": 2, "sticky": false,
+      "defaults": { "week_relax_max": 90 }, "own_caps": { "short": 95, "week": 98 },
+      "shared_caps": { "week": 60, "week_relax_max": 85 },
+      "accounts": { "derek": { "week_relax_max": 60 } } } }`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := l.Config.Logins["auto"].Pool.Rules()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Strategy != "expiring" || r.WeekRelaxWindow != 12*time.Hour || r.MaxSessions != 2 || r.Sticky || r.WeekRelaxMax != 90 {
+		t.Errorf("rules: strategy %s, window %s, sessions %d, sticky %v, relax %v", r.Strategy, r.WeekRelaxWindow, r.MaxSessions, r.Sticky, r.WeekRelaxMax)
+	}
+	if c := r.CapsFor("alice"); c.Short != 95 || c.Week != 98 {
+		t.Errorf("alice caps %v (own_caps)", c)
+	}
+	if c := r.CapsFor("carol"); c.Short != 50 || c.Week != 60 {
+		t.Errorf("carol caps %v (shared_caps over defaults)", c)
+	}
+	if r.RelaxMaxFor("carol") != 85 || r.RelaxMaxFor("derek") != 60 || r.RelaxMaxFor("alice") != 90 {
+		t.Errorf("relax max: carol %v, derek %v, alice %v", r.RelaxMaxFor("carol"), r.RelaxMaxFor("derek"), r.RelaxMaxFor("alice"))
+	}
+	d, err := parsePool(t, `"auto": { "agents": ["claude"], "kind": "pool", "pool": { "own": ["alice"] } }`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dr, _ := d.Config.Logins["auto"].Pool.Rules()
+	if dr.Strategy != "deadline" || dr.WeekRelaxWindow != 24*time.Hour || dr.MaxSessions != 3 || !dr.Sticky || dr.WeekRelaxMax != 95 {
+		t.Errorf("defaults: %+v", dr)
+	}
+	for _, bad := range []struct{ block, want string }{
+		{`"strategy": "soonest"`, "strategy"},
+		{`"week_relax_window": "soon"`, "week_relax_window"},
+		{`"max_sessions": -1`, "max_sessions"},
+		{`"max_sessions": 1.5`, "max_sessions"},
+		{`"sticky": null`, "sticky"},
+		{`"own_caps": { "short": 101 }`, "own_caps"},
+		{`"defaults": { "week_relax_max": null }`, "week_relax_max"},
+	} {
+		_, err := parsePool(t, `"auto": { "agents": ["claude"], "kind": "pool", "pool": { "own": ["alice"], `+bad.block+` } }`)
+		if err == nil || !strings.Contains(err.Error(), bad.want) {
+			t.Errorf("%s: %v", bad.block, err)
+		}
+	}
+}

@@ -69,6 +69,15 @@ Add a login. Cost W (X with `--login-setup`). Guide: [Adding a login](../logins.
 | `--pool-usage-max-age` | how old the usage cache may be before members are probed again, such as `60s`; empty removes it (default 60s) |
 | `--pool-key-ttl` | how long Claude keeps a key before it asks again, at least `1s`; empty removes it (default 60s) |
 | `--pool-picker` | a shell command that picks the member instead of the built-in rules; empty removes the picker |
+| `--pool-strategy` | the rules that pick: `deadline` (soonest weekly reset first, one pick for every session) or `expiring` (weekly caps rise near the reset, most room to lose per hour first, a pick per session); empty: default `deadline` |
+| `--pool-week-relax-window` | `expiring`: a member's weekly cap rises to its relax max over this long before its reset, like `24h`; `0s` never; empty: default `24h` |
+| `--pool-max-sessions` | `expiring`: how many sessions one member takes before the next is used; `0` no limit; empty: default 3 |
+| `--pool-sticky` | `expiring`: keep a session on its member while it is still in the pool, `true` or `false`; empty: default `true` |
+| `--pool-default-week-relax` | `expiring`: the weekly cap members reach at their reset, in percent; empty: default 95 |
+| `--pool-cap-week-relax` | `expiring`: a member's own weekly cap at its reset, `NAME=PERCENT`; `NAME=` removes it (repeat) |
+| `--pool-group-cap-short` | the 5-hour cap of a group's members without their own, `own=PERCENT` or `shared=PERCENT`; `GROUP=` removes it (repeat) |
+| `--pool-group-cap-week` | the weekly cap of a group's members without their own, `own=PERCENT` or `shared=PERCENT`; `GROUP=` removes it (repeat) |
+| `--pool-group-cap-week-relax` | `expiring`: the weekly cap a group's members reach at their reset, `own=PERCENT` or `shared=PERCENT`; `GROUP=` removes it (repeat) |
 | `--dry-run` | with `--kind pool`: show the keys it would write; write nothing |
 | `--token-ref` | the token as a reference (`${gopass:…}`, `$(…)`, `${VAR}`) or a plain value, kept in config |
 | `--stdin` | read the token from stdin into `tokens.jsonc` (0600) |
@@ -177,6 +186,15 @@ Rotate or change a login. Every profile, default and binding that uses it keeps 
 | `--pool-usage-max-age` | how old the usage cache may be before members are probed again, such as `60s`; empty removes it (default 60s) |
 | `--pool-key-ttl` | how long Claude keeps a key before it asks again, at least `1s`; empty removes it (default 60s) |
 | `--pool-picker` | a shell command that picks the member instead of the built-in rules; empty removes the picker |
+| `--pool-strategy` | the rules that pick: `deadline` (soonest weekly reset first, one pick for every session) or `expiring` (weekly caps rise near the reset, most room to lose per hour first, a pick per session); empty: default `deadline` |
+| `--pool-week-relax-window` | `expiring`: a member's weekly cap rises to its relax max over this long before its reset, like `24h`; `0s` never; empty: default `24h` |
+| `--pool-max-sessions` | `expiring`: how many sessions one member takes before the next is used; `0` no limit; empty: default 3 |
+| `--pool-sticky` | `expiring`: keep a session on its member while it is still in the pool, `true` or `false`; empty: default `true` |
+| `--pool-default-week-relax` | `expiring`: the weekly cap members reach at their reset, in percent; empty: default 95 |
+| `--pool-cap-week-relax` | `expiring`: a member's own weekly cap at its reset, `NAME=PERCENT`; `NAME=` removes it (repeat) |
+| `--pool-group-cap-short` | the 5-hour cap of a group's members without their own, `own=PERCENT` or `shared=PERCENT`; `GROUP=` removes it (repeat) |
+| `--pool-group-cap-week` | the weekly cap of a group's members without their own, `own=PERCENT` or `shared=PERCENT`; `GROUP=` removes it (repeat) |
+| `--pool-group-cap-week-relax` | `expiring`: the weekly cap a group's members reach at their reset, `own=PERCENT` or `shared=PERCENT`; `GROUP=` removes it (repeat) |
 | `--dry-run` | on a pool: show the changes; write nothing |
 
 On a pool, every key changes here: the members, the force, each member's caps and `enabled`, the defaults, the windows, the picker and the account label. Each changed key prints a line with its value before and after (`—` for a key that is not set); `--dry-run` prints the same lines and writes nothing, and flags that match the file print `no change` and write nothing. An empty value removes a key, so its documented default applies again. `--dry-run` is for pools only: a token login's value is read once (stdin, a setup command) and written as given. A login never becomes a pool in place, or the reverse: add a new one.

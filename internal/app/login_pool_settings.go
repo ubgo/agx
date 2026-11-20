@@ -74,13 +74,15 @@ type PoolSettings struct {
 	// Picker is picker.command; "" removes the picker (the built-in rules
 	// decide again).
 	Picker *string
+	// The strategy settings (login_pool_strategy.go).
+	Strategy PoolStrategySettings
 }
 
 // given reports any setting flag.
 func (s PoolSettings) given() bool {
 	return s.CapShort != nil || s.CapWeek != nil || s.Disable != nil || s.Enable != nil ||
 		s.DefaultShort != nil || s.DefaultWeek != nil || s.ShortCutoff != nil ||
-		s.BorrowWindow != nil || s.UsageMaxAge != nil || s.KeyTTL != nil || s.Picker != nil
+		s.BorrowWindow != nil || s.UsageMaxAge != nil || s.KeyTTL != nil || s.Picker != nil || s.Strategy.given()
 }
 
 // poolPlan is the set of document edits one pool command makes, with the
@@ -156,7 +158,14 @@ func (p *poolPlan) planSettings(cur config.Pool, members []string, s PoolSetting
 	if err := p.planAccounts(cur, members, s); err != nil {
 		return err
 	}
-	if err := p.planDefaults(cur, s); err != nil {
+	if err := p.planCapsBlock(keyPoolDefaults, cur.Defaults, []capFlag{
+		{flagPoolDefaultShort, keyPoolShort, s.DefaultShort},
+		{flagPoolDefaultWeek, keyPoolWeek, s.DefaultWeek},
+		{flagPoolDefaultWeekRelax, keyPoolWeekRelaxMax, s.Strategy.DefaultWeekRelax},
+	}); err != nil {
+		return err
+	}
+	if err := p.planStrategy(cur, s.Strategy); err != nil {
 		return err
 	}
 	if s.ShortCutoff != nil {
@@ -172,6 +181,7 @@ func (p *poolPlan) planSettings(cur config.Pool, members []string, s PoolSetting
 		{flagPoolBorrowWindow, keyPoolBorrowWindow, cur.SharedBorrowWindow, s.BorrowWindow, 0},
 		{flagPoolUsageMaxAge, keyPoolUsageMaxAge, cur.UsageMaxAge, s.UsageMaxAge, 0},
 		{flagPoolKeyTTL, keyPoolKeyTTL, cur.KeyTTL, s.KeyTTL, config.MinKeyTTL},
+		{flagPoolWeekRelaxWindow, keyPoolWeekRelaxWindow, cur.WeekRelaxWindow, s.Strategy.WeekRelaxWindow, 0},
 	} {
 		if d.v == nil {
 			continue
@@ -201,34 +211,40 @@ func (p *poolPlan) planPercent(flag, key string, old *float64, v string) error {
 	return nil
 }
 
-// planDefaults plans defaults.short and defaults.week; a defaults block
-// left empty is removed.
-func (p *poolPlan) planDefaults(cur config.Pool, s PoolSettings) error {
-	next := cur.Defaults
-	for _, f := range []struct {
-		flag, key string
-		v         *string
-		slot      **float64
-	}{{flagPoolDefaultShort, keyPoolShort, s.DefaultShort, &next.Short}, {flagPoolDefaultWeek, keyPoolWeek, s.DefaultWeek, &next.Week}} {
+// capFlag is one percent flag of a caps block (defaults, own_caps,
+// shared_caps): the flag, the key inside the block and its value (nil =
+// not given, "" = remove).
+type capFlag struct {
+	flag, key string
+	v         *string
+}
+
+// planCapsBlock plans the given keys of one caps block; a block left
+// empty is removed.
+func (p *poolPlan) planCapsBlock(block string, cur config.PoolCaps, flags []capFlag) error {
+	next := cur
+	slots := map[string]**float64{keyPoolShort: &next.Short, keyPoolWeek: &next.Week, keyPoolWeekRelaxMax: &next.WeekRelaxMax}
+	for _, f := range flags {
 		if f.v == nil {
 			continue
 		}
-		old := *f.slot
-		key := keyPoolDefaults + keySep + f.key
+		slot := slots[f.key]
+		old := *slot
+		key := block + keySep + f.key
 		if *f.v == "" {
-			*f.slot = nil
-			p.change(key, optPercent(old), absent, deleteIf(p.at(keyPoolDefaults, f.key), old != nil))
+			*slot = nil
+			p.change(key, optPercent(old), absent, deleteIf(p.at(block, f.key), old != nil))
 			continue
 		}
 		n, err := parsePercent(f.flag+" "+*f.v, *f.v)
 		if err != nil {
 			return err
 		}
-		*f.slot = &n
-		p.change(key, optPercent(old), percentText(n), setNumber(p.at(keyPoolDefaults, f.key), n))
+		*slot = &n
+		p.change(key, optPercent(old), percentText(n), setNumber(p.at(block, f.key), n))
 	}
-	if next.Short == nil && next.Week == nil && (cur.Defaults.Short != nil || cur.Defaults.Week != nil) {
-		p.edits = append(p.edits, deleteIf(p.at(keyPoolDefaults), true))
+	if next == (config.PoolCaps{}) && cur != (config.PoolCaps{}) {
+		p.edits = append(p.edits, deleteIf(p.at(block), true))
 	}
 	return nil
 }
@@ -287,6 +303,10 @@ func (p *poolPlan) planAccounts(cur config.Pool, members []string, s PoolSetting
 	if err != nil {
 		return err
 	}
+	relaxes, err := parseCaps(flagPoolCapWeekRelax, s.Strategy.CapWeekRelax, members, p.login)
+	if err != nil {
+		return err
+	}
 	for _, f := range []struct {
 		flag  string
 		names []string
@@ -321,6 +341,11 @@ func (p *poolPlan) planAccounts(cur config.Pool, members []string, s PoolSetting
 	for _, m := range weeks {
 		a := touch(m.name)
 		a.Week = m.cap
+		next[m.name] = a
+	}
+	for _, m := range relaxes {
+		a := touch(m.name)
+		a.WeekRelaxMax = m.cap
 		next[m.name] = a
 	}
 	off := false
@@ -364,6 +389,7 @@ func (p *poolPlan) planAccount(name string, old, next config.PoolAccount) {
 	}
 	p.change(label(keyPoolShort), optPercent(old.Short), optPercent(next.Short), numberEdit(keyPoolShort, next.Short))
 	p.change(label(keyPoolWeek), optPercent(old.Week), optPercent(next.Week), numberEdit(keyPoolWeek, next.Week))
+	p.change(label(keyPoolWeekRelaxMax), optPercent(old.WeekRelaxMax), optPercent(next.WeekRelaxMax), numberEdit(keyPoolWeekRelaxMax, next.WeekRelaxMax))
 	enabledEdit := setTo(entry(keyPoolEnabled), false)
 	switch {
 	case empty:
@@ -376,7 +402,7 @@ func (p *poolPlan) planAccount(name string, old, next config.PoolAccount) {
 
 // accountEmpty reports a member entry with nothing in it.
 func accountEmpty(a config.PoolAccount) bool {
-	return a.Short == nil && a.Week == nil && a.Enabled == nil
+	return a.Short == nil && a.Week == nil && a.Enabled == nil && a.WeekRelaxMax == nil
 }
 
 // enabledText is a member's effective enabled (omitted = true).

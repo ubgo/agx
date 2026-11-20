@@ -47,11 +47,25 @@ func (p Pool) Rules() (pool.Config, error) {
 	if p.Defaults.Week != nil {
 		c.Defaults.Week = *p.Defaults.Week
 	}
+	if p.Defaults.WeekRelaxMax != nil {
+		c.WeekRelaxMax = *p.Defaults.WeekRelaxMax
+	}
+	for g, gc := range map[pool.Group]PoolCaps{pool.GroupOwn: p.OwnCaps, pool.GroupShared: p.SharedCaps} {
+		if gc != (PoolCaps{}) {
+			if c.Groups == nil {
+				c.Groups = map[pool.Group]pool.GroupCaps{}
+			}
+			c.Groups[g] = pool.GroupCaps{Short: gc.Short, Week: gc.Week, WeekRelaxMax: gc.WeekRelaxMax}
+		}
+	}
 	if len(p.Accounts) > 0 {
 		c.Accounts = make(map[string]pool.Account, len(p.Accounts))
 		for name, a := range p.Accounts {
-			c.Accounts[name] = pool.Account{Short: a.Short, Week: a.Week, Enabled: a.Enabled}
+			c.Accounts[name] = pool.Account{Short: a.Short, Week: a.Week, Enabled: a.Enabled, WeekRelaxMax: a.WeekRelaxMax}
 		}
+	}
+	if err := p.strategyRules(&c); err != nil {
+		return c, err
 	}
 	if _, err := p.MaxAge(); err != nil {
 		return c, err
@@ -120,4 +134,26 @@ func parseDuration(key, v string) (time.Duration, error) {
 		return 0, fmt.Errorf("pool: %s %q is negative", key, v)
 	}
 	return d, nil
+}
+
+// strategyRules copies the strategy and the expiring strategy's knobs
+// into c, each omitted one at its default.
+func (p Pool) strategyRules(c *pool.Config) error {
+	if p.Strategy != "" {
+		c.Strategy = pool.Strategy(p.Strategy)
+	}
+	if p.WeekRelaxWindow != "" {
+		d, err := parseDuration("week_relax_window", p.WeekRelaxWindow)
+		if err != nil {
+			return err
+		}
+		c.WeekRelaxWindow = d
+	}
+	if p.MaxSessions != nil {
+		c.MaxSessions = *p.MaxSessions
+	}
+	if p.Sticky != nil {
+		c.Sticky = *p.Sticky
+	}
+	return nil
 }

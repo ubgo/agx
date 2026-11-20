@@ -88,9 +88,15 @@ var mapPlaceholders = map[string]string{
 // genericPlaceholder names a map key no entry above covers.
 const genericPlaceholder = "<key>"
 
-// keyPaths lists every property of s as a documented key path.
-func keyPaths(s *schema.Schema, prefix string, out map[string]bool) {
+// keyPaths lists every property of s as a documented key path, $refs
+// into root's $defs followed (a struct used in several places, like the
+// pool's caps blocks, is generated once as a definition).
+func keyPaths(root, s *schema.Schema, prefix string, out map[string]bool) {
 	if s == nil {
+		return
+	}
+	if s.Ref != "" {
+		keyPaths(root, root.Defs[strings.TrimPrefix(s.Ref, "#/$defs/")], prefix, out)
 		return
 	}
 	join := func(name string) string {
@@ -101,20 +107,20 @@ func keyPaths(s *schema.Schema, prefix string, out map[string]bool) {
 	}
 	for name, p := range s.Properties {
 		out[join(name)] = true
-		keyPaths(p, join(name), out)
+		keyPaths(root, p, join(name), out)
 	}
 	if ap := s.AdditionalProperties; ap != nil && (len(ap.Properties) > 0 || ap.AdditionalProperties != nil || len(ap.AnyOf) > 0) {
 		ph, ok := mapPlaceholders[prefix]
 		if !ok {
 			ph = genericPlaceholder
 		}
-		keyPaths(ap, join(ph), out)
+		keyPaths(root, ap, join(ph), out)
 	}
 	if s.Items != nil {
-		keyPaths(s.Items, prefix+"[]", out)
+		keyPaths(root, s.Items, prefix+"[]", out)
 	}
 	for _, alt := range s.AnyOf {
-		keyPaths(alt, prefix, out)
+		keyPaths(root, alt, prefix, out)
 	}
 }
 
@@ -126,7 +132,8 @@ var keyCell = regexp.MustCompile("^\\|\\s*`([^`]+)`")
 func TestConfigReference(t *testing.T) {
 	root := repoRoot(t)
 	want := map[string]bool{}
-	keyPaths(generatedSchema(t), "", want)
+	gen := generatedSchema(t)
+	keyPaths(gen, gen, "", want)
 	lines := readLines(t, root, configReference)
 	text := strings.Join(lines, "\n")
 	var missing []string

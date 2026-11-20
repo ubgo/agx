@@ -5,12 +5,14 @@
   "data": {
     "pool": "auto",
     "agent": "claude",
+    "strategy": "deadline",
     "selected": {
       "name": "ivan",
       "group": "shared",
       "forced": false,
       "only": true,
       "picked_by": "only",
+      "sessions": 0,
       "reason": "the only member of this run (--pool-only); its caps and the pool's rules still apply",
       "warnings": [],
       "weekly_resets_at": "<time>",
@@ -40,6 +42,7 @@
           "short": 50,
           "week": 70
         },
+        "sessions": 0,
         "reasons": [],
         "notes": [],
         "source": "cache",

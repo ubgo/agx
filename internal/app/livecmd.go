@@ -243,7 +243,7 @@ func (a *App) liveCredential(ctx context.Context) (Credential, error) {
 		pool = name
 		var rep PoolReport
 		only := stateOnly(st)
-		inUse, tok, rep, err = a.poolMemberToken(ctx, name, lg, poolModeCredential, st.PoolForce, only)
+		inUse, tok, rep, err = a.poolMemberToken(ctx, name, lg, poolModeCredential, st.PoolForce, only, f.ID)
 		warnings = rep.StderrWarnings()
 		if err != nil && only.Member != "" && rep.Selected == nil && len(rep.Candidates) == 1 {
 			// The pin is blocked: no key, and live.jsonc says why, so

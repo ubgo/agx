@@ -5,6 +5,7 @@
   "data": {
     "pool": "auto",
     "agent": "claude",
+    "strategy": "deadline",
     "selected": null,
     "source": "cache (20s old)",
     "now": "<time>",
@@ -30,6 +31,7 @@
           "short": 50,
           "week": 43
         },
+        "sessions": 0,
         "reasons": [
           "week is 43% (cap 43%)"
         ],

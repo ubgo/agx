@@ -298,6 +298,25 @@ type Pool struct {
 	// Defaults are the caps of members without their own entry (default
 	// short 50, week 70).
 	Defaults PoolCaps `json:"defaults,omitzero"`
+	// OwnCaps and SharedCaps are the caps of each group's members without
+	// their own entry, over the defaults.
+	OwnCaps    PoolCaps `json:"own_caps,omitzero"`
+	SharedCaps PoolCaps `json:"shared_caps,omitzero"`
+	// Strategy is the rules that pick: "deadline" (today's: soonest
+	// weekly reset first, one pick for every session; the default) or
+	// "expiring" (relaxed weekly caps near the reset, use-it-or-lose-it
+	// order, a pick per session).
+	Strategy string `json:"strategy,omitempty" enum:"deadline,expiring"`
+	// WeekRelaxWindow (expiring): over this long before a member's weekly
+	// reset its weekly cap rises to week_relax_max (default "24h"; "0s"
+	// = never).
+	WeekRelaxWindow string `json:"week_relax_window,omitempty"`
+	// MaxSessions (expiring) is how many sessions one member takes before
+	// the next is used (default 3; 0 = no limit).
+	MaxSessions *int `json:"max_sessions,omitempty"`
+	// Sticky (expiring) keeps a session on its member while that member
+	// is still in the pool (default true).
+	Sticky *bool `json:"sticky,omitempty"`
 	// Accounts are per-member caps and enabled false, keyed by member.
 	Accounts map[string]PoolAccount `json:"accounts,omitempty"`
 	// UsageMaxAge is how old the shared usage cache may be before the
@@ -330,6 +349,9 @@ type PoolCaps struct {
 	Short *float64 `json:"short,omitempty"`
 	// Week is the weekly window cap.
 	Week *float64 `json:"week,omitempty"`
+	// WeekRelaxMax is the weekly cap reached at the weekly reset under
+	// the expiring strategy (default 95); a cap already higher is kept.
+	WeekRelaxMax *float64 `json:"week_relax_max,omitempty"`
 }
 
 // PoolAccount is one member's entry: its own caps, or enabled false.
@@ -340,6 +362,9 @@ type PoolAccount struct {
 	Week *float64 `json:"week,omitempty"`
 	// Enabled false leaves the member out; omitted = true.
 	Enabled *bool `json:"enabled,omitempty"`
+	// WeekRelaxMax is the weekly cap this member reaches at its reset
+	// (expiring strategy); its weekly cap or lower = never relaxed.
+	WeekRelaxMax *float64 `json:"week_relax_max,omitempty"`
 }
 
 // Members are the pool's own then shared logins, in config order.

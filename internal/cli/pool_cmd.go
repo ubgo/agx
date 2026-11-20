@@ -200,7 +200,13 @@ const (
 // blank line, then one line per member.
 func writePoolReport(w io.Writer, rep app.PoolReport, st render.Style) error {
 	ew := textout.New(w)
-	ew.Line(st.Paint(render.ToneDim, fmt.Sprintf("Pool: %s (%s)", rep.Pool, rep.Agent)))
+	head := fmt.Sprintf("Pool: %s (%s)", rep.Pool, rep.Agent)
+	if rep.Strategy == pool.StrategyExpiring {
+		// Today's report stays line for line; the expiring strategy says
+		// it is in use, since its order and caps differ.
+		head = fmt.Sprintf("Pool: %s (%s, strategy %s)", rep.Pool, rep.Agent, rep.Strategy)
+	}
+	ew.Line(st.Paint(render.ToneDim, head))
 	if s := rep.Selected; s != nil {
 		label := string(s.Group)
 		if s.Forced {
@@ -272,6 +278,12 @@ func candidateLine(c app.PoolCandidate, v usageView, st render.Style) string {
 	figures += ", " + pickReset(c, v)
 	if c.RoomPercent != nil {
 		figures += ", room " + strconv.FormatFloat(*c.RoomPercent, 'f', -1, 64) + "%"
+	}
+	if c.UrgencyPercentPerHour != nil {
+		figures += ", needs " + strconv.FormatFloat(*c.UrgencyPercentPerHour, 'f', -1, 64) + "%/h"
+	}
+	if c.Sessions > 0 {
+		figures += fmt.Sprintf(", %d other sessions", c.Sessions)
 	}
 	notes := ""
 	if len(c.Notes) > 0 {

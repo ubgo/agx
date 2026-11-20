@@ -87,6 +87,16 @@ var poolValueKeys = []struct {
 	{[]string{"accounts", "*", "short"}, SchemaNumber, true},
 	{[]string{"accounts", "*", "week"}, SchemaNumber, true},
 	{[]string{"accounts", "*", "enabled"}, SchemaBoolean, false},
+	{[]string{"accounts", "*", "week_relax_max"}, SchemaNumber, true},
+	{[]string{"own_caps", "short"}, SchemaNumber, true},
+	{[]string{"own_caps", "week"}, SchemaNumber, true},
+	{[]string{"own_caps", "week_relax_max"}, SchemaNumber, true},
+	{[]string{"shared_caps", "short"}, SchemaNumber, true},
+	{[]string{"shared_caps", "week"}, SchemaNumber, true},
+	{[]string{"shared_caps", "week_relax_max"}, SchemaNumber, true},
+	{[]string{"defaults", "week_relax_max"}, SchemaNumber, true},
+	{[]string{"max_sessions"}, SchemaInteger, false},
+	{[]string{"sticky"}, SchemaBoolean, false},
 }
 
 // tightenPoolSchema states in the schema what the pool rules need, so the
@@ -102,6 +112,10 @@ func tightenPoolSchema(root *schema.Schema) error {
 			return err
 		}
 		n.Types = []string{k.typ}
+		if k.typ == SchemaInteger {
+			// A count (max_sessions): never negative.
+			n.Minimum = jsonNumber(0)
+		}
 		if k.percent {
 			n.Minimum = jsonNumber(pool.MinPercent)
 			n.Maximum = jsonNumber(pool.MaxPercent)

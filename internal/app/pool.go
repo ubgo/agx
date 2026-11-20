@@ -18,6 +18,7 @@ import (
 	"github.com/ubgo/agx/internal/apperr"
 	"github.com/ubgo/agx/internal/report"
 	"github.com/ubgo/agx/internal/run"
+	"github.com/ubgo/agx/live"
 	"github.com/ubgo/agx/login"
 	"github.com/ubgo/agx/pool"
 )
@@ -91,6 +92,10 @@ type PoolPickOptions struct {
 	Only PoolOnly
 	// Now replaces the clock (--now, for reading old caches); zero = now.
 	Now time.Time
+	// RunID is the live run asking for a key (agx credential); "" for a
+	// pick outside a run. The expiring strategy keeps that run on its
+	// member (sticky) and counts the other runs on each member.
+	RunID string
 }
 
 // PoolSelection is the member to use and why.
@@ -104,6 +109,10 @@ type PoolSelection struct {
 	Only bool `json:"only,omitempty"`
 	// PickedBy is rules, force, picker or only.
 	PickedBy string `json:"picked_by"`
+	// Sticky is true when the run stayed on its member (expiring).
+	Sticky bool `json:"sticky,omitempty"`
+	// Sessions is how many other live runs use the member (expiring).
+	Sessions int `json:"sessions"`
 	// Reason is one sentence: what chose it.
 	Reason string `json:"reason"`
 	// Warnings are the rules a forced or picker-chosen member breaks.
@@ -132,8 +141,16 @@ type PoolCandidate struct {
 	HoursToReset *float64  `json:"hours_to_reset"`
 	RoomPercent  *float64  `json:"room_percent"`
 	Caps         pool.Caps `json:"caps"`
-	Reasons      []string  `json:"reasons"`
-	Notes        []string  `json:"notes"`
+	// WeekCapConfigured is the configured weekly cap when caps.week is
+	// relaxed above it near the reset (expiring); nil otherwise.
+	WeekCapConfigured *float64 `json:"week_cap_configured,omitempty"`
+	// UrgencyPercentPerHour is room ÷ hours to the reset, the pick order
+	// of the expiring strategy; nil under deadline or when unknown.
+	UrgencyPercentPerHour *float64 `json:"urgency_percent_per_hour,omitempty"`
+	// Sessions is how many other live runs use the member (expiring).
+	Sessions int      `json:"sessions"`
+	Reasons  []string `json:"reasons"`
+	Notes    []string `json:"notes"`
 	// Source is "live agx result", "cache" or "no reading"; AgeSeconds
 	// is a cached reading's age.
 	Source     string   `json:"source"`
@@ -144,6 +161,8 @@ type PoolCandidate struct {
 type PoolReport struct {
 	Pool  string `json:"pool"`
 	Agent string `json:"agent"`
+	// Strategy is the rules that picked: deadline or expiring.
+	Strategy pool.Strategy `json:"strategy"`
 	// Selected is nil when no member is usable.
 	Selected *PoolSelection `json:"selected"`
 	// Source sums up where the usage came from: "live agx result",
@@ -282,6 +301,7 @@ func (a *App) poolPick(ctx context.Context, name string, lg config.Login, o Pool
 	}
 	rep.Agent, rep.Now, rep.ShortUnavailableAt = string(ag.ID()), now, rules.ShortUnavailableAt
 	rep.BorrowWindowHours = rules.BorrowWindow.Hours()
+	rep.Strategy = rules.Strategy
 
 	if err := checkPoolOnly(name, lg.Pool, rules, o.Only, o.Force, false); err != nil {
 		// A refused flag is not a pick: no report to print.
@@ -322,7 +342,11 @@ func (a *App) poolPick(ctx context.Context, name string, lg config.Login, o Pool
 		readings[m] = readingOf(e)
 		readings[m] = withPerUse(readings[m], cfg.Config.Logins[m], e)
 	}
-	res, err := pool.Select(rules, readings, pool.Options{Now: now, Force: o.Force, Only: o.Only.Member, OnlyCaps: o.Only.Caps})
+	sel := pool.Options{Now: now, Force: o.Force, Only: o.Only.Member, OnlyCaps: o.Only.Caps}
+	if rules.Strategy == pool.StrategyExpiring {
+		sel.Load, sel.Current, sel.CurrentAhead = a.poolLoad(name, lg, o.RunID, now, rep.warn)
+	}
+	res, err := pool.Select(rules, readings, sel)
 	if errors.Is(err, pool.ErrForcedMissing) {
 		return rep, apperr.Failure(apperr.CodeNotFound, fmt.Sprintf("forced login %s has no usage reading (run without --cached)", force))
 	}
@@ -374,6 +398,7 @@ func (a *App) checkForce(c config.Config, force string, agent agentio.ID) error 
 // selectionOf copies the rules' selection.
 func selectionOf(s *pool.Selection, by string) *PoolSelection {
 	return &PoolSelection{Name: s.Name, Group: s.Group, Forced: s.Forced, Only: s.Only, PickedBy: by, Reason: s.Reason,
+		Sticky: s.Sticky, Sessions: s.Load,
 		Warnings: append([]string{}, s.Warnings...), WeeklyResetsAt: s.WeeklyResetsAt, RoomPercent: s.Room}
 }
 
@@ -383,6 +408,7 @@ func candidateOf(c pool.Candidate, account string, src memberSource) PoolCandida
 		Name: c.Name, Group: c.Group, State: c.State, Eligible: c.Eligible, Enabled: c.Enabled, Status: c.Status,
 		Account: account, Short: c.Short, Week: c.Week, WeeklyResetsAt: c.WeeklyResetsAt, RoomPercent: c.Room,
 		Caps: c.Caps, Reasons: c.Reasons, Notes: c.Notes, Source: sourceNone,
+		WeekCapConfigured: c.WeekCapConfigured, UrgencyPercentPerHour: c.Urgency, Sessions: c.Load,
 	}
 	if c.Rank > 0 {
 		r := c.Rank
@@ -752,9 +778,9 @@ func quote(s string) string {
 // not know that yet (an entry from before detection), the kind is
 // recorded there and the pool picks once more, now skipping it; a forced,
 // pinned or picker-chosen member is refused instead.
-func (a *App) poolMemberToken(ctx context.Context, name string, lg config.Login, mode, force string, only PoolOnly) (string, agentio.Token, PoolReport, error) {
+func (a *App) poolMemberToken(ctx context.Context, name string, lg config.Login, mode, force string, only PoolOnly, runID string) (string, agentio.Token, PoolReport, error) {
 	for attempt := 0; ; attempt++ {
-		rep, err := a.poolPick(ctx, name, lg, PoolPickOptions{Force: force, Only: only})
+		rep, err := a.poolPick(ctx, name, lg, PoolPickOptions{Force: force, Only: only, RunID: runID})
 		if err != nil {
 			a.logPoolInto(&rep, lg, mode, err)
 			return "", agentio.Token{}, rep, err
@@ -808,4 +834,53 @@ func (a *App) logPoolInto(rep *PoolReport, lg config.Login, mode string, err err
 	for _, w := range a.poolLog(lg, mode, *rep, err) {
 		rep.warn(w.Message)
 	}
+}
+
+// activeRunTTLs is how many key_ttls a run may go without asking for a
+// key and still count as a session on its member: a busy run asks every
+// key_ttl, an idle or ended one stops asking.
+const activeRunTTLs = 2
+
+// poolLoad reads the live runs of pool name (expiring strategy): how many
+// runs other than runID use each member now (they asked within
+// activeRunTTLs key_ttls), runID's own member, and how many of the runs
+// on that member started before runID (run ids begin with their start
+// time, so they compare in start order). A run folder that cannot be
+// read is skipped; a runs folder that cannot be read is one warning and
+// no load.
+func (a *App) poolLoad(name string, lg config.Login, runID string, now time.Time, warn func(string)) (map[string]int, string, int) {
+	folders, err := run.List(a.paths.Runs)
+	if err != nil {
+		warn("live runs: " + err.Error() + "; sessions per member not counted")
+		return nil, "", 0
+	}
+	ttl, _ := lg.Pool.TTL() // Rules checked it
+	members := lg.Pool.Members()
+	type seat struct {
+		id, member string
+	}
+	var seats []seat
+	current := ""
+	for _, f := range folders {
+		st, err := live.Read(f.Dir)
+		if err != nil || st.Want() != name || !slices.Contains(members, st.InUse) {
+			continue
+		}
+		if f.ID == runID {
+			current = st.InUse
+			continue
+		}
+		if now.Sub(st.InUseAt) <= activeRunTTLs*ttl {
+			seats = append(seats, seat{f.ID, st.InUse})
+		}
+	}
+	load := map[string]int{}
+	ahead := 0
+	for _, s := range seats {
+		load[s.member]++
+		if s.member == current && s.id < runID {
+			ahead++
+		}
+	}
+	return load, current, ahead
 }

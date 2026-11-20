@@ -412,7 +412,7 @@ func TestDryRunIsForPools(t *testing.T) {
 		t.Errorf("pool flag on a token login: %v", err)
 	}
 	_, err = a.LoginEdit(ctx, LoginEditOptions{ID: "auto"})
-	if e := apperr.As(err); e == nil || !strings.HasPrefix(e.Message, "nothing to change: give --pool-own, --pool-shared, --pool-force, --pool-cap-short, --pool-cap-week, --pool-disable, --pool-enable, --pool-default-short, --pool-default-week, --pool-short-cutoff, --pool-borrow-window, --pool-usage-max-age, --pool-key-ttl, --pool-picker or --account") {
+	if e := apperr.As(err); e == nil || !strings.HasPrefix(e.Message, "nothing to change: give --pool-own, --pool-shared, --pool-force, --pool-cap-short, --pool-cap-week, --pool-disable, --pool-enable, --pool-default-short, --pool-default-week, --pool-short-cutoff, --pool-borrow-window, --pool-usage-max-age, --pool-key-ttl, --pool-picker, --pool-strategy, --pool-week-relax-window, --pool-max-sessions, --pool-sticky, --pool-default-week-relax, --pool-cap-week-relax, --pool-group-cap-short, --pool-group-cap-week, --pool-group-cap-week-relax or --account") {
 		t.Errorf("nothing: %v", err)
 	}
 	if readConfig(t, home) != flagConfig {

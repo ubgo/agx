@@ -1,0 +1,422 @@
+package poolsim
+
+import (
+	"math"
+	"slices"
+	"time"
+
+	"github.com/ubgo/agx/pool"
+)
+
+// Order is how a policy ranks the usable accounts inside one tier.
+type Order int
+
+// Orders.
+const (
+	// OrderReset is soonest weekly reset first (today's rule).
+	OrderReset Order = iota
+	// OrderUrgency is use-it-or-lose-it: the room under the weekly cap
+	// divided by the hours to the reset, highest first.
+	OrderUrgency
+)
+
+// Policy is the family of rules the simulator explores. Its zero knobs
+// are today's rules (strategy A); every other strategy turns some on.
+type Policy struct {
+	// Own and Shared are the normal caps per group.
+	Own, Shared pool.Caps
+	// Cutoff is the 5-hour safety cutoff for every account.
+	Cutoff float64
+	// Borrow is the borrow window: a shared account goes before a usable
+	// own account only when its week resets within it.
+	Borrow time.Duration
+	// Flat ranks own and shared accounts together (no borrow tiers).
+	Flat bool
+	// Order ranks accounts inside a tier.
+	Order Order
+	// Urgent (B) puts shared accounts whose week resets within Urgent.
+	// Window in a first tier with looser caps.
+	Urgent UrgentTier
+	// Relax (C) raises a shared account's weekly cap smoothly as its
+	// reset nears.
+	Relax WeekRelax
+	// Idle (D) loosens a shared account's 5-hour cap while its teammate
+	// looks inactive.
+	Idle IdleShort
+	// Pace (F) holds an own account back while it is ahead of an even
+	// spend over its week.
+	Pace OwnPace
+	// Spread (G) is the most busy sessions one account takes before the
+	// next is used; 0 = every session on the one pick.
+	Spread int
+	// SpreadInTier keeps the spread inside the first tier: when its
+	// accounts are full the least loaded of them takes the session,
+	// rather than an account of a later tier.
+	SpreadInTier bool
+	// Stick (H) keeps a session on its account while it is usable, not
+	// near a cap and still in the best tier.
+	Stick Hysteresis
+}
+
+// UrgentTier is strategy B's knobs; a zero Window is off.
+type UrgentTier struct {
+	Window      time.Duration
+	Short, Week float64
+}
+
+// WeekRelax is strategy C's knobs; a zero Start is off. The weekly cap
+// rises from the normal cap at Start before the reset to Max at the
+// reset, linearly or in Steps.
+type WeekRelax struct {
+	Start time.Duration
+	Max   float64
+	// Steps > 0 rises in that many equal steps instead of linearly.
+	Steps int
+	// Short is a 5-hour cap the shared account gets at the reset,
+	// rising the same way from the normal one; 0 keeps the normal cap.
+	Short float64
+}
+
+// IdleShort is strategy D's knobs; a zero Short is off.
+type IdleShort struct {
+	// Short is the 5-hour cap of a shared account whose teammate looks
+	// inactive.
+	Short float64
+	// ActiveFor is how long a rise of the 5-hour window we did not cause
+	// keeps the teammate counted as active.
+	ActiveFor time.Duration
+}
+
+// OwnPace is strategy F's knobs.
+type OwnPace struct {
+	On bool
+	// Slack is how many percent ahead of the even line an own account
+	// may be before it is held back.
+	Slack float64
+}
+
+// Hysteresis is strategy H's knobs.
+type Hysteresis struct {
+	On bool
+	// Margin is how close to a cap (percent) an account may get before a
+	// session leaves it for a better one.
+	Margin float64
+}
+
+// Tiers, in pick order.
+// An own account ahead of its pace (F) goes after every shared account:
+// pacing means own room is the last resort while it is ahead.
+const (
+	tierUrgent = iota
+	tierMain
+	tierShared
+	tierOwnAhead
+)
+
+// policyPicker is a Policy with its memory of one run.
+type policyPicker struct {
+	p Policy
+	// lastRise is when a shared account's 5-hour use last rose while
+	// none of our sessions were on it (strategy D).
+	lastRise map[string]time.Time
+	prev     map[string]float64
+	started  time.Time
+}
+
+// NewPolicy makes the policy's picker.
+func NewPolicy(p Policy) Picker {
+	return &policyPicker{p: p, lastRise: map[string]time.Time{}, prev: map[string]float64{}}
+}
+
+// option is one usable account in a step.
+type option struct {
+	name  string
+	group pool.Group
+	order int
+	tier  int
+	key   float64
+	caps  pool.Caps
+	short float64
+	week  float64
+}
+
+// Assign implements Picker. Each busy session asks in turn (session
+// order, as each run asks agx for a key on its own): it sees where every
+// other session is now, the ones that asked before it in this step at
+// their new account and the rest at their last one.
+func (pp *policyPicker) Assign(v View) []string {
+	if pp.started.IsZero() {
+		pp.started = v.Now
+	}
+	pp.observe(v)
+	opts := pp.options(v)
+	out := make([]string, len(v.Sessions))
+	if len(opts) == 0 {
+		return out
+	}
+	first := 1
+	for first < len(opts) && opts[first].tier == opts[0].tier {
+		first++
+	}
+	fill := opts
+	if pp.p.SpreadInTier {
+		fill = opts[:first]
+	}
+	pos := positions(v.Sessions)
+	limit := pp.p.Spread
+	for i, s := range v.Sessions {
+		if !s.Busy {
+			continue
+		}
+		load, ahead := others(pos, i, s.Current)
+		pick := ""
+		if j := slices.IndexFunc(opts, func(o option) bool { return o.name == s.Current }); pp.p.Stick.On && j >= 0 &&
+			pp.keep(opts[j], opts[0]) && (limit <= 0 || ahead < limit) {
+			pick = s.Current
+		}
+		if pick == "" {
+			j := slices.IndexFunc(fill, func(o option) bool { return limit <= 0 || load[o.name] < limit })
+			if j < 0 {
+				// Every account is full: the least loaded of the first
+				// tier takes the session.
+				j = 0
+				for k := range opts[:first] {
+					if load[opts[k].name] < load[opts[j].name] {
+						j = k
+					}
+				}
+				pick = opts[j].name
+			} else {
+				pick = fill[j].name
+			}
+		}
+		out[i] = pick
+		pos[i] = pick
+	}
+	return out
+}
+
+// positions are the busy sessions' accounts as the step starts.
+func positions(sessions []SessionView) map[int]string {
+	pos := map[int]string{}
+	for i, s := range sessions {
+		if s.Busy && s.Current != "" {
+			pos[i] = s.Current
+		}
+	}
+	return pos
+}
+
+// others is how many other busy sessions are on each account, and how
+// many of those on cur come before session i (they started earlier, so
+// they keep it first).
+func others(pos map[int]string, i int, cur string) (map[string]int, int) {
+	load := map[string]int{}
+	ahead := 0
+	for j, a := range pos {
+		if j == i {
+			continue
+		}
+		load[a]++
+		if a == cur && j < i {
+			ahead++
+		}
+	}
+	return load, ahead
+}
+
+// keep reports whether a session may stay on cur although best ranks
+// first: cur is in the best tier and not within the margin of a cap.
+func (pp *policyPicker) keep(cur, best option) bool {
+	if cur.tier > best.tier {
+		return false
+	}
+	m := pp.p.Stick.Margin
+	return cur.short < math.Min(cur.caps.Short, pp.p.Cutoff)-m && cur.week < cur.caps.Week-m
+}
+
+// observe updates strategy D's memory: a 5-hour rise on an account none
+// of our sessions used in the last step is the teammate's.
+func (pp *policyPicker) observe(v View) {
+	for _, mb := range v.Members {
+		rd, ok := v.Readings[mb.Name]
+		if !ok {
+			continue
+		}
+		cur := 0.0
+		if rd.Short != nil {
+			cur = rd.Short.Percent
+		}
+		if prev, seen := pp.prev[mb.Name]; seen && cur > prev && v.Load[mb.Name] == 0 {
+			pp.lastRise[mb.Name] = v.Now
+		}
+		pp.prev[mb.Name] = cur
+	}
+}
+
+// mateActive is strategy D's guess: a recent rise we did not cause, or
+// too little history to know (counted as active, the safe side).
+func (pp *policyPicker) mateActive(name string, now time.Time) bool {
+	if now.Sub(pp.started) < pp.p.Idle.ActiveFor {
+		return true
+	}
+	at, ok := pp.lastRise[name]
+	return ok && now.Sub(at) <= pp.p.Idle.ActiveFor
+}
+
+// options are the usable accounts in pick order.
+func (pp *policyPicker) options(v View) []option {
+	p := pp.p
+	ownUsable := false
+	var opts []option
+	for i, mb := range v.Members {
+		rd, ok := v.Readings[mb.Name]
+		if !ok || rd.Status != pool.StatusOK {
+			continue
+		}
+		until, known := untilReset(rd, v.Now)
+		caps := pp.caps(mb, until, known, v.Now)
+		short, week := percent(rd.Short), percent(rd.Week)
+		if short >= p.Cutoff || short >= caps.Short || week >= caps.Week {
+			continue
+		}
+		o := option{name: mb.Name, group: mb.Group, order: i, caps: caps, short: short, week: week}
+		inWindow := known && until >= 0 && until <= p.Borrow
+		switch {
+		case mb.Group == pool.GroupShared && p.Urgent.Window > 0 && known && until >= 0 && until <= p.Urgent.Window:
+			o.tier = tierUrgent
+		case p.Flat:
+			o.tier = tierMain
+		case mb.Group == pool.GroupOwn && p.Pace.On && ahead(week, caps.Week, until, known, p.Pace.Slack):
+			o.tier = tierOwnAhead
+		case mb.Group == pool.GroupOwn || inWindow:
+			o.tier = tierMain
+		default:
+			o.tier = tierShared
+		}
+		if mb.Group == pool.GroupOwn && o.tier == tierMain {
+			ownUsable = true
+		}
+		o.key = sortKey(p.Order, caps.Week-week, until, known)
+		opts = append(opts, o)
+	}
+	if !ownUsable && !p.Flat {
+		// Today's rule: with no own account usable, every shared account
+		// competes on its reset alone.
+		for i := range opts {
+			if opts[i].tier == tierShared {
+				opts[i].tier = tierMain
+			}
+		}
+	}
+	slices.SortStableFunc(opts, func(a, b option) int {
+		switch {
+		case a.tier != b.tier:
+			return a.tier - b.tier
+		case a.key < b.key:
+			return -1
+		case a.key > b.key:
+			return 1
+		}
+		return a.order - b.order
+	})
+	return opts
+}
+
+// caps are an account's caps now under the policy.
+func (pp *policyPicker) caps(mb Member, until time.Duration, known bool, now time.Time) pool.Caps {
+	p := pp.p
+	if mb.Group == pool.GroupOwn {
+		return p.Own
+	}
+	c := p.Shared
+	if p.Relax.Start > 0 && known && until >= 0 && until < p.Relax.Start {
+		f := 1 - until.Hours()/p.Relax.Start.Hours()
+		if p.Relax.Steps > 0 {
+			f = math.Floor(f*float64(p.Relax.Steps)) / float64(p.Relax.Steps)
+		}
+		c.Week = math.Max(c.Week, p.Shared.Week+(p.Relax.Max-p.Shared.Week)*f)
+		if p.Relax.Short > 0 {
+			c.Short = math.Max(c.Short, p.Shared.Short+(p.Relax.Short-p.Shared.Short)*f)
+		}
+	}
+	if p.Urgent.Window > 0 && known && until >= 0 && until <= p.Urgent.Window {
+		c.Short = math.Max(c.Short, p.Urgent.Short)
+		c.Week = math.Max(c.Week, p.Urgent.Week)
+	}
+	if p.Idle.Short > 0 && !pp.mateActive(mb.Name, now) {
+		c.Short = math.Max(c.Short, p.Idle.Short)
+	}
+	return c
+}
+
+// ahead reports an own account spending faster than evenly over its
+// week: its use is more than slack above cap × the part of the week
+// gone.
+func ahead(week, capWeek float64, until time.Duration, known bool, slack float64) bool {
+	if !known || until < 0 {
+		return false
+	}
+	gone := 1 - math.Min(1, until.Hours()/WeekPeriod.Hours())
+	return week > capWeek*gone+slack
+}
+
+// sortKey is the in-tier rank (lower first); an unknown or passed reset
+// sorts last.
+func sortKey(o Order, room float64, until time.Duration, known bool) float64 {
+	if !known || until < 0 {
+		return math.MaxFloat64
+	}
+	if o == OrderUrgency {
+		return -room / math.Max(until.Hours(), minUrgencyHours)
+	}
+	return until.Hours()
+}
+
+// minUrgencyHours keeps a reset minutes away from dividing by zero.
+const minUrgencyHours = 0.25
+
+// untilReset is the time to the weekly reset, if the reading has one.
+func untilReset(rd pool.Reading, now time.Time) (time.Duration, bool) {
+	if rd.Week == nil || rd.Week.ResetsAt == nil || rd.Week.ResetsAt.IsZero() {
+		return 0, false
+	}
+	return rd.Week.ResetsAt.Sub(now), true
+}
+
+// percent is a window's use, 0 when it is not reported.
+func percent(w *pool.Window) float64 {
+	if w == nil {
+		return 0
+	}
+	return w.Percent
+}
+
+// poolPicker runs the real rules (package pool) every step. Under the
+// deadline strategy every busy session gets the one selection, as every
+// running session does today; under the expiring strategy each busy
+// session asks in turn with its own load and current member, as each
+// run's key request does.
+type poolPicker struct{ cfg pool.Config }
+
+// NewPoolRules is the real pool.Select as a picker.
+func NewPoolRules(cfg pool.Config) Picker { return poolPicker{cfg: cfg} }
+
+// Assign implements Picker.
+func (pp poolPicker) Assign(v View) []string {
+	out := make([]string, len(v.Sessions))
+	pos := positions(v.Sessions)
+	for i, s := range v.Sessions {
+		if !s.Busy {
+			continue
+		}
+		load, ahead := others(pos, i, s.Current)
+		res, err := pool.Select(pp.cfg, v.Readings, pool.Options{Now: v.Now, Load: load, Current: s.Current, CurrentAhead: ahead})
+		if err != nil || res.Selected == nil {
+			continue
+		}
+		out[i] = res.Selected.Name
+		pos[i] = out[i]
+	}
+	return out
+}
