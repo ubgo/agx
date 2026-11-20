@@ -64,10 +64,10 @@ Prebuilt binaries (macOS and Linux on amd64 and arm64, Windows on amd64) are on 
 
 ```sh
 # macOS on Apple Silicon: swap darwin_arm64 for darwin_amd64, linux_amd64 or linux_arm64
-curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.15/agx_v0.4.15_darwin_arm64.tar.gz
-curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.15/checksums.txt
+curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.16/agx_v0.4.16_darwin_arm64.tar.gz
+curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.16/checksums.txt
 shasum -a 256 -c checksums.txt --ignore-missing
-tar -xzf agx_v0.4.15_darwin_arm64.tar.gz agx && sudo mv agx /usr/local/bin/
+tar -xzf agx_v0.4.16_darwin_arm64.tar.gz agx && sudo mv agx /usr/local/bin/
 agx version
 ```
 
@@ -325,7 +325,15 @@ For Claude Code, yes: start it with `--live-login`, then `agx live use --id <run
 
 ### Can agx move a running Claude session between accounts automatically?
 
-Yes, with a login pool: a login of kind `pool` lists your own Claude logins and your teammates' shared ones, and `agx run --login auto` starts Claude with agx as its key helper. Each time Claude asks for a key (every minute by default), agx reads the members' usage (one small probe each, cached and shared by every session) and hands out the token of the member whose weekly quota expires soonest, using your own accounts almost fully and teammates' only up to their caps. `agx pool pick --id auto` shows the pick and why. To keep one session on one account but within its caps, add `--pool-only NAME`: it gets no key while that account is over a cap, rather than switching. It is Claude Code only. See [Share a pool of Claude accounts](docs/guides/login-pool.md).
+Yes, with a login pool: a login of kind `pool` lists your own Claude logins and your teammates' shared ones, and `agx run --login auto` starts Claude with agx as its key helper. Each time Claude asks for a key (every minute by default), agx reads the members' usage (one small probe each, cached and shared by every session) and hands out the token of the member with the most room to lose before its weekly reset, using your own accounts almost fully and teammates' only up to their caps, and spreading several sessions over several accounts. `agx pool pick --id auto` shows the pick and why. To keep one session on one account but within its caps, add `--pool-only NAME`: it gets no key while that account is over a cap, rather than switching. It is Claude Code only. See [Share a pool of Claude accounts](docs/guides/login-pool.md).
+
+### How does a pool decide, and can I change it?
+
+Every rule is a config value with a default, printed with its source by `agx pool show --id POOL`: `order` (`urgency`: the most room to lose per hour first; or `deadline`), `week_relax_window` and `week_relax_max` (a member's weekly cap rises to 95 over the last 24 hours before its reset), `max_sessions` (4 sessions per member before the next), `sticky` and `sticky_leave_ratio`, the borrow window and the caps (own members 95/98, shared 50/70). There is no strategy switch: `agx pool preset --name classic --id POOL` writes the rules agx used before v0.4.16 as ordinary keys, and `--name recommended` writes the defaults. Heavy-use teams can lower teammates' weekly cap to 60 (`agx login edit --id POOL --pool-group-cap-week shared=60`). See [How the pool chooses](docs/guides/pool-rules.md).
+
+### Does a pool see per-model limits such as Fable's own week?
+
+Yes. Claude reports a model's own weekly window only to a probe that asks with that model, so a pool probes with the model the session uses: `agx run --model`, the profile's `model`, or the model Claude's own settings choose (what `/model` saves), else the pool's `probe_models`. Such a window is an extra weekly cap for that model's sessions only: an account whose Fable week is full is skipped for Fable and still used for Opus. `agx pool pick --id POOL --model fable` shows it (`fable week 80%`). See [per-model weekly windows](docs/guides/pool-rules.md#per-model-weekly-windows).
 
 ### Which pool command do I use?
 

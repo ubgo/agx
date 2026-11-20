@@ -154,8 +154,9 @@ func poolShowText(w io.Writer, info app.PoolInfo, st render.Style) error {
 	return keyValues(w, rows)
 }
 
-// numText writes a number the shortest exact way (95, 97.5).
-func numText(v float64) string { return strconv.FormatFloat(v, 'f', -1, 64) }
+// numText writes a number with at most one decimal, the shortest way
+// (95, 97.5, 91.9 for a relaxed 91.875).
+func numText(v float64) string { return strconv.FormatFloat(math.Round(v*10)/10, 'f', -1, 64) }
 
 // agx pool show's headings and member states.
 const (
@@ -196,7 +197,7 @@ func (c *cliCtx) poolPickCmd() *cobra.Command {
 			out.Text = func(w io.Writer) error { return writePoolReport(w, rep, st) }
 			return out, err
 		})
-	cmd.Long = "Read the usage of a pool login's members (a probe each, spending a few tokens, unless the login-usage cache is younger than the pool's usage_max_age), decide as a key request would (--pool-force, the pool's force, its picker command, else the built-in rules) and print the member it picks, why, where the usage came from, then every member: #N READY in pick order, WAIT (usable, held back by the borrow window) or skip with every reason. Reset times follow --time-format, --duration-format, --tz and --date-format, as in agx usage. Exit 0 when a member is picked; exit 1 (error code auto-pick) when none is usable. It never prints a token: agx login token --id POOL prints the picked member's. " + poolManageNote
+	cmd.Long = "Read the usage of a pool login's members (a probe each, spending a few tokens, unless the login-usage cache is younger than the pool's usage_max_age), decide as a key request would (--pool-force, the pool's force, its picker command, else the built-in rules) and print the member it picks, why, where the usage came from, the probe model (--model, else the pool's probe_models, else the default profile's model: a per-model weekly window such as Fable's shows only for its model) and every rule value with its source, then every member: #N READY in pick order, WAIT (usable, held back by the borrow window) or skip with every reason. Reset times follow --time-format, --duration-format, --tz and --date-format, as in agx usage. Exit 0 when a member is picked; exit 1 (error code auto-pick) when none is usable. It never prints a token: agx login token --id POOL prints the picked member's. " + poolManageNote
 	cmd.Example = "  agx pool pick --id auto\n  agx pool pick --id auto --cached\n  agx pool pick --id auto --pool-force alice\n  agx pool pick --id auto --time-format both\n  agx pool pick --id auto --json --field data.selected.name"
 	f := cmd.Flags()
 	f.StringVar(&o.ID, "id", "", "the pool login")
@@ -223,8 +224,8 @@ const (
 	pickUnknown   = "reset unknown"
 	pickPassed    = "reset passed"
 	pickRules     = "Rules: "
-	// pickDefaultModel names the agent's default probe model.
-	pickDefaultModel = "the agent's default"
+	// pickDefaultModel is the probe line without a model.
+	pickDefaultModel = "Probe model: the agent's default (all-models windows only)"
 )
 
 // writePoolReport prints the pick: "Use: NAME (GROUP)" (or FORCED with a
@@ -254,12 +255,11 @@ func writePoolReport(w io.Writer, rep app.PoolReport, st render.Style) error {
 		ew.Line(st.Paint(render.ToneWarn, "warning: "+warn))
 	}
 	ew.Line(st.Paint(render.ToneDim, "Source: "+rep.Source))
-	if rep.ProbeModelsSource != "" {
-		models := strings.Join(rep.ProbeModels, ", ")
-		if models == "" {
-			models = pickDefaultModel
-		}
-		ew.Line(st.Paint(render.ToneDim, "Probe model: "+models+" ("+rep.ProbeModelsSource+")"))
+	switch {
+	case len(rep.ProbeModels) > 0:
+		ew.Line(st.Paint(render.ToneDim, "Probe model: "+strings.Join(rep.ProbeModels, ", ")+" ("+rep.ProbeModelsSource+")"))
+	case rep.ProbeModelsSource != "":
+		ew.Line(st.Paint(render.ToneDim, pickDefaultModel))
 	}
 	if len(rep.Settings) > 0 {
 		parts := make([]string, 0, len(rep.Settings))

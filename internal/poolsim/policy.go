@@ -445,11 +445,11 @@ func percent(w *pool.Window) float64 {
 	return w.Percent
 }
 
-// poolPicker runs the real rules (package pool) every step. Under the
-// deadline strategy every busy session gets the one selection, as every
-// running session does today; under the expiring strategy each busy
-// session asks in turn with its own load and current member, as each
-// run's key request does.
+// poolPicker runs the real rules (package pool) every step: each busy
+// session asks in turn with its own load, current member and (on the
+// per-model window's model) its own readings, as each run's key request
+// does; with max_sessions 0 and sticky off (the classic preset) every
+// session gets the same pick.
 type poolPicker struct {
 	cfg pool.Config
 	// blind leaves out every per-model window.

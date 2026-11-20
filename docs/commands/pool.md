@@ -28,7 +28,7 @@ One pool's full settings, each value with where it comes from. Cost R.
 |---|---|
 | `--id` | the pool login |
 
-It prints the pool's agents and members, one line per member with its `enabled` state and its 5-hour (`short`) and weekly (`week`) caps, then one line per setting: `force`, `defaults.short`, `defaults.week`, `shared_borrow_window`, `short_unavailable_at_percent`, `usage_max_age`, `key_ttl`, `picker.command`, `picker.timeout` and `log`, each named by its key in the pool's config block. A value's source is `config` (the pool's block sets it), `defaults` (a member cap taken from the pool's `defaults` key, as the member has none of its own) or `default` (agx's value for an omitted key). Defaults read as a config file would write them (`48h`, `60s`), so a value can be copied into `agx config set`.
+It prints the pool's agents and members, one line per member with its `enabled` state, its 5-hour (`short`) and weekly (`week`) caps, its `week_relax_max` and its `capacity`, then one line per setting: `force`, the rule values (`order`, `week_relax_window`, `defaults.week_relax_max`, `max_sessions`, `sticky`, `sticky_leave_ratio`, `shared_borrow_window`, `short_unavailable_at_percent`), the group defaults (`own_caps.short`, `own_caps.week`, `defaults.short`, `defaults.week`), `usage_max_age`, `key_ttl`, `picker.command`, `picker.timeout` and `log`, each named by its key in the pool's config block. A value's source is `default` (agx's value for an omitted key), `pool` (a pool-wide key of the pool's block, `defaults.*` included), `group` (`own_caps` or `shared_caps`) or `member` (the member's `accounts` entry). Own members never take `defaults`: without `own_caps` they get 95/98. Defaults read as a config file would write them (`48h`, `60s`), so a value can be copied into `agx config set`.
 
 <!-- snippet: examples/acct-login-pool/session.txt#pool-show -->
 ```sh
@@ -39,30 +39,38 @@ own     alice, bob
 shared  carol, derek, erin
 
 Members (caps in percent):
-- alice [own] enabled (default), short 95 (config), week 98 (config)
-- bob [own] enabled (default), short 95 (config), week 98 (config)
-- carol [shared] enabled (default), short 50 (defaults), week 70 (defaults)
-- derek [shared] enabled (default), short 50 (defaults), week 70 (defaults)
-- erin [shared] enabled (default), short 50 (defaults), week 70 (defaults)
+- alice [own] enabled (default), short 95 (member), week 98 (member), week relax max 95 (default), capacity 1 (default)
+- bob [own] enabled (default), short 95 (member), week 98 (member), week relax max 95 (default), capacity 1 (default)
+- carol [shared] enabled (default), short 50 (pool), week 70 (pool), week relax max 95 (default), capacity 1 (default)
+- derek [shared] enabled (default), short 50 (pool), week 70 (pool), week relax max 95 (default), capacity 1 (default)
+- erin [shared] enabled (default), short 50 (pool), week 70 (pool), week relax max 95 (default), capacity 1 (default)
 
 Settings:
 force                         off (default)
-defaults.short                50 (config)
-defaults.week                 70 (config)
-shared_borrow_window          48h (config)
-short_unavailable_at_percent  99 (config)
-usage_max_age                 60s (config)
-key_ttl                       60s (config)
+order                         urgency (default)
+week_relax_window             24h (default)
+defaults.week_relax_max       95 (default)
+max_sessions                  4 (default)
+sticky                        true (default)
+sticky_leave_ratio            3 (default)
+shared_borrow_window          48h (pool)
+short_unavailable_at_percent  99 (pool)
+own_caps.short                95 (default)
+own_caps.week                 98 (default)
+defaults.short                50 (pool)
+defaults.week                 70 (pool)
+usage_max_age                 60s (pool)
+key_ttl                       60s (pool)
 picker.command                built-in rules (default)
 picker.timeout                10s (default)
 log                           none (default)
 ```
 
-`--json` carries `name`, `agents`, `own`, `shared`, `force`, `picker`, `members` (each `name`, `group`, `enabled`, `enabled_source`, `short`, `short_source`, `week`, `week_source`) and `settings` (each `key`, `value`, `source`).
+`--json` carries `name`, `agents`, `own`, `shared`, `force`, `picker`, `members` (each `name`, `group`, `enabled`, `enabled_source`, `short`, `short_source`, `week`, `week_source`, `week_relax_max`, `week_relax_max_source`, `capacity`, `capacity_source`) and `settings` (each `key`, `value`, `source`).
 
 ## agx pool pick
 
-Show which member a pool login picks now, and why, in the stand-alone selector's report line for line, under a first line naming the pool and its agent (`Pool: auto (claude)`): `Use: NAME (GROUP)` (or `(FORCED, ignoring rules)` with an indented `warning:` line per rule it ignores), the reason, any `warning:` lines (a probe that fell back to the cache, a picker that failed), `Source:` (`live agx result`, `cache (25s old)`, or both), a blank line, `Candidates (ready accounts in pick order):`, then one `- NAME [GROUP] …` line per member: `#N READY` in pick order, `WAIT` (usable, held back by the borrow window) or `skip:` with every reason, then the 5-hour and weekly use, the weekly reset (`reset passed` for stale data, `reset unknown` without one) and the room under the weekly cap. It decides as a key request would: `--pool-force`, else the pool's `force`, else its picker command, else the built-in rules; with `--pool-only NAME` the report holds that member alone with its caps enforced (`Use: NAME`, or the "No configured account is currently usable." line with its skip reasons), and neither the pool's `force` nor its picker applies. It prints no token. Cost Q and W: a member whose cached usage is older than the pool's `usage_max_age` is probed once (a few tokens of that plan) and the login-usage cache is rewritten; with `--cached` nothing is probed. Guide: [Share a pool of Claude accounts](../guides/login-pool.md).
+Show which member a pool login picks now, and why, in the stand-alone selector's report line for line, under a first line naming the pool, its agent and its order (`Pool: auto (claude, order urgency)`): `Use: NAME (GROUP)` (or `(FORCED, ignoring rules)` with an indented `warning:` line per rule it ignores), the reason, any `warning:` lines (a probe that fell back to the cache, a picker that failed), `Source:` (`live agx result`, `cache (25s old)`, or both), `Probe model:` (the model the members were probed with and why, see [per-model weekly windows](../guides/pool-rules.md#per-model-weekly-windows)), `Rules:` (every rule value in effect with its source), a blank line, `Candidates (ready accounts in pick order):`, then one `- NAME [GROUP] …` line per member: `#N READY` in pick order, `WAIT` (usable, held back by the borrow window) or `skip:` with every reason, then the 5-hour and weekly use, each per-model window of the probe model (`fable week 80%`), the weekly reset (`reset passed` for stale data, `reset unknown` without one), the room left (the least over the windows), the caps with their source (`caps 50/70 (group)`), the urgency (`needs 1.2%/h`) and the other sessions on the member. It decides as a key request would: `--pool-force`, else the pool's `force`, else its picker command, else the built-in rules; with `--pool-only NAME` the report holds that member alone with its caps enforced (`Use: NAME`, or the "No configured account is currently usable." line with its skip reasons), and neither the pool's `force` nor its picker applies. It prints no token. Cost Q and W: a member whose cached usage is older than the pool's `usage_max_age` is probed once (a few tokens of that plan) and the login-usage cache is rewritten; with `--cached` nothing is probed. Guide: [Share a pool of Claude accounts](../guides/login-pool.md).
 
 | Flag | Meaning |
 |---|---|
@@ -70,6 +78,7 @@ Show which member a pool login picks now, and why, in the stand-alone selector's
 | `--cached` | use the login-usage cache only, of any age; probe nothing |
 | `--max-age` | reuse cached usage younger than this (a Go duration such as `30s`; `0` probes every member; default the pool's `usage_max_age`) |
 | `--pool-force` | pick this member for this one run, over the pool's rules, its `force` and its picker |
+| `--model` | the model the session uses: the members are probed with it, so its per-model weekly window applies (default: the pool's `probe_models`, else the default profile's model) |
 | `--pool-only` | pick only this member, with its caps and the pool's other rules enforced; none when it is blocked. Not with `--pool-force` (exit 2) |
 | `--pool-only-short` | with `--pool-only`: a lower 5-hour cap for that member, for this pick (never above its own) |
 | `--pool-only-week` | with `--pool-only`: a lower weekly cap for that member, for this pick (never above its own) |
@@ -84,32 +93,38 @@ On a login that is not a pool it says `pool pick is for pool logins`, which agen
 <!-- snippet: examples/acct-login-pool/session.txt#only -->
 ```sh
 $ agx pool pick --id auto --pool-only derek
-Pool: auto (claude)
+Pool: auto (claude, order urgency)
 Use: derek (shared)
 the only member of this run (--pool-only); its caps and the pool's rules still apply
 Source: cache (20s old)
+Probe model: the agent's default (all-models windows only)
+Rules: order urgency (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (pool), short_unavailable_at_percent 99 (pool), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (pool), defaults.week 70 (pool)
 
 Candidates (ready accounts in pick order):
-- derek [shared] #1 READY (5h 0%, week 15%, resets in 4 d 0 hr, room 55%)
+- derek [shared] #1 READY (5h 0%, week 15%, resets in 4 d 0 hr, room 55%, caps 50/70 (pool), needs 0.57%/h)
 
 $ agx pool pick --id auto --pool-only erin
 agx: erin: 5h is 55% (cap 50%)
-Pool: auto (claude)
+Pool: auto (claude, order urgency)
 No configured account is currently usable.
 Source: cache (20s old)
+Probe model: the agent's default (all-models windows only)
+Rules: order urgency (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (pool), short_unavailable_at_percent 99 (pool), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (pool), defaults.week 70 (pool)
 
 Candidates (ready accounts in pick order):
-- erin [shared] skip: 5h is 55% (cap 50%) (5h 55%, week 43%, resets in 3 hr 0 min, room 27%)
+- erin [shared] skip: 5h is 55% (cap 50%) (5h 55%, week 43%, resets in 3 hr 0 min, room 48.9%, caps 50/91.9 (pool)) (weekly cap 70% rises to 95% over the last 24h before the reset: 91.9% now)
 [exit 1]
 
 $ agx pool pick --id auto --pool-only derek --pool-only-week 15
 agx: derek: week is 15% (cap 15%)
-Pool: auto (claude)
+Pool: auto (claude, order urgency)
 No configured account is currently usable.
 Source: cache (20s old)
+Probe model: the agent's default (all-models windows only)
+Rules: order urgency (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (pool), short_unavailable_at_percent 99 (pool), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (pool), defaults.week 70 (pool)
 
 Candidates (ready accounts in pick order):
-- derek [shared] skip: week is 15% (cap 15%) (5h 0%, week 15%, resets in 4 d 0 hr, room 0%)
+- derek [shared] skip: week is 15% (cap 15%) (5h 0%, week 15%, resets in 4 d 0 hr, room 0%, caps 50 (pool)/15 (--pool-only-week))
 [exit 1]
 
 $ agx run --login auto --pool-only derek --dry-run --quiet --json --field data.live.pool_only
@@ -121,17 +136,19 @@ Try it (from [`examples/acct-login-pool`](../../examples/acct-login-pool/README.
 <!-- snippet: examples/acct-login-pool/session.txt#pick -->
 ```sh
 $ agx pool pick --id auto
-Pool: auto (claude)
+Pool: auto (claude, order urgency)
 Use: carol (shared)
-shared account resets within 48h, before any usable own account; using its room before it is lost
+most room to lose: 44% left under its weekly cap with 38h to the reset (1.2%/h to use it all)
 Source: cache (20s old)
+Probe model: the agent's default (all-models windows only)
+Rules: order urgency (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (pool), short_unavailable_at_percent 99 (pool), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (pool), defaults.week 70 (pool)
 
 Candidates (ready accounts in pick order):
-- carol [shared] #1 READY (5h 0%, week 26%, resets in 1 d 14 hr, room 44%)
-- alice [own] #2 READY (5h 3%, week 29%, resets in 6 d 0 hr, room 69%)
-- derek [shared] WAIT (5h 0%, week 15%, resets in 4 d 0 hr, room 55%) (shared reset not within 48h while an own account is usable)
-- bob [own] skip: status is limit-reached; 5h is 100% (unavailable at 99%); 5h is 100% (cap 95%) (5h 100%, week 61%, resets in 3 d 0 hr, room 37%)
-- erin [shared] skip: 5h is 55% (cap 50%) (5h 55%, week 43%, resets in 3 hr 0 min, room 27%)
+- carol [shared] #1 READY (5h 0%, week 26%, resets in 1 d 14 hr, room 44%, caps 50/70 (pool), needs 1.16%/h)
+- alice [own] #2 READY (5h 3%, week 29%, resets in 6 d 0 hr, room 69%, caps 95/98 (member), needs 0.48%/h)
+- derek [shared] WAIT (5h 0%, week 15%, resets in 4 d 0 hr, room 55%, caps 50/70 (pool), needs 0.57%/h) (shared reset not within 48h while an own account is usable)
+- bob [own] skip: status is limit-reached; 5h is 100% (unavailable at 99%); 5h is 100% (cap 95%) (5h 100%, week 61%, resets in 3 d 0 hr, room 37%, caps 95/98 (member))
+- erin [shared] skip: 5h is 55% (cap 50%) (5h 55%, week 43%, resets in 3 hr 0 min, room 48.9%, caps 50/91.9 (pool)) (weekly cap 70% rises to 95% over the last 24h before the reset: 91.9% now)
 ```
 
 With `--time-format both`, a custom `--date-format` and `--tz`:
@@ -139,22 +156,60 @@ With `--time-format both`, a custom `--date-format` and `--tz`:
 <!-- snippet: examples/acct-login-pool/session.txt#times -->
 ```sh
 $ agx pool pick --id auto --time-format both --date-format "ddd HH:mm" --tz UTC
-Pool: auto (claude)
+Pool: auto (claude, order urgency)
 Use: carol (shared)
-shared account resets within 48h, before any usable own account; using its room before it is lost
+most room to lose: 44% left under its weekly cap with 38h to the reset (1.2%/h to use it all)
 Source: cache (20s old)
+Probe model: the agent's default (all-models windows only)
+Rules: order urgency (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (pool), short_unavailable_at_percent 99 (pool), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (pool), defaults.week 70 (pool)
 
 Candidates (ready accounts in pick order):
-- carol [shared] #1 READY (5h 0%, week 26%, resets in 1 d 14 hr (Sat 00:00), room 44%)
-- alice [own] #2 READY (5h 3%, week 29%, resets in 6 d 0 hr (Wed 10:00), room 69%)
-- derek [shared] WAIT (5h 0%, week 15%, resets in 4 d 0 hr (Mon 10:00), room 55%) (shared reset not within 48h while an own account is usable)
-- bob [own] skip: status is limit-reached; 5h is 100% (unavailable at 99%); 5h is 100% (cap 95%) (5h 100%, week 61%, resets in 3 d 0 hr (Sun 10:00), room 37%)
-- erin [shared] skip: 5h is 55% (cap 50%) (5h 55%, week 43%, resets in 3 hr 0 min (13:00), room 27%)
+- carol [shared] #1 READY (5h 0%, week 26%, resets in 1 d 14 hr (Sat 00:00), room 44%, caps 50/70 (pool), needs 1.16%/h)
+- alice [own] #2 READY (5h 3%, week 29%, resets in 6 d 0 hr (Wed 10:00), room 69%, caps 95/98 (member), needs 0.48%/h)
+- derek [shared] WAIT (5h 0%, week 15%, resets in 4 d 0 hr (Mon 10:00), room 55%, caps 50/70 (pool), needs 0.57%/h) (shared reset not within 48h while an own account is usable)
+- bob [own] skip: status is limit-reached; 5h is 100% (unavailable at 99%); 5h is 100% (cap 95%) (5h 100%, week 61%, resets in 3 d 0 hr (Sun 10:00), room 37%, caps 95/98 (member))
+- erin [shared] skip: 5h is 55% (cap 50%) (5h 55%, week 43%, resets in 3 hr 0 min (13:00), room 48.9%, caps 50/91.9 (pool)) (weekly cap 70% rises to 95% over the last 24h before the reset: 91.9% now)
 
 $ agx pool pick --id auto --duration-format minutes --json --field data.selected
-{"name":"carol","group":"shared","forced":false,"picked_by":"rules","sessions":0,"reason":"shared account resets within 48h, before any usable own account; using its room before it is lost","warnings":[],"weekly_resets_at":"2026-11-21T00:00:00Z","room_percent":44}
+{"name":"carol","group":"shared","forced":false,"picked_by":"rules","sessions":0,"reason":"most room to lose: 44% left under its weekly cap with 38h to the reset (1.2%/h to use it all)","warnings":[],"weekly_resets_at":"2026-11-21T00:00:00Z","room_percent":44}
 ```
 
-`--json` carries the selector's `--json` fields in agx's envelope (snake_case): `selected` (`name`, `group`, `forced`, `forced_by`, `picked_by` `rules`/`force`/`picker`/`only`, `only` (true for a `--pool-only` pick), `reason`, `warnings`, `weekly_resets_at`, `room_percent`), `source`, `now`, `warnings`, `short_unavailable_at_percent`, `shared_borrow_window_hours`, and `candidates` (each with `state` `ready`, `waiting` or `blocked`, `rank` (null unless ready), `eligible`, `enabled`, `status`, `account`, `short`, `week`, `weekly_resets_at`, `hours_to_reset`, `room_percent`, `caps`, `reasons`, `notes`, `source`, `age_seconds`); `--field` reads any of them.
+`--json` carries the selector's `--json` fields in agx's envelope (snake_case): `selected` (`name`, `group`, `forced`, `forced_by`, `picked_by` `rules`/`force`/`picker`/`only`, `only` (true for a `--pool-only` pick), `sticky`, `sessions`, `reason`, `warnings`, `weekly_resets_at`, `room_percent`), `order`, `settings` (each `key`, `value`, `source`), `probe_models` and `probe_models_source`, `source`, `now`, `warnings`, `short_unavailable_at_percent`, `shared_borrow_window_hours`, and `candidates` (each with `state` `ready`, `waiting` or `blocked`, `rank` (null unless ready), `eligible`, `enabled`, `status`, `account`, `short`, `week`, `weekly_resets_at`, `hours_to_reset`, `room_percent`, `caps`, `caps_source`, `week_cap_configured`, `urgency_percent_per_hour`, `scoped` (each per-model window: `name`, `percent`, `cap`, `room`, `resets_at`, `rejected`, `stale`), `sessions`, `reasons`, `notes`, `source`, `age_seconds`); `--field` reads any of them.
 
 Pitfalls: `--pool-force` and the pool's `force` ignore every rule, including a member at its limit; each rule the forced member breaks is a `warning:` line. `--pool-only` is the opposite: it never goes over a cap, so a pinned member at its limit gives no pick at all. Do not loop it without `--cached`: every run older than `usage_max_age` probes.
+
+## agx pool preset
+
+Write a named set of rule values into a pool login's block in config.jsonc. Cost W (config only).
+
+| Flag | Meaning |
+|---|---|
+| `--name` | the preset: `recommended` or `classic` |
+| `--id` | the pool login |
+| `--dry-run` | show each change; write nothing |
+
+A preset writes `order`, `week_relax_window`, `defaults.week_relax_max`, `max_sessions`, `sticky`, `sticky_leave_ratio` and `shared_borrow_window` through the same comment-keeping edit as `agx login edit --pool-…`. It is a shortcut, not a mode: afterwards each is an ordinary key that `agx pool show` lists with source `pool`, and you can change any one by hand or with `agx config set`. Caps are not touched. `recommended` is the defaults (urgency order, weekly cap rising to 95 over the last 24 hours, at most 4 sessions per member, sticky sessions that leave for a member 3 times as urgent); `classic` is the rules before v0.4.16 (soonest weekly reset first, no relax, no session limit, not sticky). Values that are already set change nothing (`no change`). An unknown preset or a login that is not a pool is refused (exit 2). See [presets](../guides/pool-rules.md#presets).
+
+<!-- snippet: examples/acct-login-pool/session.txt#preset -->
+```sh
+$ agx pool preset --name classic --id auto --dry-run
+would change login auto (--dry-run)
+  pool.defaults.week_relax_max  —  ->  95
+  pool.order                    —  ->  deadline
+  pool.max_sessions             —  ->  0
+  pool.sticky                   —  ->  false
+  pool.sticky_leave_ratio       —  ->  0
+  pool.week_relax_window        —  ->  0s
+
+$ agx pool preset --name recommended --id auto
+changed login auto (pool, pool 2 own, 3 shared)
+  pool.defaults.week_relax_max  —  ->  95
+  pool.order                    —  ->  urgency
+  pool.max_sessions             —  ->  4
+  pool.sticky                   —  ->  true
+  pool.sticky_leave_ratio       —  ->  3
+  pool.week_relax_window        —  ->  24h
+
+$ agx pool show --id auto --json --field data.settings
+[{"key":"force","value":"off","source":"default"},{"key":"order","value":"urgency","source":"pool"},{"key":"week_relax_window","value":"24h","source":"pool"},{"key":"defaults.week_relax_max","value":"95","source":"pool"},{"key":"max_sessions","value":"4","source":"pool"},{"key":"sticky","value":"true","source":"pool"},{"key":"sticky_leave_ratio","value":"3","source":"pool"},{"key":"shared_borrow_window","value":"48h","source":"pool"},{"key":"short_unavailable_at_percent","value":"99","source":"pool"},{"key":"own_caps.short","value":"95","source":"default"},{"key":"own_caps.week","value":"98","source":"default"},{"key":"defaults.short","value":"50","source":"pool"},{"key":"defaults.week","value":"70","source":"pool"},{"key":"usage_max_age","value":"60s","source":"pool"},{"key":"key_ttl","value":"60s","source":"pool"},{"key":"picker.command","value":"built-in rules","source":"default"},{"key":"picker.timeout","value":"10s","source":"default"},{"key":"log","value":"none","source":"default"}]
+```

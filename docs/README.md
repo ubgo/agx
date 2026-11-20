@@ -58,7 +58,8 @@ From the first launch to the full setup. Each step names what you learn, the pag
 | [Plan usage](guides/usage.md) | you read quota: live, cached, per stored login |
 | [Live login](guides/live-login.md) | you switch a running Claude session to another login |
 | [Share a pool of Claude accounts](guides/login-pool.md) | a `pool` login picks the Claude account for each key by usage, while the session runs; or keeps one session on one member within its caps (`--pool-only`) |
-| [The pool simulator](guides/pool-simulator.md) | an offline simulator that runs the pool's pick code over generated weeks to compare strategies and settings (`task sim`) |
+| [How the pool chooses](guides/pool-rules.md) | a pool's rules in order, every value and its default, the `recommended` and `classic` presets, per-model weekly windows (Fable) and the usage history |
+| [The pool simulator](guides/pool-simulator.md) | an offline simulator that runs the pool's pick code over generated weeks to compare rule sets and settings (`task sim`) |
 | [Folder bindings](guides/folder-bindings.md) | you bind a folder to a profile or login, per agent |
 | [Shared homes](guides/shared-homes.md) | several profiles use one home, and resume or usage must pick one |
 | [Run folders, whoami and clean](guides/run-folders.md) | you want to know what a launch leaves behind and what the agent receives |

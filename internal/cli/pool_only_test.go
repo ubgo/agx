@@ -120,7 +120,7 @@ func TestPoolOnlyDryRunGolden(t *testing.T) {
 	}
 	f.Golden(t, "run-pool-only-dry-run", string(b))
 	r = f.Run(args...)
-	for _, want := range []string{"pick: only ivan (caps enforced) for every key of this run  from --pool-only", "ivan 5h cap 50%", "ivan week cap 60%", "from --pool-only-week", "pick now: ivan (only), from the cache (20s old)"} {
+	for _, want := range []string{"pick: only ivan (caps enforced) for every key of this run", "from --pool-only", "ivan 5h cap 50%", "ivan week cap 60%", "from --pool-only-week", "pick now: ivan (only), from the cache (20s old)"} {
 		if !strings.Contains(r.Stdout, want) {
 			t.Errorf("missing %q:\n%s", want, r.Stdout)
 		}

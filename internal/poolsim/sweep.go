@@ -16,7 +16,7 @@ type Knob struct {
 }
 
 // SweepRow is one knob value's result over every scenario, its cost
-// relative to today's rules (A) on the same scenario.
+// relative to the classic preset (A, the rules before v0.4.16) on the same scenario.
 type SweepRow struct {
 	Value string
 	// MeanRatio and WorstRatio are over every scenario; WorstFile is

@@ -62,24 +62,25 @@ Add a login. Cost W (X with `--login-setup`). Guide: [Adding a login](../logins.
 | `--pool-cap-week` | a member's own weekly cap, `NAME=PERCENT`; `NAME=` removes it (repeat) |
 | `--pool-disable` | leave a member out of the pool (`enabled: false`; repeat) |
 | `--pool-enable` | take a disabled member back (repeat) |
-| `--pool-default-short` | the 5-hour cap of members without their own, in percent; empty removes it (default 50) |
-| `--pool-default-week` | the weekly cap of members without their own; empty removes it (default 70) |
+| `--pool-default-short` | the 5-hour cap of shared members without their own, in percent; empty removes it (default 50) |
+| `--pool-default-week` | the weekly cap of shared members without their own; empty removes it (default 70) |
 | `--pool-short-cutoff` | the 5-hour safety cutoff for every member, in percent; empty removes it (default 99) |
 | `--pool-borrow-window` | a shared member goes first when its weekly reset is this close, a Go duration such as `48h` (`0s` never); empty removes it (default 48h) |
 | `--pool-usage-max-age` | how old the usage cache may be before members are probed again, such as `60s`; empty removes it (default 60s) |
 | `--pool-key-ttl` | how long Claude keeps a key before it asks again, at least `1s`; empty removes it (default 60s) |
 | `--pool-picker` | a shell command that picks the member instead of the built-in rules; empty removes the picker |
-| `--pool-strategy` | the rules that pick: `deadline` (soonest weekly reset first, one pick for every session) or `expiring` (weekly caps rise near the reset, most room to lose per hour first, a pick per session); empty: default `deadline` |
-| `--pool-week-relax-window` | `expiring`: a member's weekly cap rises to its relax max over this long before its reset, like `24h`; `0s` never; empty: default `24h` |
-| `--pool-max-sessions` | `expiring`: how many sessions one member takes before the next is used; `0` no limit; empty: default 4 |
-| `--pool-sticky` | `expiring`: keep a session on its member while it is still in the pool, `true` or `false`; empty: default `true` |
-| `--pool-sticky-leave-ratio` | `expiring`: a sticky session leaves its member when another member is at least this many times as urgent; `0` never; empty: default 3 |
-| `--pool-default-week-relax` | `expiring`: the weekly cap members reach at their reset, in percent; empty: default 95 |
-| `--pool-cap-week-relax` | `expiring`: a member's own weekly cap at its reset, `NAME=PERCENT`; `NAME=` removes it (repeat) |
-| `--pool-capacity` | `expiring`: a member's plan size relative to the others (only ratios matter: Pro 1, Max 5x 5, Max 20x 20), so its room counts for more work, `NAME=N`; `NAME=` removes it (repeat) |
+| `--pool-order` | how the pool ranks its members: `urgency` (the most room to lose per hour first) or `deadline` (the soonest weekly reset first); empty: default `urgency` |
+| `--pool-week-relax-window` | a member's weekly cap rises to its relax max over this long before its reset, like `24h`; `0s` never; empty: default `24h` |
+| `--pool-max-sessions` | how many sessions one member takes before the next is used; `0` no limit; empty: default 4 |
+| `--pool-sticky` | keep a session on its member while it is still in the pool, `true` or `false`; empty: default `true` |
+| `--pool-sticky-leave-ratio` | a sticky session leaves its member when another member is at least this many times as urgent; `0` never; empty: default 3 |
+| `--pool-default-week-relax` | the weekly cap members reach at their reset, in percent; empty: default 95 |
+| `--pool-cap-week-relax` | a member's own weekly cap at its reset, `NAME=PERCENT`; `NAME=` removes it (repeat) |
+| `--pool-capacity` | a member's plan size relative to the others (only ratios matter: Pro 1, Max 5x 5, Max 20x 20), so its room counts for more work, `NAME=N`; `NAME=` removes it (repeat) |
 | `--pool-group-cap-short` | the 5-hour cap of a group's members without their own, `own=PERCENT` or `shared=PERCENT`; `GROUP=` removes it (repeat) |
 | `--pool-group-cap-week` | the weekly cap of a group's members without their own, `own=PERCENT` or `shared=PERCENT`; `GROUP=` removes it (repeat) |
-| `--pool-group-cap-week-relax` | `expiring`: the weekly cap a group's members reach at their reset, `own=PERCENT` or `shared=PERCENT`; `GROUP=` removes it (repeat) |
+| `--pool-group-cap-week-relax` | the weekly cap a group's members reach at their reset, `own=PERCENT` or `shared=PERCENT`; `GROUP=` removes it (repeat) |
+| `--pool-probe-model` | a model to probe the members with when a session's own model is unknown, so its per-model weekly window applies, like `claude-fable-5-2` or `fable` (repeat; `''` removes `probe_models`) |
 | `--dry-run` | with `--kind pool`: show the keys it would write; write nothing |
 | `--token-ref` | the token as a reference (`${gopass:…}`, `$(…)`, `${VAR}`) or a plain value, kept in config |
 | `--stdin` | read the token from stdin into `tokens.jsonc` (0600) |
@@ -104,15 +105,17 @@ account  —
 users    —
 
 $ agx pool pick --id team
-Pool: team (claude)
+Pool: team (claude, order urgency)
 Use: alice (own)
-soonest weekly reset among usable accounts
+most room to lose: 69% left under its weekly cap with 144h to the reset (0.5%/h to use it all)
 Source: cache (20s old)
+Probe model: the agent's default (all-models windows only)
+Rules: order urgency (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 70 (default)
 
 Candidates (ready accounts in pick order):
-- alice [own] #1 READY (5h 3%, week 29%, resets in 6 d 0 hr, room 41%)
-- derek [shared] WAIT (5h 0%, week 15%, resets in 4 d 0 hr, room 55%) (shared reset not within 48h while an own account is usable)
-- erin [shared] skip: 5h is 55% (cap 50%) (5h 55%, week 43%, resets in 3 hr 0 min, room 27%)
+- alice [own] #1 READY (5h 3%, week 29%, resets in 6 d 0 hr, room 69%, caps 95/98 (default), needs 0.48%/h)
+- derek [shared] WAIT (5h 0%, week 15%, resets in 4 d 0 hr, room 55%, caps 50/70 (default), needs 0.57%/h) (shared reset not within 48h while an own account is usable)
+- erin [shared] skip: 5h is 55% (cap 50%) (5h 55%, week 43%, resets in 3 hr 0 min, room 48.9%, caps 50/91.9 (default)) (weekly cap 70% rises to 95% over the last 24h before the reset: 91.9% now)
 ```
 
 Try it:
@@ -181,24 +184,25 @@ Rotate or change a login. Every profile, default and binding that uses it keeps 
 | `--pool-cap-week` | a member's own weekly cap, `NAME=PERCENT`; `NAME=` removes it (repeat) |
 | `--pool-disable` | leave a member out of the pool (`enabled: false`; repeat) |
 | `--pool-enable` | take a disabled member back (repeat) |
-| `--pool-default-short` | the 5-hour cap of members without their own, in percent; empty removes it (default 50) |
-| `--pool-default-week` | the weekly cap of members without their own; empty removes it (default 70) |
+| `--pool-default-short` | the 5-hour cap of shared members without their own, in percent; empty removes it (default 50) |
+| `--pool-default-week` | the weekly cap of shared members without their own; empty removes it (default 70) |
 | `--pool-short-cutoff` | the 5-hour safety cutoff for every member, in percent; empty removes it (default 99) |
 | `--pool-borrow-window` | a shared member goes first when its weekly reset is this close, a Go duration such as `48h` (`0s` never); empty removes it (default 48h) |
 | `--pool-usage-max-age` | how old the usage cache may be before members are probed again, such as `60s`; empty removes it (default 60s) |
 | `--pool-key-ttl` | how long Claude keeps a key before it asks again, at least `1s`; empty removes it (default 60s) |
 | `--pool-picker` | a shell command that picks the member instead of the built-in rules; empty removes the picker |
-| `--pool-strategy` | the rules that pick: `deadline` (soonest weekly reset first, one pick for every session) or `expiring` (weekly caps rise near the reset, most room to lose per hour first, a pick per session); empty: default `deadline` |
-| `--pool-week-relax-window` | `expiring`: a member's weekly cap rises to its relax max over this long before its reset, like `24h`; `0s` never; empty: default `24h` |
-| `--pool-max-sessions` | `expiring`: how many sessions one member takes before the next is used; `0` no limit; empty: default 4 |
-| `--pool-sticky` | `expiring`: keep a session on its member while it is still in the pool, `true` or `false`; empty: default `true` |
-| `--pool-sticky-leave-ratio` | `expiring`: a sticky session leaves its member when another member is at least this many times as urgent; `0` never; empty: default 3 |
-| `--pool-default-week-relax` | `expiring`: the weekly cap members reach at their reset, in percent; empty: default 95 |
-| `--pool-cap-week-relax` | `expiring`: a member's own weekly cap at its reset, `NAME=PERCENT`; `NAME=` removes it (repeat) |
-| `--pool-capacity` | `expiring`: a member's plan size relative to the others (only ratios matter: Pro 1, Max 5x 5, Max 20x 20), so its room counts for more work, `NAME=N`; `NAME=` removes it (repeat) |
+| `--pool-order` | how the pool ranks its members: `urgency` (the most room to lose per hour first) or `deadline` (the soonest weekly reset first); empty: default `urgency` |
+| `--pool-week-relax-window` | a member's weekly cap rises to its relax max over this long before its reset, like `24h`; `0s` never; empty: default `24h` |
+| `--pool-max-sessions` | how many sessions one member takes before the next is used; `0` no limit; empty: default 4 |
+| `--pool-sticky` | keep a session on its member while it is still in the pool, `true` or `false`; empty: default `true` |
+| `--pool-sticky-leave-ratio` | a sticky session leaves its member when another member is at least this many times as urgent; `0` never; empty: default 3 |
+| `--pool-default-week-relax` | the weekly cap members reach at their reset, in percent; empty: default 95 |
+| `--pool-cap-week-relax` | a member's own weekly cap at its reset, `NAME=PERCENT`; `NAME=` removes it (repeat) |
+| `--pool-capacity` | a member's plan size relative to the others (only ratios matter: Pro 1, Max 5x 5, Max 20x 20), so its room counts for more work, `NAME=N`; `NAME=` removes it (repeat) |
 | `--pool-group-cap-short` | the 5-hour cap of a group's members without their own, `own=PERCENT` or `shared=PERCENT`; `GROUP=` removes it (repeat) |
 | `--pool-group-cap-week` | the weekly cap of a group's members without their own, `own=PERCENT` or `shared=PERCENT`; `GROUP=` removes it (repeat) |
-| `--pool-group-cap-week-relax` | `expiring`: the weekly cap a group's members reach at their reset, `own=PERCENT` or `shared=PERCENT`; `GROUP=` removes it (repeat) |
+| `--pool-group-cap-week-relax` | the weekly cap a group's members reach at their reset, `own=PERCENT` or `shared=PERCENT`; `GROUP=` removes it (repeat) |
+| `--pool-probe-model` | a model to probe the members with when a session's own model is unknown, so its per-model weekly window applies, like `claude-fable-5-2` or `fable` (repeat; `''` removes `probe_models`) |
 | `--dry-run` | on a pool: show the changes; write nothing |
 
 On a pool, every key changes here: the members, the force, each member's caps and `enabled`, the defaults, the windows, the picker and the account label. Each changed key prints a line with its value before and after (`—` for a key that is not set); `--dry-run` prints the same lines and writes nothing, and flags that match the file print `no change` and write nothing. An empty value removes a key, so its documented default applies again. `--dry-run` is for pools only: a token login's value is read once (stdin, a setup command) and written as given. A login never becomes a pool in place, or the reverse: add a new one.
@@ -226,15 +230,17 @@ $ agx config set --key logins.team.pool.defaults.week --value 80
 logins.team.pool.defaults.week = 80
 
 $ agx pool pick --id team
-Pool: team (claude)
+Pool: team (claude, order urgency)
 Use: erin (shared)
-shared account resets within 48h, before any usable own account; using its room before it is lost
+most room to lose: 50.1% left under its weekly cap with 3h to the reset (16.7%/h to use it all)
 Source: cache (20s old)
+Probe model: the agent's default (all-models windows only)
+Rules: order urgency (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 80 (pool)
 
 Candidates (ready accounts in pick order):
-- erin [shared] #1 READY (5h 55%, week 43%, resets in 3 hr 0 min, room 37%)
-- alice [own] #2 READY (5h 3%, week 29%, resets in 6 d 0 hr, room 69%)
-- derek [shared] skip: disabled in config; no usage reading (no windows, reset unknown)
+- erin [shared] #1 READY (5h 55%, week 43%, resets in 3 hr 0 min, room 50.1%, caps 60 (member)/93.1 (pool), needs 16.71%/h) (weekly cap 80% rises to 95% over the last 24h before the reset: 93.1% now)
+- alice [own] #2 READY (5h 3%, week 29%, resets in 6 d 0 hr, room 69%, caps 95/98 (member), needs 0.48%/h)
+- derek [shared] skip: disabled in config; no usage reading (no windows, reset unknown, caps 50 (default)/80 (pool))
 
 $ agx login edit --id team --pool-enable derek --pool-cap-short erin= --pool-key-ttl 30s
 changed login team (pool, pool 1 own, 2 shared)

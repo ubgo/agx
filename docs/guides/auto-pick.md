@@ -10,7 +10,7 @@ You want this when you run out of a plan's five-hour or weekly window often and 
 |---|---|---|
 | when it picks | once, at launch | each time Claude asks for a key (every `key_ttl`, 60 s), while the session runs |
 | candidates | every token login serving the agent | the pool's `own` and `shared` members |
-| rule | lowest highest-window percent wins; a window at 100% skips | soonest weekly reset first, own before shared, teammates' accounts only up to their caps and within the borrow window ([the rules](login-pool.md#the-rules)) |
+| rule | lowest highest-window percent wins; a window at 100% skips | the most room to lose per hour first (by default), own before shared, teammates' accounts only up to their caps and within the borrow window, a pick per session ([how the pool chooses](pool-rules.md)) |
 | usage | probes every candidate, every launch | probes members once per `usage_max_age`, shared by every session through a cache |
 | agents | Claude Code (Codex homes with `--auto-profile`) | Claude Code |
 

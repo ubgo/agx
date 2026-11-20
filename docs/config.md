@@ -403,42 +403,43 @@ A `pool` login serves exactly one agent that can re-ask for its key while it run
 
 | Key | Type | Meaning |
 |---|---|---|
-| `logins.<login>.pool.own` | list of login names | your accounts, in order; used up to their caps (give them high caps, such as 95 and 98) |
+| `logins.<login>.pool.own` | list of login names | your accounts, in order; used up to their caps (95 and 98 unless `own_caps` or a member entry says otherwise) |
 | `logins.<login>.pool.shared` | list of login names | teammates' accounts, in order; borrowed up to their caps |
 | `logins.<login>.pool.force` | login name or `null` | always pick this login, ignoring every rule; `null` (the default) is off |
 | `logins.<login>.pool.shared_borrow_window` | duration | a shared login goes before a usable own login only when its weekly reset is within this; default `48h`, `0s` never |
 | `logins.<login>.pool.short_unavailable_at_percent` | number | the 5-hour safety cutoff for every member, even one whose status is ok; default 99 |
-| `logins.<login>.pool.defaults` | object | caps of members without their own entry |
-| `logins.<login>.pool.defaults.short` | number | 5-hour cap in percent, exclusive; default 50 |
-| `logins.<login>.pool.defaults.week` | number | weekly cap in percent, exclusive; default 70 |
-| `logins.<login>.pool.defaults.week_relax_max` | number | `expiring` strategy: the weekly cap members reach at their weekly reset; default 95. A member whose weekly cap is already higher keeps it |
-| `logins.<login>.pool.own_caps` | object | caps of your own members without their own entry; over `defaults` |
-| `logins.<login>.pool.own_caps.short` | number | 5-hour cap of own members |
-| `logins.<login>.pool.own_caps.week` | number | weekly cap of own members |
-| `logins.<login>.pool.own_caps.week_relax_max` | number | weekly cap own members reach at their reset (`expiring`) |
+| `logins.<login>.pool.defaults` | object | caps of shared members without a `shared_caps` or member entry, and the pool's `week_relax_max` |
+| `logins.<login>.pool.defaults.short` | number | 5-hour cap of shared members in percent, exclusive; default 50 |
+| `logins.<login>.pool.defaults.week` | number | weekly cap of shared members in percent, exclusive; default 70 |
+| `logins.<login>.pool.defaults.week_relax_max` | number | the weekly cap members reach at their weekly reset; default 95. A member whose weekly cap is already higher keeps it |
+| `logins.<login>.pool.own_caps` | object | caps of your own members without their own entry (own members never take `defaults`) |
+| `logins.<login>.pool.own_caps.short` | number | 5-hour cap of own members; default 95 |
+| `logins.<login>.pool.own_caps.week` | number | weekly cap of own members; default 98 |
+| `logins.<login>.pool.own_caps.week_relax_max` | number | weekly cap own members reach at their reset; default `defaults.week_relax_max` |
 | `logins.<login>.pool.shared_caps` | object | caps of shared members without their own entry; over `defaults` |
 | `logins.<login>.pool.shared_caps.short` | number | 5-hour cap of shared members |
 | `logins.<login>.pool.shared_caps.week` | number | weekly cap of shared members |
-| `logins.<login>.pool.shared_caps.week_relax_max` | number | weekly cap shared members reach at their reset (`expiring`) |
+| `logins.<login>.pool.shared_caps.week_relax_max` | number | weekly cap shared members reach at their reset; default `defaults.week_relax_max` |
 | `logins.<login>.pool.accounts` | map of member to object | per-member entries; a name in neither list is refused |
 | `logins.<login>.pool.accounts.<key>.short` | number | this member's 5-hour cap |
 | `logins.<login>.pool.accounts.<key>.week` | number | this member's weekly cap |
 | `logins.<login>.pool.accounts.<key>.enabled` | bool | `false` leaves the member out (it is not probed) |
-| `logins.<login>.pool.accounts.<key>.week_relax_max` | number | this member's weekly cap at its reset (`expiring`); its weekly cap or lower = never relaxed |
-| `logins.<login>.pool.accounts.<key>.capacity` | number | `expiring`: this member's plan size relative to the others' (only ratios matter, such as Pro 1, Max 5x 5, Max 20x 20; omitted = 1): its room is weighed by it, so a bigger plan's percent counts for more work. Without it every member counts the same |
-| `logins.<login>.pool.strategy` | `deadline` or `expiring` | the rules that pick. `deadline` (the default): soonest weekly reset first, one pick for every session. `expiring`: weekly caps rise near the reset, the member with the most room to lose per hour goes first, and each session gets its own pick. See [strategies](guides/login-pool.md#strategies) |
-| `logins.<login>.pool.week_relax_window` | duration | `expiring`: over this long before a member's weekly reset its weekly cap rises in a straight line to its `week_relax_max`; default `24h`, `0s` never. The 5-hour cap never rises |
-| `logins.<login>.pool.max_sessions` | whole number | `expiring`: how many sessions one member takes before the next member is used; default 4, `0` no limit |
-| `logins.<login>.pool.sticky` | bool | `expiring`: a session stays on its member while that member is still in the pool (keeps its prompt cache); default `true` |
-| `logins.<login>.pool.sticky_leave_ratio` | number | `expiring`: a sticky session leaves its member when the most urgent member's urgency is at least this many times its own; default 3, `0` never. Leaving keeps a small pool that runs short of quota following the account that resets first |
+| `logins.<login>.pool.accounts.<key>.week_relax_max` | number | this member's weekly cap at its reset; its weekly cap or lower = never relaxed |
+| `logins.<login>.pool.accounts.<key>.capacity` | number | this member's plan size relative to the others' (only ratios matter, such as Pro 1, Max 5x 5, Max 20x 20; omitted = 1): its room is weighed by it, so a bigger plan's percent counts for more work. Without it every member counts the same |
+| `logins.<login>.pool.order` | `urgency` or `deadline` | how the pool ranks its usable members: `urgency` (the default) puts the most room to lose per hour first (room under the weekly cap ÷ hours to the reset, times `capacity`); `deadline` the soonest weekly reset. See [how the pool chooses](guides/pool-rules.md) |
+| `logins.<login>.pool.week_relax_window` | duration | over this long before a member's weekly reset its weekly cap rises in a straight line to its `week_relax_max`; default `24h`, `0s` never. The 5-hour cap never rises |
+| `logins.<login>.pool.max_sessions` | whole number | how many sessions one member takes before the next member is used; default 4, `0` no limit |
+| `logins.<login>.pool.sticky` | bool | a session stays on its member while that member is still in the pool (keeps its prompt cache); default `true` |
+| `logins.<login>.pool.sticky_leave_ratio` | number | a sticky session leaves its member when the most urgent member's urgency is at least this many times its own; default 3, `0` never. Leaving keeps a small pool that runs short of quota following the account that resets first |
+| `logins.<login>.pool.probe_models` | list of model names | the models to probe the members with when a session's own model is unknown (no `--model`, profile `model` or Claude setting): a per-model weekly window (Fable 5.2's own week) shows only when the probe asks with that model. Omitted = the default profile's model, else the agent's default probe model. See [per-model weekly windows](guides/pool-rules.md#per-model-weekly-windows) |
 | `logins.<login>.pool.usage_max_age` | duration | reuse the login-usage cache while it is younger than this; default `60s` |
 | `logins.<login>.pool.key_ttl` | duration | how long the agent keeps a key before asking again (Claude Code's `CLAUDE_CODE_API_KEY_HELPER_TTL_MS`); default `60s`, at least `1s` |
 | `logins.<login>.pool.picker` | object | your own picker instead of the built-in rules; unset (the default) uses the rules. See [your own picker](guides/login-pool.md#your-own-picker) |
 | `logins.<login>.pool.picker.command` | string | a shell command line; it reads the members and their usage as JSON on stdin (never a token) and prints one member's login name. A failure falls back to the built-in rules with a warning |
 | `logins.<login>.pool.picker.timeout` | duration | how long one run may take; default `10s` |
-| `logins.<login>.pool.log` | path | a file that gets one line per key request (time, pick, group, forced, source; never a token); `~` and `${VAR}` expand |
+| `logins.<login>.pool.log` | path | a file that gets one line per key request (time, pick, group, forced, source, the picked member's usage in percent and the probe models; never a token); `~` and `${VAR}` expand |
 
-Durations are Go duration strings (`48h`, `90m`, `60s`). A member's caps come from its own entry, else its group's (`own_caps`, `shared_caps`), else `defaults`. Caps and the cutoff are 0 to 100, and the published schema says so (`minimum`, `maximum`), so your editor flags a wrong one as you type. Every key here has a flag on `agx login add` and `agx login edit` (`--pool-cap-short NAME=N`, `--pool-cap-week NAME=N`, `--pool-disable`, `--pool-enable`, `--pool-default-short`, `--pool-default-week`, `--pool-short-cutoff`, `--pool-borrow-window`, `--pool-usage-max-age`, `--pool-key-ttl`, `--pool-picker`, `--pool-strategy`, `--pool-week-relax-window`, `--pool-max-sessions`, `--pool-sticky`, `--pool-sticky-leave-ratio`, `--pool-default-week-relax`, `--pool-cap-week-relax NAME=N`, `--pool-capacity NAME=N`, `--pool-group-cap-short GROUP=N`, `--pool-group-cap-week GROUP=N`, `--pool-group-cap-week-relax GROUP=N`; see the [login reference](commands/login.md#agx-login-edit)), and `agx config set` sets any single number. Nothing in a pool is ignored silently: an unknown key anywhere, a cap that is not a number from 0 to 100, `null` for anything but `force`, an empty `force`, an `enabled` that is not `true`/`false` and a bad duration are each an error at their line. The old setting names of the stand-alone selector (`burnToFullest`, `priority`, `accountLimits`, `limits`, `sharedBorrowWindowHours`) are unknown keys and refused at their line.
+Durations are Go duration strings (`48h`, `90m`, `60s`). A member's caps come from its own entry, else its group's (`own_caps`, `shared_caps`), else for a shared member `defaults`, else agx's default (own 95/98, shared 50/70); `agx pool show` prints each value with its source (`member`, `group`, `pool`, `default`). `agx pool preset --name recommended|classic --id POOL` writes a named set of the rule values ([presets](guides/pool-rules.md#presets)). Caps and the cutoff are 0 to 100, and the published schema says so (`minimum`, `maximum`), so your editor flags a wrong one as you type. Every key here has a flag on `agx login add` and `agx login edit` (`--pool-cap-short NAME=N`, `--pool-cap-week NAME=N`, `--pool-disable`, `--pool-enable`, `--pool-default-short`, `--pool-default-week`, `--pool-short-cutoff`, `--pool-borrow-window`, `--pool-usage-max-age`, `--pool-key-ttl`, `--pool-picker`, `--pool-order`, `--pool-week-relax-window`, `--pool-max-sessions`, `--pool-sticky`, `--pool-sticky-leave-ratio`, `--pool-default-week-relax`, `--pool-cap-week-relax NAME=N`, `--pool-capacity NAME=N`, `--pool-group-cap-short GROUP=N`, `--pool-group-cap-week GROUP=N`, `--pool-group-cap-week-relax GROUP=N`, `--pool-probe-model MODEL`; see the [login reference](commands/login.md#agx-login-edit)), and `agx config set` sets any single value (a list such as `probe_models` goes through the flag). Nothing in a pool is ignored silently: an unknown key anywhere, a cap that is not a number from 0 to 100, `null` for anything but `force`, an empty `force`, an `enabled` that is not `true`/`false` and a bad duration are each an error at their line. The old setting names of the stand-alone selector (`burnToFullest`, `priority`, `accountLimits`, `limits`, `sharedBorrowWindowHours`) are unknown keys and refused at their line.
 
 ## Projects
 

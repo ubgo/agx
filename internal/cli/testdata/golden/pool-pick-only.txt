@@ -1,7 +1,9 @@
-Pool: auto (claude)
+Pool: auto (claude, order urgency)
 Use: ivan (shared)
 the only member of this run (--pool-only); its caps and the pool's rules still apply
 Source: cache (20s old)
+Probe model: the agent's default (all-models windows only)
+Rules: order urgency (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 70 (default)
 
 Candidates (ready accounts in pick order):
-- ivan [shared] #1 READY (5h 4%, week 43%, resets in 1 d 17 hr, room 27%)
+- ivan [shared] #1 READY (5h 4%, week 43%, resets in 1 d 17 hr, room 27%, caps 50/70 (default), needs 0.65%/h)

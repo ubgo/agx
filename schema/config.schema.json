@@ -976,6 +976,15 @@
                     "type": "number",
                     "minimum": 0
                   },
+                  "probe_models": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  },
                   "accounts": {
                     "type": "object",
                     "additionalProperties": {
