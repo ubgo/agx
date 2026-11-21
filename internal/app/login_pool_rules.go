@@ -28,10 +28,12 @@ const (
 	flagPoolGroupCapWeekRelax = "--pool-group-cap-week-relax"
 	flagPoolCapacity          = "--pool-capacity"
 	flagPoolProbeModel        = "--pool-probe-model"
+	flagPoolDeadlineWindow    = "--pool-deadline-window"
+	flagPoolDeadlineMinRoom   = "--pool-deadline-min-room"
 )
 
 // poolRuleFlagsText names the rule flags in "nothing to change".
-const poolRuleFlagsText = flagPoolOrder + ", " + flagPoolWeekRelaxWindow + ", " + flagPoolMaxSessions + ", " + flagPoolSticky + ", " + flagPoolStickyLeaveRatio + ", " +
+const poolRuleFlagsText = flagPoolOrder + ", " + flagPoolDeadlineWindow + ", " + flagPoolDeadlineMinRoom + ", " + flagPoolWeekRelaxWindow + ", " + flagPoolMaxSessions + ", " + flagPoolSticky + ", " + flagPoolStickyLeaveRatio + ", " +
 	flagPoolDefaultWeekRelax + ", " + flagPoolCapWeekRelax + ", " + flagPoolCapacity + ", " + flagPoolGroupCapShort + ", " + flagPoolGroupCapWeek + ", " + flagPoolGroupCapWeekRelax + ", " + flagPoolProbeModel
 
 // Keys the rule flags write inside logins.<name>.pool.
@@ -46,6 +48,8 @@ const (
 	keyPoolOwnCaps         = "own_caps"
 	keyPoolSharedCaps      = "shared_caps"
 	keyPoolProbeModels     = "probe_models"
+	keyPoolDeadlineWindow  = "deadline_window"
+	keyPoolDeadlineMinRoom = "deadline_min_room"
 )
 
 // PoolRuleSettings are the rule flags; nil = not given.
@@ -60,6 +64,10 @@ type PoolRuleSettings struct {
 	Sticky *string
 	// StickyLeaveRatio is a number of 0 or more (sticky_leave_ratio).
 	StickyLeaveRatio *string
+	// DeadlineWindow is a Go duration (deadline_window).
+	DeadlineWindow *string
+	// DeadlineMinRoom is a percent (deadline_min_room).
+	DeadlineMinRoom *string
 	// DefaultWeekRelax is defaults.week_relax_max.
 	DefaultWeekRelax *string
 	// CapWeekRelax sets accounts.NAME.week_relax_max: NAME=N.
@@ -79,13 +87,13 @@ type PoolRuleSettings struct {
 // given reports any rule flag.
 func (s PoolRuleSettings) given() bool {
 	return s.Order != nil || s.WeekRelaxWindow != nil || s.MaxSessions != nil || s.Sticky != nil || s.StickyLeaveRatio != nil ||
-		s.DefaultWeekRelax != nil || s.CapWeekRelax != nil || s.Capacity != nil || s.GroupCapShort != nil || s.GroupCapWeek != nil || s.GroupCapWeekRelax != nil ||
+		s.DeadlineWindow != nil || s.DeadlineMinRoom != nil || s.DefaultWeekRelax != nil || s.CapWeekRelax != nil || s.Capacity != nil || s.GroupCapShort != nil || s.GroupCapWeek != nil || s.GroupCapWeekRelax != nil ||
 		s.ProbeModels != nil
 }
 
-// planRules plans the order, max_sessions, sticky, sticky_leave_ratio
-// and the group caps (week_relax_window is planned with the other
-// durations).
+// planRules plans the order, max_sessions, sticky, sticky_leave_ratio,
+// deadline_min_room and the group caps (week_relax_window and
+// deadline_window are planned with the other durations).
 func (p *poolPlan) planRules(cur config.Pool, s PoolRuleSettings) error {
 	if v := s.Order; v != nil {
 		if *v != "" && !slices.Contains(pool.OrderValues(), *v) {
@@ -137,6 +145,11 @@ func (p *poolPlan) planRules(cur config.Pool, s PoolRuleSettings) error {
 			e = setNumber(p.at(keyPoolStickyLeave), n)
 		}
 		p.change(keyPoolStickyLeave, old, orAbsent(*v), e)
+	}
+	if v := s.DeadlineMinRoom; v != nil {
+		if err := p.planPercent(flagPoolDeadlineMinRoom, keyPoolDeadlineMinRoom, cur.DeadlineMinRoom, *v); err != nil {
+			return err
+		}
 	}
 	if s.ProbeModels != nil {
 		if err := p.planProbeModels(cur, s.ProbeModels); err != nil {

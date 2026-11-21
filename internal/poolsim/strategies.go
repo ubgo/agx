@@ -65,6 +65,9 @@ const (
 	spreadPer     = 4
 	stickMargin   = 0.0
 	stickRatio    = 3.0
+	// The deadline group (K) is the shipped defaults' (package pool).
+	deadlineWindow  = pool.DefaultDeadlineWindow
+	deadlineMinRoom = pool.DefaultDeadlineMinRoom
 )
 
 // Overrides are caps a sweep sets instead of the scenario's (0 = the
@@ -123,6 +126,13 @@ func Strategies() []Strategy {
 		policy("H", "A + sticky: stay while usable and in the first tier", from(Today(), stick)),
 		policy("REC", "recommended: C + E2 + G + H", rec),
 		policy("REC-C", "REC without the weekly relax", from(rec, func(p *Policy) { p.Relax = WeekRelax{} })),
+		policy("REC-K", "REC without the deadline group: urgency alone, counting the room up to the cap at the reset", from(rec, func(p *Policy) { p.Deadline = DeadlineFirst{} })),
+		policy("REC-N", "the rules of v0.4.19: REC-K with the urgency counting only the room under the weekly cap now", from(rec, func(p *Policy) {
+			p.Deadline, p.Relax.NowOnly, p.Stick.Leader = DeadlineFirst{}, true, true
+		})),
+		policy("REC+KL", "REC with sticky sessions that leave for the deadline group", from(rec, func(p *Policy) { p.Deadline.Leave = true })),
+		policy("REC+A", "REC counting the room up to the relax max for any known reset, not only inside the relax window", from(rec, func(p *Policy) { p.Relax.Always = true })),
+		policy("REC-S", "REC with the sticky ratio against the first account even when it is full (before v0.4.20)", from(rec, func(p *Policy) { p.Stick.Leader = true })),
 		policy("REC-E2", "REC with soonest-reset order", from(rec, func(p *Policy) { p.Order = OrderReset })),
 		policy("REC-G", "REC without spread", from(rec, func(p *Policy) { p.Spread = 0 })),
 		policy("REC-H", "REC without sticky", from(rec, func(p *Policy) { p.Stick = Hysteresis{} })),
@@ -137,15 +147,17 @@ func Strategies() []Strategy {
 
 // Recommended is the recommended policy: the configured caps and
 // tiers, the weekly cap rising to 95 over the last 24h before the
-// reset, use-it-or-lose-it order, at most 4 busy sessions per account,
-// and sessions kept on their account while it is usable and in the
-// first tier.
+// reset, use-it-or-lose-it order with the accounts resetting within 24h
+// (and at least 2% of room) first, soonest first, at most 4 busy
+// sessions per account, and sessions kept on their account while it is
+// usable and in the first tier.
 func Recommended() Policy {
 	p := Today()
 	p.Relax = WeekRelax{Start: relaxStart, Max: relaxMax}
 	p.Order = OrderUrgency
 	p.Spread = spreadPer
 	p.Stick = Hysteresis{On: true, Margin: stickMargin, Ratio: stickRatio}
+	p.Deadline = DeadlineFirst{Window: deadlineWindow, MinRoom: deadlineMinRoom}
 	return p
 }
 

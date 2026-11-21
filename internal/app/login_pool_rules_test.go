@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ubgo/agx/internal/apperr"
 )
@@ -15,6 +16,7 @@ func TestPoolRuleFlags(t *testing.T) {
 	a, home := fixtureApp(t, flagConfig, nil, nil)
 	ch, err := a.LoginEdit(context.Background(), LoginEditOptions{ID: "auto", Pool: PoolSettings{Rules: PoolRuleSettings{
 		Order: strp("deadline"), WeekRelaxWindow: strp("12h"), MaxSessions: strp("2"), Sticky: strp("false"), StickyLeaveRatio: strp("3"),
+		DeadlineWindow: strp("6h"), DeadlineMinRoom: strp("5"),
 		DefaultWeekRelax: strp("90"), CapWeekRelax: []string{"carol=70"}, Capacity: []string{"alice=20", "carol=5"},
 		GroupCapShort: []string{"own=95"}, GroupCapWeek: []string{"own=98", "shared=60"}, GroupCapWeekRelax: []string{"shared=85"},
 	}}})
@@ -24,9 +26,10 @@ func TestPoolRuleFlags(t *testing.T) {
 	want := []Change{
 		{"pool.accounts.carol.week_relax_max", "", "70"}, {"pool.accounts.carol.capacity", "", "5"}, {"pool.accounts.alice.capacity", "", "20"}, {"pool.defaults.week_relax_max", "", "90"},
 		{"pool.order", "", "deadline"}, {"pool.max_sessions", "", "2"}, {"pool.sticky", "", "false"}, {"pool.sticky_leave_ratio", "", "3"},
+		{"pool.deadline_min_room", "", "5"},
 		{"pool.own_caps.short", "", "95"}, {"pool.own_caps.week", "", "98"},
 		{"pool.shared_caps.week", "", "60"}, {"pool.shared_caps.week_relax_max", "", "85"},
-		{"pool.week_relax_window", "", "12h"},
+		{"pool.week_relax_window", "", "12h"}, {"pool.deadline_window", "", "6h"},
 	}
 	if !slices.Equal(ch.Changes, want) || !ch.Written {
 		t.Errorf("changes %+v", ch.Changes)
@@ -37,18 +40,20 @@ func TestPoolRuleFlags(t *testing.T) {
 		t.Fatal(err)
 	}
 	r, err := cfg.Config.Logins["auto"].Pool.Rules()
-	if err != nil || r.Order != "deadline" || r.MaxSessions != 2 || r.Sticky || r.RelaxMaxFor("carol") != 70 || r.CapsFor("bob").Short != 95 {
+	if err != nil || r.Order != "deadline" || r.MaxSessions != 2 || r.Sticky || r.RelaxMaxFor("carol") != 70 || r.CapsFor("bob").Short != 95 ||
+		r.DeadlineWindow != 6*time.Hour || r.DeadlineMinRoom != 5 {
 		t.Errorf("rules %+v %v", r, err)
 	}
 	empty := ""
 	if _, err := a.LoginEdit(context.Background(), LoginEditOptions{ID: "auto", Pool: PoolSettings{Rules: PoolRuleSettings{
 		Order: &empty, WeekRelaxWindow: &empty, MaxSessions: &empty, Sticky: &empty, StickyLeaveRatio: &empty, DefaultWeekRelax: &empty,
+		DeadlineWindow: &empty, DeadlineMinRoom: &empty,
 		CapWeekRelax: []string{"carol="}, Capacity: []string{"alice=", "carol="}, GroupCapShort: []string{"own="}, GroupCapWeek: []string{"own=", "shared="}, GroupCapWeekRelax: []string{"shared="},
 	}}}); err != nil {
 		t.Fatal(err)
 	}
 	got := readConfig(t, home)
-	for _, gone := range []string{`"order"`, "max_sessions", "sticky", "week_relax", "own_caps", "shared_caps"} {
+	for _, gone := range []string{`"order"`, "max_sessions", "sticky", "week_relax", "own_caps", "shared_caps", "deadline"} {
 		if strings.Contains(got, gone) {
 			t.Errorf("%s left after removing it:\n%s", gone, got)
 		}
@@ -70,6 +75,11 @@ func TestPoolRuleFlagsRefused(t *testing.T) {
 		{"sticky", PoolRuleSettings{Sticky: strp("maybe")}, `--pool-sticky "maybe": use true or false`},
 		{"leave ratio", PoolRuleSettings{StickyLeaveRatio: strp("-2")}, "--pool-sticky-leave-ratio"},
 		{"window", PoolRuleSettings{WeekRelaxWindow: strp("soon")}, "--pool-week-relax-window"},
+		{"deadline window word", PoolRuleSettings{DeadlineWindow: strp("soon")}, "--pool-deadline-window"},
+		{"deadline window negative", PoolRuleSettings{DeadlineWindow: strp("-1h")}, "--pool-deadline-window"},
+		{"deadline min room over 100", PoolRuleSettings{DeadlineMinRoom: strp("120")}, "--pool-deadline-min-room 120"},
+		{"deadline min room negative", PoolRuleSettings{DeadlineMinRoom: strp("-1")}, "--pool-deadline-min-room -1"},
+		{"deadline min room word", PoolRuleSettings{DeadlineMinRoom: strp("lots")}, "--pool-deadline-min-room lots"},
 		{"relax over 100", PoolRuleSettings{DefaultWeekRelax: strp("120")}, "--pool-default-week-relax 120"},
 		{"group name", PoolRuleSettings{GroupCapShort: []string{"team=10"}}, `--pool-group-cap-short "team=10": use own=N or shared=N`},
 		{"group twice", PoolRuleSettings{GroupCapWeek: []string{"own=1", "own=2"}}, "--pool-group-cap-week own is given twice"},
@@ -102,6 +112,15 @@ func TestPoolRuleConfigSet(t *testing.T) {
 		{"logins.auto.pool.order", "soonest", false},
 		{"logins.auto.pool.strategy", "expiring", false},
 		{"logins.auto.pool.week_relax_window", "0s", true},
+		{"logins.auto.pool.deadline_window", "0s", true},
+		{"logins.auto.pool.deadline_window", "12h", true},
+		{"logins.auto.pool.deadline_window", "-1h", false},
+		{"logins.auto.pool.deadline_window", "soon", false},
+		{"logins.auto.pool.deadline_min_room", "0", true},
+		{"logins.auto.pool.deadline_min_room", "5", true},
+		{"logins.auto.pool.deadline_min_room", "101", false},
+		{"logins.auto.pool.deadline_min_room", "-1", false},
+		{"logins.auto.pool.deadline_min_room", "null", false},
 		{"logins.auto.pool.max_sessions", "0", true},
 		{"logins.auto.pool.max_sessions", "4", true},
 		{"logins.auto.pool.max_sessions", "-1", false},

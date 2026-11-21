@@ -179,6 +179,16 @@ func (p Pool) ruleValues(c *pool.Config) error {
 	if p.StickyLeaveRatio != nil {
 		c.StickyLeaveRatio = *p.StickyLeaveRatio
 	}
+	if p.DeadlineWindow != "" {
+		d, err := parseDuration("deadline_window", p.DeadlineWindow)
+		if err != nil {
+			return err
+		}
+		c.DeadlineWindow = d
+	}
+	if p.DeadlineMinRoom != nil {
+		c.DeadlineMinRoom = *p.DeadlineMinRoom
+	}
 	return nil
 }
 

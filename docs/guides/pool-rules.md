@@ -10,8 +10,14 @@ The defaults were chosen with the [pool simulator](pool-simulator.md) to do well
 2. **Usable.** A member is skipped when any of these holds, and every reason is listed: disabled; no usage reading; a per-use API key in an `oauth-token` member without `allow_api_key`; a status other than `ok`; usage that is not a number; 5-hour use at or over `short_unavailable_at_percent` (99); 5-hour use at or over its 5-hour cap; weekly use at or over its weekly cap; a per-model weekly window of the session's model at or over the weekly cap, or refused by the vendor until its reset ([per-model windows](#per-model-weekly-windows)). Caps are exclusive (under the cap is usable) and count the account's total use.
 3. **Tiers.** While any own member is usable, the pool is the usable own members plus the usable shared members whose weekly reset is within `shared_borrow_window` (48h); the other usable shared members wait (`WAIT`). With no own member usable, every usable shared member is in the pool.
 4. **Weekly relax.** Over the last `week_relax_window` (24h) before a member's weekly reset, its weekly cap rises in a straight line to its `week_relax_max` (95): a teammate's account at cap 70 has 82.5 twelve hours before its reset and 95 at it. That room would be lost at the reset anyway. The 5-hour cap never rises (that window outlives the weekly reset and is the teammate's working time). A member whose cap is already higher (your own at 98) keeps it.
-5. **Order.** `order: "urgency"` (the default) puts first the member with the most room to lose per hour: the room left under its weekly cap divided by the hours to the reset, times its `capacity`. `order: "deadline"` puts the soonest weekly reset first. An unknown or passed reset sorts last; ties keep config order, own before shared.
-6. **A pick per session.** Each session (each `--login POOL` run) gets its own pick. It stays on its member while that member is still in the pool (`sticky`), unless another member is at least `sticky_leave_ratio` (3) times as urgent; a member takes at most `max_sessions` (4) sessions before the next one is used, then the waiting members, then the least loaded. A session counts while its agent still runs and it asked for a key within two `key_ttl`s: a run that ended a moment ago, or one that sits idle, holds no place. So `agx live list` (every run that still runs, busy or idle) can show more runs on a member than `max_sessions`, and more than `agx pool pick` counts: idle runs keep their member (sticky) when they wake, and when every member is at `max_sessions` the least loaded takes the next session. With `max_sessions: 0` and `sticky: false` every session gets the first member.
+5. **Order.** `order: "urgency"` (the default) ranks the members in two groups.
+   - First the **deadline group**: every member whose weekly reset is within `deadline_window` (24h) and that has at least `deadline_min_room` (2%) of room before it, soonest reset first. Using the room that expires first loses nothing; ranking these by urgency alone could put a member that resets later with more room first, and the sooner one's room would be lost at its reset.
+   - Then everyone else, the most room to lose per hour first: the room left before the reset divided by the hours to it, times its `capacity`.
+   - The room counts up to the weekly cap the member reaches at its reset once that cap is rising (inside `week_relax_window`), not only to the cap it has now. A teammate's account at week 87% seven hours before its reset has a cap of 87.7% now: 0.7% to use now, but 8% before the reset, about 1.1% an hour. Whether a member is usable still goes by its cap now. Before the relax window opens none of the rise can be used yet, so it is not counted.
+   - `agx pool pick` shows each member's room now and, when it differs, the room by the reset (`room 0.7% (8% by the reset)`), the rate needed to use it all (`needs 1.14%/h`, never weighed by `capacity`, never `0` while there is room) and `resets within deadline_window` for the deadline group.
+
+   `order: "deadline"` puts the soonest weekly reset first, with no minimum room. An unknown or passed reset sorts last (a reading whose weekly reset has passed is old as a whole, so it still blocks at its caps until the next probe); ties keep config order, own before shared.
+6. **A pick per session.** Each session (each `--login POOL` run) gets its own pick. It stays on its member while that member is still in the pool (`sticky`), unless the member it would go to (the first in order that can take another session) is at least `sticky_leave_ratio` (3) times as urgent; a member takes at most `max_sessions` (4) sessions before the next one is used, then the waiting members, then the least loaded. A session counts while its agent still runs and it asked for a key within two `key_ttl`s: a run that ended a moment ago, or one that sits idle, holds no place. So `agx live list` (every run that still runs, busy or idle) can show more runs on a member than `max_sessions`, and more than `agx pool pick` counts: idle runs keep their member (sticky) when they wake, and when every member is at `max_sessions` the least loaded takes the next session. With `max_sessions: 0` and `sticky: false` every session gets the first member.
 
 An empty pool picks nothing: the key request fails with each member's reasons, and `agx pool pick` exits 1 (error code `auto-pick`).
 
@@ -22,6 +28,8 @@ Each is a key of `logins.<pool>.pool` in config.jsonc, set with a flag of `agx l
 | Key | Default | Flag | Meaning |
 |---|---|---|---|
 | `order` | `urgency` | `--pool-order` | `urgency` or `deadline` (rule 5) |
+| `deadline_window` | `24h` | `--pool-deadline-window` | under `urgency`, members whose weekly reset is within this go first, soonest reset first; `0s` = never (urgency alone) |
+| `deadline_min_room` | 2 | `--pool-deadline-min-room` | the least room (percent, up to the cap reached at the reset) a member inside `deadline_window` needs to go first |
 | `week_relax_window` | `24h` | `--pool-week-relax-window` | how long before the weekly reset the weekly cap starts rising; `0s` = never |
 | `defaults.week_relax_max` | 95 | `--pool-default-week-relax` | the weekly cap reached at the reset; also per group (`own_caps.week_relax_max`, `shared_caps.week_relax_max`) and per member (`accounts.NAME.week_relax_max`) |
 | `max_sessions` | 4 | `--pool-max-sessions` | sessions one member takes before the next is used; `0` = no limit |
@@ -47,10 +55,10 @@ A member's cap comes from an override or a schedule that applies now ([which cap
 
 A preset is a named set of the rule values above, written into the config by one command. It is a shortcut, never a mode: afterwards each value is an ordinary key that `agx pool show` lists and you can change by hand. Caps are not touched (they are your team's agreement).
 
-| Preset | `order` | `week_relax_window` | `week_relax_max` | `max_sessions` | `sticky` | `sticky_leave_ratio` | `shared_borrow_window` |
-|---|---|---|---|---|---|---|---|
-| `recommended` (the defaults) | `urgency` | `24h` | 95 | 4 | `true` | 3 | `48h` |
-| `classic` (the rules before v0.4.16) | `deadline` | `0s` | 95 | 0 | `false` | 0 | `48h` |
+| Preset | `order` | `deadline_window` | `deadline_min_room` | `week_relax_window` | `week_relax_max` | `max_sessions` | `sticky` | `sticky_leave_ratio` | `shared_borrow_window` |
+|---|---|---|---|---|---|---|---|---|---|
+| `recommended` (the defaults) | `urgency` | `24h` | 2 | `24h` | 95 | 4 | `true` | 3 | `48h` |
+| `classic` (the rules before v0.4.16) | `deadline` | `0s` | 2 | `0s` | 95 | 0 | `false` | 0 | `48h` |
 
 ```sh
 agx pool preset --name classic --id auto --dry-run   # the keys it would write
@@ -67,7 +75,9 @@ would change login auto (--dry-run)
   pool.max_sessions             —  ->  0
   pool.sticky                   —  ->  false
   pool.sticky_leave_ratio       —  ->  0
+  pool.deadline_min_room        —  ->  2
   pool.week_relax_window        —  ->  0s
+  pool.deadline_window          —  ->  0s
 
 $ agx pool preset --name recommended --id auto
 changed login auto (pool, pool 2 own, 3 shared)
@@ -76,10 +86,12 @@ changed login auto (pool, pool 2 own, 3 shared)
   pool.max_sessions             —  ->  4
   pool.sticky                   —  ->  true
   pool.sticky_leave_ratio       —  ->  3
+  pool.deadline_min_room        —  ->  2
   pool.week_relax_window        —  ->  24h
+  pool.deadline_window          —  ->  24h
 
 $ agx pool show --id auto --json --field data.settings
-[{"key":"force","value":"off","source":"default"},{"key":"order","value":"urgency","source":"pool"},{"key":"week_relax_window","value":"24h","source":"pool"},{"key":"defaults.week_relax_max","value":"95","source":"pool"},{"key":"max_sessions","value":"4","source":"pool"},{"key":"sticky","value":"true","source":"pool"},{"key":"sticky_leave_ratio","value":"3","source":"pool"},{"key":"shared_borrow_window","value":"48h","source":"pool"},{"key":"short_unavailable_at_percent","value":"99","source":"pool"},{"key":"own_caps.short","value":"95","source":"default"},{"key":"own_caps.week","value":"98","source":"default"},{"key":"defaults.short","value":"50","source":"pool"},{"key":"defaults.week","value":"70","source":"pool"},{"key":"usage_max_age","value":"60s","source":"pool"},{"key":"key_ttl","value":"60s","source":"pool"},{"key":"picker.command","value":"built-in rules","source":"default"},{"key":"picker.timeout","value":"10s","source":"default"},{"key":"timezone","value":"local","source":"default"},{"key":"log","value":"none","source":"default"}]
+[{"key":"force","value":"off","source":"default"},{"key":"order","value":"urgency","source":"pool"},{"key":"deadline_window","value":"24h","source":"pool"},{"key":"deadline_min_room","value":"2","source":"pool"},{"key":"week_relax_window","value":"24h","source":"pool"},{"key":"defaults.week_relax_max","value":"95","source":"pool"},{"key":"max_sessions","value":"4","source":"pool"},{"key":"sticky","value":"true","source":"pool"},{"key":"sticky_leave_ratio","value":"3","source":"pool"},{"key":"shared_borrow_window","value":"48h","source":"pool"},{"key":"short_unavailable_at_percent","value":"99","source":"pool"},{"key":"own_caps.short","value":"95","source":"default"},{"key":"own_caps.week","value":"98","source":"default"},{"key":"defaults.short","value":"50","source":"pool"},{"key":"defaults.week","value":"70","source":"pool"},{"key":"usage_max_age","value":"60s","source":"pool"},{"key":"key_ttl","value":"60s","source":"pool"},{"key":"picker.command","value":"built-in rules","source":"default"},{"key":"picker.timeout","value":"10s","source":"default"},{"key":"timezone","value":"local","source":"default"},{"key":"log","value":"none","source":"default"}]
 ```
 
 ## Per-model weekly windows
@@ -151,10 +163,10 @@ On Saturday the [example](../../examples/acct-pool-schedules/README.md) pick use
 $ agx pool pick --id auto
 Pool: auto (claude, order urgency)
 Use: carol (shared)
-most room to lose: 29% left under its weekly cap with 68h to the reset (0.4%/h to use it all)
+most room to lose: 29% left under its weekly cap with 68h to the reset (0.43%/h to use it all)
 Source: cache (20s old)
 Probe model: the agent's default (all-models windows only)
-Rules: order urgency (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 70 (default)
+Rules: order urgency (default), deadline_window 24h (default), deadline_min_room 2 (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 70 (default)
 
 Candidates (ready accounts in pick order):
 - carol [shared] #1 READY (5h 62%, week 41%, resets in 2 d 20 hr, room 29%, caps 95 (schedule weekend until Sun 16:00)/70 (default), needs 0.43%/h)
@@ -195,6 +207,8 @@ For each cap (`short`, `week`, `week_relax_max`) on its own, the first of these 
 3. the schedules that apply now and name the member's group (`own`, `shared`);
 4. the normal caps: the member's entry, its group's block, the pool's `defaults`, agx's default.
 
+The urgency (rule 5) counts up to the cap the member will have at its reset: a schedule or override that ends before the reset does not raise the room counted there. A higher weekly cap that applies now counts until it ends: the room above the cap that follows must be used before then, and when that needs the faster rate the pick says so (`29% left under its weekly cap of 99% before its override ends in 1h`).
+
 When several schedules at the same step set the same cap, the highest value wins: each of them is meant to allow that much, so the most permissive one applies (a tie goes to the first in the file). A schedule that sets only `short` leaves the weekly cap to the steps below it. A schedule that names a group replaces the own caps of every member in it too: if one teammate asked for lower caps (`accounts.erin.short: 30`), name the other members in the schedule instead of `shared`. The safety cutoff (`short_unavailable_at_percent`, 99) and the weekly relax still apply on top, and `--pool-only-short` / `--pool-only-week` may lower a timed cap for one run but never raise it.
 
 ### Days, hours, zones
@@ -209,6 +223,7 @@ When several schedules at the same step set the same cap, the highest value wins
 - **Heavy-use teams: a 60% shared weekly cap.** When teammates use their own accounts hard, `--pool-group-cap-week shared=60` (or `defaults.week: 60`) keeps more of their week for them. In the simulator it cut teammates' lockouts and was about 0.6% cheaper overall, at the price of serving about 1.5 points less of your own demand. It is a team agreement, so it is an option, not the default.
 - **Plans of different sizes.** Give each member its `capacity` (`--pool-capacity alice=20 --pool-capacity carol=5`): a Max 20x account's percent then counts four times a Max 5x one's. Without it the defaults still work; with it every group in the simulator did better.
 - **One teammate who wants their whole week.** `--pool-cap-week-relax erin=70` (their weekly cap or lower) turns the weekly relax off for them alone.
+- **Urgency alone.** `--pool-deadline-window 0s` turns the deadline group off. In the simulator the two came out even (within 0.3% of cost in every group of pools, the same waste); the group makes the order follow the reset that loses room first, and it costs a little more teammate lockout in large teams.
 - **The old behaviour.** `agx pool preset --name classic --id POOL` writes the rules agx used before v0.4.16 (soonest reset first, every session on one pick).
 
 ## Related

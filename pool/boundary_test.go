@@ -256,7 +256,7 @@ func checkPick(t *testing.T, i int, cfg pool.Config, data map[string]pool.Readin
 	t.Helper()
 	usable := func(m string) bool {
 		rd, ok := data[m]
-		return len(cfg.Reasons(m, rd, ok)) == 0
+		return len(cfg.Reasons(m, rd, ok, portNow)) == 0
 	}
 	members := slices.Concat(cfg.Own, cfg.Shared)
 	ownUsable := slices.ContainsFunc(cfg.Own, usable)
@@ -285,7 +285,7 @@ func checkPick(t *testing.T, i int, cfg pool.Config, data map[string]pool.Readin
 	}
 	s := r.Selected.Name
 	if !allowed(s) {
-		t.Fatalf("case %d: picked %s, which is not usable or not allowed: %v", i, s, cfg.Reasons(s, data[s], true))
+		t.Fatalf("case %d: picked %s, which is not usable or not allowed: %v", i, s, cfg.Reasons(s, data[s], true, portNow))
 	}
 	rd := data[s]
 	caps := cfg.CapsFor(s)

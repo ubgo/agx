@@ -197,6 +197,7 @@ func (p *poolPlan) planSettings(cur config.Pool, members []string, s PoolSetting
 		{flagPoolUsageMaxAge, keyPoolUsageMaxAge, cur.UsageMaxAge, s.UsageMaxAge, 0},
 		{flagPoolKeyTTL, keyPoolKeyTTL, cur.KeyTTL, s.KeyTTL, config.MinKeyTTL},
 		{flagPoolWeekRelaxWindow, keyPoolWeekRelaxWindow, cur.WeekRelaxWindow, s.Rules.WeekRelaxWindow, 0},
+		{flagPoolDeadlineWindow, keyPoolDeadlineWindow, cur.DeadlineWindow, s.Rules.DeadlineWindow, 0},
 	} {
 		if d.v == nil {
 			continue

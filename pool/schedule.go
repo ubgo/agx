@@ -371,12 +371,19 @@ func (t *timedCap) pick(v *float64, src CapSource) {
 // At is c with the schedules and overrides that apply at now folded into
 // the member entries, so every rule reads the timed caps; Timed reports
 // them per member, and an expired override is left out (ExpiredOverride
-// reports it).
+// reports it). The normal caps are kept (normal), so a config folded at
+// one time folds again at another from them: At(t1).At(t2) is At(t2),
+// which Select needs to read the caps at a member's reset.
 func (c Config) At(now time.Time) Config {
+	if c.normal != nil {
+		c = *c.normal
+	}
 	if len(c.Schedules) == 0 && !c.hasOverrides() {
 		return c
 	}
+	normal := c
 	out := c
+	out.normal = &normal
 	out.Accounts = make(map[string]Account, len(c.Accounts))
 	for k, v := range c.Accounts {
 		out.Accounts[k] = v

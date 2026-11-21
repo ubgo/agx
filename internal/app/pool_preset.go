@@ -61,6 +61,8 @@ func presetSettings(r pool.Rules) PoolSettings {
 			MaxSessions:      str(strconv.Itoa(r.MaxSessions)),
 			Sticky:           str(strconv.FormatBool(r.Sticky)),
 			StickyLeaveRatio: str(percentText(r.StickyLeaveRatio)),
+			DeadlineWindow:   str(configDuration(r.DeadlineWindow)),
+			DeadlineMinRoom:  str(percentText(r.DeadlineMinRoom)),
 		},
 	}
 }

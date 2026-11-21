@@ -24,11 +24,15 @@
 //     within BorrowWindow; other usable shared accounts wait. With no own
 //     account usable, the pool is every usable shared account.
 //  4. The pool is ordered by Config.Order: "urgency" (the default) puts
-//     the member with the most room to lose per hour first (room under
-//     its weekly cap ÷ hours to the reset, weighed by its capacity);
-//     "deadline" puts the soonest weekly reset first. An unknown or
-//     already-passed reset sorts last (a passed reset means stale data);
-//     ties keep config order, own before shared.
+//     first the members whose reset is within DeadlineWindow with at
+//     least DeadlineMinRoom of room, soonest reset first, then the rest
+//     by the most room to lose per hour (the room left before the reset,
+//     up to the weekly cap reached there, ÷ hours to the reset, weighed
+//     by its capacity); "deadline" puts the soonest weekly reset first.
+//     An unknown or already-passed reset sorts last (a passed reset means
+//     stale data, and such a reading still blocks at its caps: the whole
+//     reading is old, unlike a stale per-model window next to a fresh
+//     one); ties keep config order, own before shared.
 //  5. Each session gets its own pick (file rules.go): it stays on its
 //     member while that member is still in the pool (Sticky, unless
 //     another member is StickyLeaveRatio times as urgent), and a member
@@ -98,6 +102,15 @@ const (
 	// later (up to half again today's cost when a week holds few 5-hour
 	// windows); 3 bounds that for a few more switches.
 	DefaultStickyLeaveRatio = 3.0
+	// DefaultDeadlineWindow is how close a member's reset must be for it
+	// to go first, soonest reset first, under the urgency order (rule 5
+	// of rules.go); 0 = never. The same 24h as the weekly relax: the
+	// last day is when room starts to be lost.
+	DefaultDeadlineWindow = 24 * time.Hour
+	// DefaultDeadlineMinRoom is the least room (percent, up to the cap
+	// reached at the reset) a member inside the deadline window needs to
+	// go first, so a scrap of room does not take the top.
+	DefaultDeadlineMinRoom = 2.0
 )
 
 // Order is how the pool ranks its usable members.
@@ -262,6 +275,12 @@ type Config struct {
 	// urgent member's urgency is at least this many times its own; 0 =
 	// never.
 	StickyLeaveRatio float64
+	// DeadlineWindow and DeadlineMinRoom: under the urgency order, the
+	// members whose reset is within DeadlineWindow and who have at least
+	// DeadlineMinRoom percent of room go first, soonest reset first.
+	// DeadlineWindow 0 = never.
+	DeadlineWindow  time.Duration
+	DeadlineMinRoom float64
 	// Location is the time zone of schedules without their own; nil =
 	// time.Local.
 	Location *time.Location
@@ -272,6 +291,12 @@ type Config struct {
 	// end of each expired override.
 	timed   map[string]TimedCaps
 	expired map[string]time.Time
+	// atReset is set by Select when schedules or overrides change caps:
+	// a member's weekly cap and relax max at a later time (finalCap).
+	atReset func(name string, at time.Time) (week, relaxMax float64)
+	// normal is the config before At folded timed caps in; nil when it
+	// is that config.
+	normal *Config
 }
 
 // New returns a Config with the documented defaults, for callers that
@@ -284,6 +309,7 @@ func New(own, shared []string) Config {
 		OwnDefaults:        Caps{Short: DefaultOwnShortCap, Week: DefaultOwnWeekCap},
 		Order:              DefaultOrder, WeekRelaxWindow: DefaultWeekRelaxWindow, WeekRelaxMax: DefaultWeekRelaxMax,
 		MaxSessions: DefaultMaxSessions, Sticky: DefaultSticky, StickyLeaveRatio: DefaultStickyLeaveRatio,
+		DeadlineWindow: DefaultDeadlineWindow, DeadlineMinRoom: DefaultDeadlineMinRoom,
 	}
 }
 
@@ -310,7 +336,7 @@ func (c Config) Validate() error {
 	for _, p := range []struct {
 		label string
 		v     float64
-	}{{"short_unavailable_at_percent", c.ShortUnavailableAt}, {"defaults.short", c.Defaults.Short}, {"defaults.week", c.Defaults.Week}, {"defaults.week_relax_max", c.WeekRelaxMax},
+	}{{"short_unavailable_at_percent", c.ShortUnavailableAt}, {"defaults.short", c.Defaults.Short}, {"defaults.week", c.Defaults.Week}, {"defaults.week_relax_max", c.WeekRelaxMax}, {"deadline_min_room", c.DeadlineMinRoom},
 		{"own defaults short", c.OwnDefaults.Short}, {"own defaults week", c.OwnDefaults.Week}} {
 		if !validPercent(p.v) {
 			return fmt.Errorf("pool: %s %v is outside 0..100", p.label, p.v)
@@ -505,10 +531,27 @@ type Candidate struct {
 	// WeekCapConfigured is the configured weekly cap when Caps.Week has
 	// been relaxed above it near the reset; nil otherwise.
 	WeekCapConfigured *float64 `json:"week_cap_configured,omitempty"`
-	// Urgency is Room ÷ hours to the reset of the window that leaves the
-	// least room, times the capacity, in percent per hour (the urgency
-	// order); nil when either is unknown.
-	Urgency *float64 `json:"urgency,omitempty"`
+	// RoomAtReset is the room the member has before its reset, up to
+	// the cap it reaches there (above the cap now while the cap is
+	// rising), for the window that leaves the least; nil when it equals
+	// Room or the reset is unknown.
+	RoomAtReset *float64 `json:"room_at_reset,omitempty"`
+	// NeedsPerHour is that room ÷ hours to that reset: the rate, in
+	// percent per hour, needed to use it all; Urgency is it times the
+	// member's capacity (the urgency order's key). Both nil when either
+	// is unknown; a rate above 0 shows at least 0.01.
+	NeedsPerHour *float64 `json:"needs_per_hour,omitempty"`
+	Urgency      *float64 `json:"urgency,omitempty"`
+	// Deadline is true when the member is usable and in the deadline
+	// group: its room is due within the deadline window with at least
+	// the minimum room, so it goes before the members of its list
+	// (ready, or waiting) ranked by urgency.
+	Deadline bool `json:"deadline,omitempty"`
+	// RoomUntil is how long from now the counted room can be used: to
+	// the reset of the window that leaves the least, or to the end of a
+	// higher timed weekly cap; the deadline group sorts by it. nil when
+	// the urgency is unknown.
+	RoomUntil *time.Duration `json:"-"`
 	// Scoped are the reading's per-model windows with the cap each gets.
 	Scoped []ScopedState `json:"scoped,omitempty"`
 	// Timed are the caps a schedule or an override sets now; nil = none.
@@ -526,9 +569,11 @@ type Candidate struct {
 	hasWeekReset bool
 	urgency      float64
 	hasUrgency   bool
-	// roomUntil is the time to the reset of the window that leaves the
-	// least room (the weekly one unless a scoped window leaves less).
-	roomUntil *time.Duration
+	// urgencyRoom is the room the urgency counts, exact: the least room
+	// any window leaves before its reset, up to the cap it reaches there;
+	// window is that window.
+	urgencyRoom float64
+	window      roomWindow
 }
 
 // Selection is the account to use and why.
@@ -589,6 +634,7 @@ func Select(cfg Config, readings map[string]Reading, o Options) (Result, error) 
 	if o.Now.IsZero() {
 		return Result{}, ErrBadNow
 	}
+	base := cfg
 	cfg = cfg.At(o.Now)
 	if o.Only != "" {
 		pinned, err := onlyConfig(cfg, o)
@@ -605,6 +651,7 @@ func Select(cfg Config, readings map[string]Reading, o Options) (Result, error) 
 		a.WeekRelaxMax = o.OnlyCaps.Week
 		cfg.Accounts[o.Only] = a
 	}
+	cfg.atReset = base.capsAt(o)
 	res := Result{Now: o.Now, ShortUnavailableAt: cfg.ShortUnavailableAt, BorrowWindow: cfg.BorrowWindow, Order: cfg.order()}
 	cands := make([]*Candidate, 0, len(cfg.Own)+len(cfg.Shared))
 	add := func(names []string, g Group) {
@@ -679,6 +726,26 @@ func Select(cfg Config, readings map[string]Reading, o Options) (Result, error) 
 	return res, nil
 }
 
+// capsAt is how Select reads a member's weekly cap and relax max at a
+// later time (a reset), from c, the config before At: the schedules and
+// overrides that apply then, and a pinned run's lower weekly cap, which
+// is a hard limit at any time. nil when nothing in c changes with time
+// and nothing is pinned lower (the caps now are the caps then).
+func (c Config) capsAt(o Options) func(string, time.Time) (float64, float64) {
+	limit := o.OnlyCaps.Week
+	if len(c.Schedules) == 0 && !c.hasOverrides() && limit == nil {
+		return nil
+	}
+	return func(name string, at time.Time) (float64, float64) {
+		then := c.At(at)
+		week, relaxMax := then.CapsFor(name).Week, then.RelaxMaxFor(name)
+		if limit != nil && name == o.Only {
+			week, relaxMax = math.Min(week, *limit), math.Min(relaxMax, *limit)
+		}
+		return week, relaxMax
+	}
+}
+
 // reasonOnly is a pinned selection's reason.
 const reasonOnly = "the only member of this run (--pool-only); its caps and the pool's rules still apply"
 
@@ -747,20 +814,19 @@ func candidate(cfg Config, name string, g Group, order int, rd Reading, found bo
 		}
 		c.inWindow = g == GroupShared && until >= 0 && until <= cfg.BorrowWindow
 	}
-	setUrgency(c, rd, cfg.CapacityFor(name))
+	cfg.setUrgency(c, rd)
+	cfg.markDeadline(c)
 	return c
 }
 
-// Reasons is every reason account name cannot be used now under cfg,
-// given its reading (found false = none); empty = usable. A caller that
-// lets something other than the rules choose (a picker command) reports
-// these as warnings.
-func (c Config) Reasons(name string, rd Reading, found bool) []string {
-	reasons := blockReasons(rd, found, c.Enabled(name), c.CapsFor(name), c.ShortUnavailableAt)
-	if found && !rd.PerUseKey {
-		reasons = append(reasons, scopedReasons(c.scopedStates(name, rd, time.Time{}))...)
-	}
-	return reasons
+// Reasons is every reason account name cannot be used at now under
+// cfg, given its reading (found false = none); empty = usable. The caps
+// are the ones Select applies at now: schedules, overrides and the
+// weekly relax. A caller that lets something other than the rules
+// choose (a picker command) reports these as warnings.
+func (c Config) Reasons(name string, rd Reading, found bool, now time.Time) []string {
+	at := c.At(now)
+	return candidate(at, name, at.groupOf(name), 0, rd, found, now).Reasons
 }
 
 // blockReasons is every reason an account cannot be used now; empty =

@@ -13,6 +13,16 @@
         "source": "default"
       },
       {
+        "key": "deadline_window",
+        "value": "24h",
+        "source": "default"
+      },
+      {
+        "key": "deadline_min_room",
+        "value": "2",
+        "source": "default"
+      },
+      {
         "key": "week_relax_window",
         "value": "24h",
         "source": "default"
@@ -76,7 +86,7 @@
       "forced": false,
       "picked_by": "rules",
       "sessions": 0,
-      "reason": "most room to lose: 44% left under its weekly cap with 37.8h to the reset (1.2%/h to use it all)",
+      "reason": "most room to lose: 44% left under its weekly cap with 37.8h to the reset (1.16%/h to use it all)",
       "warnings": [],
       "weekly_resets_at": "<time>",
       "room_percent": 44
@@ -109,6 +119,7 @@
           "short": "default",
           "week": "default"
         },
+        "needs_percent_per_hour": 1.16,
         "urgency_percent_per_hour": 1.16,
         "scoped": [],
         "sessions": 0,
@@ -139,6 +150,7 @@
           "short": "member",
           "week": "member"
         },
+        "needs_percent_per_hour": 0.71,
         "urgency_percent_per_hour": 0.71,
         "scoped": [],
         "sessions": 0,
@@ -169,6 +181,7 @@
           "short": "default",
           "week": "default"
         },
+        "needs_percent_per_hour": 0.65,
         "urgency_percent_per_hour": 0.65,
         "scoped": [],
         "sessions": 0,
@@ -199,6 +212,7 @@
           "short": "member",
           "week": "member"
         },
+        "needs_percent_per_hour": 0.46,
         "urgency_percent_per_hour": 0.46,
         "scoped": [],
         "sessions": 0,
@@ -229,6 +243,7 @@
           "short": "default",
           "week": "default"
         },
+        "needs_percent_per_hour": 0.63,
         "urgency_percent_per_hour": 0.63,
         "scoped": [],
         "sessions": 0,
@@ -261,6 +276,7 @@
           "short": "default",
           "week": "default"
         },
+        "needs_percent_per_hour": 0.46,
         "urgency_percent_per_hour": 0.46,
         "scoped": [],
         "sessions": 0,
@@ -293,6 +309,7 @@
           "short": "default",
           "week": "default"
         },
+        "needs_percent_per_hour": 0.46,
         "urgency_percent_per_hour": 0.46,
         "scoped": [],
         "sessions": 0,
@@ -325,6 +342,7 @@
           "short": "default",
           "week": "default"
         },
+        "needs_percent_per_hour": 0.44,
         "urgency_percent_per_hour": 0.44,
         "scoped": [],
         "sessions": 0,
@@ -357,6 +375,7 @@
           "short": "default",
           "week": "default"
         },
+        "needs_percent_per_hour": 0.42,
         "urgency_percent_per_hour": 0.42,
         "scoped": [],
         "sessions": 0,
@@ -389,6 +408,7 @@
           "short": "default",
           "week": "default"
         },
+        "needs_percent_per_hour": 0.1,
         "urgency_percent_per_hour": 0.1,
         "scoped": [],
         "sessions": 0,
@@ -421,6 +441,7 @@
           "short": "member",
           "week": "member"
         },
+        "needs_percent_per_hour": 0,
         "urgency_percent_per_hour": 0,
         "scoped": [],
         "sessions": 0,
@@ -454,6 +475,7 @@
           "short": "default",
           "week": "default"
         },
+        "needs_percent_per_hour": 0,
         "urgency_percent_per_hour": 0,
         "scoped": [],
         "sessions": 0,

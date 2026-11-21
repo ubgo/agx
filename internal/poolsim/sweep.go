@@ -137,6 +137,13 @@ func Knobs() []Knob {
 			func(p *Policy, d time.Duration) {
 				p.Urgent = UrgentTier{Window: d, Short: urgentShort, Week: urgentWeek}
 			}),
+		durations("deadline window (K)", []time.Duration{0, 6 * time.Hour, 12 * time.Hour, 24 * time.Hour, 48 * time.Hour},
+			func(p *Policy, d time.Duration) { p.Deadline.Window = d }),
+		numbers("deadline min room (K)", []float64{0, 1, 2, 5, 10}, func(p *Policy, v float64) { p.Deadline.MinRoom = v }),
+		numbers("sticky leaves for the deadline group (K, 0 off, 1 on)", []float64{0, 1}, func(p *Policy, v float64) { p.Deadline.Leave = v > 0 }),
+		numbers("urgency room (0 cap now, 1 cap at reset inside the relax window, 2 for any reset)", []float64{0, 1, 2}, func(p *Policy, v float64) {
+			p.Relax.NowOnly, p.Relax.Always = v == 0, v == 2
+		}),
 		numbers("weighted by plan size (W, 0 off, 1 on)", []float64{0, 1}, func(p *Policy, v float64) { p.Weighted = v > 0 }),
 		numbers("idle 5h cap (D, 0 = off)", []float64{0, 60, 70, 80}, func(p *Policy, v float64) {
 			p.Idle = IdleShort{Short: v, ActiveFor: idleActiveFor}

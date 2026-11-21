@@ -29,6 +29,14 @@
   },
   {
     "source": "default",
+    "value": "deadline_window 24h"
+  },
+  {
+    "source": "default",
+    "value": "deadline_min_room 2"
+  },
+  {
+    "source": "default",
     "value": "week_relax_window 24h"
   },
   {

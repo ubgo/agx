@@ -125,6 +125,7 @@ func TestPoolRulesLoad(t *testing.T) {
 	l, err := parsePool(t, `"auto": { "agents": ["claude"], "kind": "pool", "pool": {
       "own": ["alice", "bob"], "shared": ["carol", "derek"], "order": "deadline",
       "week_relax_window": "12h", "max_sessions": 2, "sticky": false, "sticky_leave_ratio": 5,
+      "deadline_window": "6h", "deadline_min_room": 5,
       "defaults": { "week_relax_max": 90 }, "own_caps": { "short": 95, "week": 98 },
       "shared_caps": { "week": 60, "week_relax_max": 85 },
       "accounts": { "derek": { "week_relax_max": 60, "capacity": 4 } } } }`)
@@ -135,7 +136,8 @@ func TestPoolRulesLoad(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r.Order != "deadline" || r.WeekRelaxWindow != 12*time.Hour || r.MaxSessions != 2 || r.Sticky || r.WeekRelaxMax != 90 || r.StickyLeaveRatio != 5 {
+	if r.Order != "deadline" || r.WeekRelaxWindow != 12*time.Hour || r.MaxSessions != 2 || r.Sticky || r.WeekRelaxMax != 90 || r.StickyLeaveRatio != 5 ||
+		r.DeadlineWindow != 6*time.Hour || r.DeadlineMinRoom != 5 {
 		t.Errorf("rules: order %s, window %s, sessions %d, sticky %v, relax %v", r.Order, r.WeekRelaxWindow, r.MaxSessions, r.Sticky, r.WeekRelaxMax)
 	}
 	if c := r.CapsFor("alice"); c.Short != 95 || c.Week != 98 {
@@ -155,7 +157,8 @@ func TestPoolRulesLoad(t *testing.T) {
 		t.Fatal(err)
 	}
 	dr, _ := d.Config.Logins["auto"].Pool.Rules()
-	if dr.Order != "urgency" || dr.WeekRelaxWindow != 24*time.Hour || dr.MaxSessions != 4 || !dr.Sticky || dr.WeekRelaxMax != 95 {
+	if dr.Order != "urgency" || dr.WeekRelaxWindow != 24*time.Hour || dr.MaxSessions != 4 || !dr.Sticky || dr.WeekRelaxMax != 95 ||
+		dr.DeadlineWindow != 24*time.Hour || dr.DeadlineMinRoom != 2 {
 		t.Errorf("defaults: %+v", dr)
 	}
 	if c := dr.CapsFor("alice"); c.Short != 95 || c.Week != 98 {
@@ -169,6 +172,11 @@ func TestPoolRulesLoad(t *testing.T) {
 		{`"max_sessions": 1.5`, "max_sessions"},
 		{`"sticky": null`, "sticky"},
 		{`"sticky_leave_ratio": -1`, "sticky_leave_ratio"},
+		{`"deadline_window": "soon"`, "deadline_window"},
+		{`"deadline_window": "-1h"`, "deadline_window"},
+		{`"deadline_min_room": 101`, "deadline_min_room"},
+		{`"deadline_min_room": -1`, "deadline_min_room"},
+		{`"deadline_min_room": null`, "deadline_min_room"},
 		{`"own_caps": { "short": 101 }`, "own_caps"},
 		{`"defaults": { "week_relax_max": null }`, "week_relax_max"},
 	} {

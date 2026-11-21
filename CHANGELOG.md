@@ -2,6 +2,28 @@
 
 All notable changes to agx are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and agx uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.20] - 2026-11-21
+
+### Changed
+
+- The pool's urgency counts the room a member has before its weekly reset up to the cap it reaches at the reset, once that cap is rising (inside `week_relax_window`), instead of only the room under its cap now. A teammate's account at week 87% seven hours before its reset (cap 87.7% now) has 0.7% of room now but 8% before the reset; it used to rank last and lose that room. Whether a member is usable still goes by its cap now. The reason and `agx pool pick` say so in plain words (`8% left before its weekly cap reaches 95% at the reset in 7h (1.14%/h to use it all)`, `room 0.7% (8% by the reset)`).
+- Deadline group: under the `urgency` order, members whose weekly reset is within `deadline_window` (default `24h`) and that have at least `deadline_min_room` (default 2%) of room before it go first, soonest reset first; the rest follow by urgency. Using the room that expires first loses nothing, while urgency alone could leave a member that resets sooner for one with more room that resets later. New keys `deadline_window` and `deadline_min_room`, flags `--pool-deadline-window` and `--pool-deadline-min-room`, shown by `agx pool show` and `agx pool pick` with their source and written by both presets (`classic`: `0s`). In the pool simulator (36 scenario families) the deadline group and urgency alone came out even: 0.909 and 0.908 of the classic rules' cost on average, the same worst case (1.016), each group of pools within 0.3%, and the same waste in every scenario, the recorded one included.
+- A sticky session leaves its member only for the member it would actually go to (the first in order that can take another session), when that one is `sticky_leave_ratio` times as urgent. It used to compare with the first member even when that one was full, then leave for a member that was not more urgent at all.
+- `needs X%/h` and the reason's rate are the room ÷ hours, never weighed by `capacity` (a Max 20x member read `needs 20%/h` for a real 1%/h); `urgency_percent_per_hour` stays the weighed order key. A rate above 0 shows at least `0.01`, never `0`.
+
+### Added
+
+- `agx pool pick --json` candidates carry `room_at_reset_percent`, `needs_percent_per_hour` and `deadline`; the text marks the deadline group (`resets within deadline_window`).
+- Tests: invariants over thousands of seeded random pools (a sooner reset with the same room never ranks later, no pick above a cap in effect, no `needs 0%/h` with room, no ended override or schedule applies), a replay of a recorded pool (made-up names) and a mutation for every new rule. `scripts/anon-pool-snapshot.py` turns an `agx pool pick --cached --json` into such a fixture.
+
+### Fixed
+
+- A schedule or override that ends before a member's reset no longer counts as its cap at the reset, and a `--pool-only-week` cap holds there too. A higher weekly cap that ends before the reset makes the room above the cap that follows due when it ends (`29% left under its weekly cap of 99% before its override ends in 1h`), not at the reset days later.
+- A per-model weekly window without a reset of its own limits the member's room (it blocked at its cap but was left out of the room and the order).
+- The reason names the window that limits the room (`left under its fable week cap with 20h to that window's reset`) instead of calling a per-model window "its weekly cap".
+- A member without a known reset picked after a full member says `its weekly reset or room is unknown` instead of `no member has a known weekly reset and room`.
+- A picker command's warnings, and its `rules.accounts` caps, use the caps in effect now (schedules, overrides, the weekly relax for the warnings): a member usable at 80% six hours before its reset no longer gets `week is 80% (cap 70%)`.
+
 ## [0.4.19] - 2026-11-21
 
 ### Fixed

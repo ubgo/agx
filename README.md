@@ -64,10 +64,10 @@ Prebuilt binaries (macOS and Linux on amd64 and arm64, Windows on amd64) are on 
 
 ```sh
 # macOS on Apple Silicon: swap darwin_arm64 for darwin_amd64, linux_amd64 or linux_arm64
-curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.19/agx_v0.4.19_darwin_arm64.tar.gz
-curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.19/checksums.txt
+curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.20/agx_v0.4.20_darwin_arm64.tar.gz
+curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.20/checksums.txt
 shasum -a 256 -c checksums.txt --ignore-missing
-tar -xzf agx_v0.4.19_darwin_arm64.tar.gz agx && sudo mv agx /usr/local/bin/
+tar -xzf agx_v0.4.20_darwin_arm64.tar.gz agx && sudo mv agx /usr/local/bin/
 agx version
 ```
 
@@ -325,7 +325,7 @@ For Claude Code, yes: start it with `--live-login`, then `agx live use --id <run
 
 ### Can agx move a running Claude session between accounts automatically?
 
-Yes, with a login pool: a login of kind `pool` lists your own Claude logins and your teammates' shared ones, and `agx run --login auto` starts Claude with agx as its key helper. Each time Claude asks for a key (every minute by default), agx reads the members' usage (one small probe each, cached and shared by every session) and hands out the token of the member with the most room to lose before its weekly reset, using your own accounts almost fully and teammates' only up to their caps, and spreading several sessions over several accounts. `agx pool pick --id auto` shows the pick and why. To keep one session on one account but within its caps, add `--pool-only NAME`: it gets no key while that account is over a cap, rather than switching. It is Claude Code only. See [Share a pool of Claude accounts](docs/guides/login-pool.md).
+Yes, with a login pool: a login of kind `pool` lists your own Claude logins and your teammates' shared ones, and `agx run --login auto` starts Claude with agx as its key helper. Each time Claude asks for a key (every minute by default), agx reads the members' usage (one small probe each, cached and shared by every session) and hands out the token of the member whose weekly room is lost first (a member within a day of its reset, soonest first), else the one with the most room to lose per hour, using your own accounts almost fully and teammates' only up to their caps, and spreading several sessions over several accounts. `agx pool pick --id auto` shows the pick and why. To keep one session on one account but within its caps, add `--pool-only NAME`: it gets no key while that account is over a cap, rather than switching. It is Claude Code only. See [Share a pool of Claude accounts](docs/guides/login-pool.md).
 
 ### Can a pool use a teammate's account more on weekends?
 

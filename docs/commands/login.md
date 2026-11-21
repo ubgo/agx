@@ -70,10 +70,12 @@ Add a login. Cost W (X with `--login-setup`). Guide: [Adding a login](../logins.
 | `--pool-key-ttl` | how long Claude keeps a key before it asks again, at least `1s`; empty removes it (default 60s) |
 | `--pool-picker` | a shell command that picks the member instead of the built-in rules; empty removes the picker |
 | `--pool-order` | how the pool ranks its members: `urgency` (the most room to lose per hour first) or `deadline` (the soonest weekly reset first); empty: default `urgency` |
+| `--pool-deadline-window` | under the urgency order, members whose weekly reset is this close (with at least `--pool-deadline-min-room` of room) go first, soonest reset first, like `24h`; `0s` never; empty: default `24h` |
+| `--pool-deadline-min-room` | the least room, in percent up to the weekly cap reached at the reset, a member inside the deadline window needs to go first; empty: default 2 |
 | `--pool-week-relax-window` | a member's weekly cap rises to its relax max over this long before its reset, like `24h`; `0s` never; empty: default `24h` |
 | `--pool-max-sessions` | how many sessions one member takes before the next is used; `0` no limit; empty: default 4 |
 | `--pool-sticky` | keep a session on its member while it is still in the pool, `true` or `false`; empty: default `true` |
-| `--pool-sticky-leave-ratio` | a sticky session leaves its member when another member is at least this many times as urgent; `0` never; empty: default 3 |
+| `--pool-sticky-leave-ratio` | a sticky session leaves its member when the member it would go to (the first that can take another session) is at least this many times as urgent; `0` never; empty: default 3 |
 | `--pool-default-week-relax` | the weekly cap members reach at their reset, in percent; empty: default 95 |
 | `--pool-cap-week-relax` | a member's own weekly cap at its reset, `NAME=PERCENT`; `NAME=` removes it (repeat) |
 | `--pool-capacity` | a member's plan size relative to the others (only ratios matter: Pro 1, Max 5x 5, Max 20x 20), so its room counts for more work, `NAME=N`; `NAME=` removes it (repeat) |
@@ -112,15 +114,15 @@ users    —
 $ agx pool pick --id team
 Pool: team (claude, order urgency)
 Use: alice (own)
-most room to lose: 69% left under its weekly cap with 144h to the reset (0.5%/h to use it all)
+most room to lose: 69% left under its weekly cap with 144h to the reset (0.48%/h to use it all)
 Source: cache (20s old)
 Probe model: the agent's default (all-models windows only)
-Rules: order urgency (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 70 (default)
+Rules: order urgency (default), deadline_window 24h (default), deadline_min_room 2 (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 70 (default)
 
 Candidates (ready accounts in pick order):
 - alice [own] #1 READY (5h 3%, week 29%, resets in 6 d 0 hr, room 69%, caps 95/98 (default), needs 0.48%/h)
 - derek [shared] WAIT (5h 0%, week 15%, resets in 4 d 0 hr, room 55%, caps 50/70 (default), needs 0.57%/h) (shared reset not within 48h while an own account is usable)
-- erin [shared] skip: 5h is 55% (cap 50%) (5h 55%, week 43%, resets in 3 hr 0 min, room 48.9%, caps 50/91.9 (default)) (weekly cap 70% rises to 95% over the last 24h before the reset: 91.9% now)
+- erin [shared] skip: 5h is 55% (cap 50%) (5h 55%, week 43%, resets in 3 hr 0 min, room 48.9% (52% by the reset), caps 50/91.9 (default)) (weekly cap 70% rises to 95% over the last 24h before the reset: 91.9% now)
 ```
 
 Try it:
@@ -197,10 +199,12 @@ Rotate or change a login. Every profile, default and binding that uses it keeps 
 | `--pool-key-ttl` | how long Claude keeps a key before it asks again, at least `1s`; empty removes it (default 60s) |
 | `--pool-picker` | a shell command that picks the member instead of the built-in rules; empty removes the picker |
 | `--pool-order` | how the pool ranks its members: `urgency` (the most room to lose per hour first) or `deadline` (the soonest weekly reset first); empty: default `urgency` |
+| `--pool-deadline-window` | under the urgency order, members whose weekly reset is this close (with at least `--pool-deadline-min-room` of room) go first, soonest reset first, like `24h`; `0s` never; empty: default `24h` |
+| `--pool-deadline-min-room` | the least room, in percent up to the weekly cap reached at the reset, a member inside the deadline window needs to go first; empty: default 2 |
 | `--pool-week-relax-window` | a member's weekly cap rises to its relax max over this long before its reset, like `24h`; `0s` never; empty: default `24h` |
 | `--pool-max-sessions` | how many sessions one member takes before the next is used; `0` no limit; empty: default 4 |
 | `--pool-sticky` | keep a session on its member while it is still in the pool, `true` or `false`; empty: default `true` |
-| `--pool-sticky-leave-ratio` | a sticky session leaves its member when another member is at least this many times as urgent; `0` never; empty: default 3 |
+| `--pool-sticky-leave-ratio` | a sticky session leaves its member when the member it would go to (the first that can take another session) is at least this many times as urgent; `0` never; empty: default 3 |
 | `--pool-default-week-relax` | the weekly cap members reach at their reset, in percent; empty: default 95 |
 | `--pool-cap-week-relax` | a member's own weekly cap at its reset, `NAME=PERCENT`; `NAME=` removes it (repeat) |
 | `--pool-capacity` | a member's plan size relative to the others (only ratios matter: Pro 1, Max 5x 5, Max 20x 20), so its room counts for more work, `NAME=N`; `NAME=` removes it (repeat) |
@@ -242,13 +246,13 @@ logins.team.pool.defaults.week = 80
 $ agx pool pick --id team
 Pool: team (claude, order urgency)
 Use: erin (shared)
-most room to lose: 50.1% left under its weekly cap with 3h to the reset (16.7%/h to use it all)
+resets soonest: 52% left before its weekly cap reaches 95% at the reset in 3h (17.33%/h to use it all); its reset is within 24h (deadline_window), so using it first loses nothing
 Source: cache (20s old)
 Probe model: the agent's default (all-models windows only)
-Rules: order urgency (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 80 (pool)
+Rules: order urgency (default), deadline_window 24h (default), deadline_min_room 2 (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 80 (pool)
 
 Candidates (ready accounts in pick order):
-- erin [shared] #1 READY (5h 55%, week 43%, resets in 3 hr 0 min, room 50.1%, caps 60 (member)/93.1 (pool), needs 16.71%/h) (weekly cap 80% rises to 95% over the last 24h before the reset: 93.1% now)
+- erin [shared] #1 READY (5h 55%, week 43%, resets in 3 hr 0 min, room 50.1% (52% by the reset), caps 60 (member)/93.1 (pool), needs 17.33%/h, resets within deadline_window) (weekly cap 80% rises to 95% over the last 24h before the reset: 93.1% now)
 - alice [own] #2 READY (5h 3%, week 29%, resets in 6 d 0 hr, room 69%, caps 95/98 (member), needs 0.48%/h)
 - derek [shared] skip: disabled in config; no usage reading (no windows, reset unknown, caps 50 (default)/80 (pool))
 

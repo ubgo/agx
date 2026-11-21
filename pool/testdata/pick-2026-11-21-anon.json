@@ -1,0 +1,324 @@
+{
+  "about": "agx pool pick --cached --json, anonymised by scripts/anon-pool-snapshot.py",
+  "now": "2026-11-21T20:16:51.33770834Z",
+  "order": "urgency",
+  "shared_borrow_window_hours": 48,
+  "selected": {
+    "name": "bob",
+    "reason": "alice has 4 other sessions (max_sessions 4); next: most room to lose: 3.8% left under its weekly cap with 12.7h to the reset (0.3%/h to use it all)",
+    "sessions": 3
+  },
+  "candidates": [
+    {
+      "name": "alice",
+      "account": "alice@example.com",
+      "group": "own",
+      "state": "ready",
+      "rank": 1,
+      "eligible": true,
+      "enabled": true,
+      "status": "ok",
+      "short": 43,
+      "week": 53,
+      "weekly_resets_at": "2026-11-28T04:00:00Z",
+      "hours_to_reset": 151.7,
+      "room_percent": 45,
+      "caps": {
+        "short": 95,
+        "week": 98
+      },
+      "urgency_percent_per_hour": 0.3,
+      "scoped": [],
+      "reasons": [],
+      "notes": [],
+      "sessions": 4
+    },
+    {
+      "name": "bob",
+      "account": "bob@example.com",
+      "group": "shared",
+      "state": "ready",
+      "rank": 2,
+      "eligible": true,
+      "enabled": true,
+      "status": "ok",
+      "short": 52,
+      "week": 78,
+      "weekly_resets_at": "2026-11-22T09:00:00Z",
+      "hours_to_reset": 12.7,
+      "room_percent": 3.8,
+      "caps": {
+        "short": 95,
+        "week": 81.75096577208912
+      },
+      "week_cap_configured": 70,
+      "urgency_percent_per_hour": 0.29,
+      "scoped": [],
+      "reasons": [],
+      "notes": [
+        "weekly cap 70% rises to 95% over the last 24h before the reset: 81.8% now"
+      ],
+      "sessions": 3
+    },
+    {
+      "name": "carol",
+      "account": "carol@example.com",
+      "group": "own",
+      "state": "ready",
+      "rank": 3,
+      "eligible": true,
+      "enabled": true,
+      "status": "ok",
+      "short": 4,
+      "week": 79,
+      "weekly_resets_at": "2026-11-26T18:00:00Z",
+      "hours_to_reset": 117.7,
+      "room_percent": 19,
+      "caps": {
+        "short": 95,
+        "week": 98
+      },
+      "urgency_percent_per_hour": 0.16,
+      "scoped": [],
+      "reasons": [],
+      "notes": [],
+      "sessions": 0
+    },
+    {
+      "name": "derek",
+      "account": "derek@example.com",
+      "group": "shared",
+      "state": "ready",
+      "rank": 4,
+      "eligible": true,
+      "enabled": true,
+      "status": "ok",
+      "short": 14,
+      "week": 87,
+      "weekly_resets_at": "2026-11-22T03:00:00Z",
+      "hours_to_reset": 6.7,
+      "room_percent": 1,
+      "caps": {
+        "short": 95,
+        "week": 88.00096577208913
+      },
+      "week_cap_configured": 70,
+      "urgency_percent_per_hour": 0.15,
+      "scoped": [],
+      "reasons": [],
+      "notes": [
+        "weekly cap 70% rises to 95% over the last 24h before the reset: 88% now"
+      ],
+      "sessions": 0
+    },
+    {
+      "name": "erin",
+      "account": "erin@example.com",
+      "group": "shared",
+      "state": "waiting",
+      "rank": null,
+      "eligible": true,
+      "enabled": true,
+      "status": "ok",
+      "short": 3,
+      "week": 18,
+      "weekly_resets_at": "2026-11-25T16:00:00Z",
+      "hours_to_reset": 91.7,
+      "room_percent": 52,
+      "caps": {
+        "short": 95,
+        "week": 70
+      },
+      "urgency_percent_per_hour": 0.57,
+      "scoped": [],
+      "reasons": [],
+      "notes": [
+        "shared reset not within 48h while an own account is usable"
+      ],
+      "sessions": 0
+    },
+    {
+      "name": "frank",
+      "account": "frank@example.com",
+      "group": "shared",
+      "state": "waiting",
+      "rank": null,
+      "eligible": true,
+      "enabled": true,
+      "status": "ok",
+      "short": 5,
+      "week": 32,
+      "weekly_resets_at": "2026-11-25T03:00:00Z",
+      "hours_to_reset": 78.7,
+      "room_percent": 38,
+      "caps": {
+        "short": 95,
+        "week": 70
+      },
+      "urgency_percent_per_hour": 0.48,
+      "scoped": [],
+      "reasons": [],
+      "notes": [
+        "shared reset not within 48h while an own account is usable"
+      ],
+      "sessions": 0
+    },
+    {
+      "name": "grace",
+      "account": "grace@example.com",
+      "group": "shared",
+      "state": "waiting",
+      "rank": null,
+      "eligible": true,
+      "enabled": true,
+      "status": "ok",
+      "short": 5,
+      "week": 10,
+      "weekly_resets_at": "2026-11-27T08:00:00Z",
+      "hours_to_reset": 131.7,
+      "room_percent": 60,
+      "caps": {
+        "short": 95,
+        "week": 70
+      },
+      "urgency_percent_per_hour": 0.46,
+      "scoped": [],
+      "reasons": [],
+      "notes": [
+        "shared reset not within 48h while an own account is usable"
+      ],
+      "sessions": 0
+    },
+    {
+      "name": "heidi",
+      "account": "heidi@example.com",
+      "group": "shared",
+      "state": "waiting",
+      "rank": null,
+      "eligible": true,
+      "enabled": true,
+      "status": "ok",
+      "short": 19,
+      "week": 11,
+      "weekly_resets_at": "2026-11-27T12:00:00Z",
+      "hours_to_reset": 135.7,
+      "room_percent": 59,
+      "caps": {
+        "short": 95,
+        "week": 70
+      },
+      "urgency_percent_per_hour": 0.43,
+      "scoped": [],
+      "reasons": [],
+      "notes": [
+        "shared reset not within 48h while an own account is usable"
+      ],
+      "sessions": 0
+    },
+    {
+      "name": "ivan",
+      "account": "ivan@example.com",
+      "group": "shared",
+      "state": "waiting",
+      "rank": null,
+      "eligible": true,
+      "enabled": true,
+      "status": "ok",
+      "short": 39,
+      "week": 9,
+      "weekly_resets_at": "2026-11-28T03:00:00Z",
+      "hours_to_reset": 150.7,
+      "room_percent": 61,
+      "caps": {
+        "short": 95,
+        "week": 70
+      },
+      "urgency_percent_per_hour": 0.4,
+      "scoped": [],
+      "reasons": [],
+      "notes": [
+        "shared reset not within 48h while an own account is usable"
+      ],
+      "sessions": 0
+    },
+    {
+      "name": "judy",
+      "account": "judy@example.com",
+      "group": "shared",
+      "state": "waiting",
+      "rank": null,
+      "eligible": true,
+      "enabled": true,
+      "status": "ok",
+      "short": 6,
+      "week": 25,
+      "weekly_resets_at": "2026-11-26T12:00:00Z",
+      "hours_to_reset": 111.7,
+      "room_percent": 45,
+      "caps": {
+        "short": 95,
+        "week": 70
+      },
+      "urgency_percent_per_hour": 0.4,
+      "scoped": [],
+      "reasons": [],
+      "notes": [
+        "shared reset not within 48h while an own account is usable"
+      ],
+      "sessions": 0
+    },
+    {
+      "name": "ken",
+      "account": "ken@example.com",
+      "group": "own",
+      "state": "blocked",
+      "rank": null,
+      "eligible": false,
+      "enabled": true,
+      "status": "limit-reached",
+      "short": null,
+      "week": 100,
+      "weekly_resets_at": "2026-11-25T06:00:00Z",
+      "hours_to_reset": 81.7,
+      "room_percent": 0,
+      "caps": {
+        "short": 95,
+        "week": 98
+      },
+      "urgency_percent_per_hour": 0,
+      "scoped": [],
+      "reasons": [
+        "status is limit-reached",
+        "week is 100% (cap 98%)"
+      ],
+      "notes": [],
+      "sessions": 0
+    },
+    {
+      "name": "liam",
+      "account": "liam@example.com",
+      "group": "shared",
+      "state": "blocked",
+      "rank": null,
+      "eligible": false,
+      "enabled": true,
+      "status": "ok",
+      "short": 4,
+      "week": 98,
+      "weekly_resets_at": "2026-11-24T00:00:00Z",
+      "hours_to_reset": 51.7,
+      "room_percent": 0,
+      "caps": {
+        "short": 95,
+        "week": 70
+      },
+      "urgency_percent_per_hour": 0,
+      "scoped": [],
+      "reasons": [
+        "week is 98% (cap 70%)"
+      ],
+      "notes": [],
+      "sessions": 0
+    }
+  ]
+}

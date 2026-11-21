@@ -3,6 +3,7 @@ package pool_test
 import (
 	"encoding/json"
 	"math"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -147,8 +148,11 @@ func TestExpiringUrgencyOrder(t *testing.T) {
 		{"own with more room per hour beats a shared reset sooner", map[string]pool.Reading{
 			"alice": read(0, 8, 100*time.Hour), "derek": read(0, 60, 40*time.Hour),
 		}, []string{"alice", "derek"}},
-		{"soonest reset is not first when it has little room", map[string]pool.Reading{
-			"alice": read(0, 90, 10*time.Hour), "bob": read(0, 10, 50*time.Hour),
+		{"soonest reset is not first when it has less than deadline_min_room", map[string]pool.Reading{
+			"alice": read(0, 96.5, 10*time.Hour), "bob": read(0, 10, 50*time.Hour),
+		}, []string{"bob", "alice"}},
+		{"soonest reset outside the deadline window is not first when it has little room", map[string]pool.Reading{
+			"alice": read(0, 90, 30*time.Hour), "bob": read(0, 10, 50*time.Hour),
 		}, []string{"bob", "alice"}},
 		{"unknown reset sorts last", map[string]pool.Reading{
 			"alice": {Status: pool.StatusOK, Week: &pool.Window{Percent: 0}}, "bob": read(0, 90, 100*time.Hour),
@@ -156,8 +160,10 @@ func TestExpiringUrgencyOrder(t *testing.T) {
 		{"ties keep config order", map[string]pool.Reading{
 			"bob": read(0, 48, 50*time.Hour), "alice": read(0, 48, 50*time.Hour),
 		}, []string{"alice", "bob"}},
+		// alice: 0.5% a minute before the reset is 2%/h counted over a
+		// quarter hour (30%/h over the minute); bob: 98% ÷ 30h = 3.27%/h.
 		{"minutes to the reset count as a quarter hour", map[string]pool.Reading{
-			"alice": read(0, 97, time.Minute), "bob": read(0, 0, 24*time.Hour),
+			"alice": read(0, 97.5, time.Minute), "bob": read(0, 0, 30*time.Hour),
 		}, []string{"bob", "alice"}},
 	}
 	for _, c := range cases {
@@ -198,12 +204,16 @@ func TestExpiringCapacity(t *testing.T) {
 }
 
 // TestExpiringUrgencyValue: the candidate shows its urgency in percent
-// per hour, from the relaxed cap.
+// per hour, from the cap it reaches at the reset (95), not the relaxed
+// cap now (82.5); the room it shows is still the room under the cap now.
 func TestExpiringUrgencyValue(t *testing.T) {
 	_, r := pick(t, expiring(), map[string]pool.Reading{"derek": read(0, 40, 12*time.Hour)}, pool.Options{})
 	c := candidateOf(t, r, "derek")
-	if c.Urgency == nil || *c.Urgency != 3.54 { // (82.5 - 40) / 12
-		t.Errorf("urgency = %v, want 3.54", c.Urgency)
+	if c.Urgency == nil || *c.Urgency != 4.58 { // (95 - 40) / 12
+		t.Errorf("urgency = %v, want 4.58", c.Urgency)
+	}
+	if c.Room == nil || *c.Room != 42.5 { // 82.5 - 40
+		t.Errorf("room = %v, want 42.5", c.Room)
 	}
 }
 
@@ -237,7 +247,8 @@ func TestExpiringAssign(t *testing.T) {
 		sticky bool
 		reason string
 	}{
-		{"most urgent first", expiring, pool.Options{}, "derek", false, "most room to lose"},
+		{"the deadline group first", expiring, pool.Options{}, "derek", false, "resets soonest: 55% left before its weekly cap reaches 95% at the reset in 20h (2.75%/h to use it all); its reset is within 24h (deadline_window)"},
+		{"most urgent first without the deadline group", func() pool.Config { c := expiring(); c.DeadlineWindow = 0; return c }, pool.Options{}, "derek", false, "most room to lose: 55% left"},
 		{"sticky keeps a ready member", stay, pool.Options{Current: "bob"}, "bob", true, "sticky"},
 		{"sticky leaves for one sticky_leave_ratio (default 3) times as urgent", expiring, pool.Options{Current: "bob"}, "derek", false, "left bob: derek is at least 3 times as urgent"},
 		{"sticky off", func() pool.Config { c := expiring(); c.Sticky = false; return c }, pool.Options{Current: "bob"}, "derek", false, ""},
@@ -262,7 +273,7 @@ func TestExpiringAssign(t *testing.T) {
 			pool.Options{Current: "bob", CurrentAhead: 40}, "bob", true, ""},
 		{"sticky leaves for a member at least sticky_leave_ratio times as urgent", func() pool.Config { c := expiring(); c.StickyLeaveRatio = 2; return c },
 			pool.Options{Current: "bob"}, "derek", false, "left bob: derek is at least 2 times as urgent"},
-		{"sticky stays below sticky_leave_ratio", func() pool.Config { c := expiring(); c.StickyLeaveRatio = 4; return c },
+		{"sticky stays below sticky_leave_ratio", func() pool.Config { c := expiring(); c.StickyLeaveRatio = 6; return c },
 			pool.Options{Current: "bob"}, "bob", true, "sticky"},
 		{"sticky on the most urgent member stays", func() pool.Config { c := expiring(); c.StickyLeaveRatio = 1; return c },
 			pool.Options{Current: "derek"}, "derek", true, "sticky"},
@@ -335,6 +346,10 @@ func TestExpiringValidate(t *testing.T) {
 		{"unknown order", func(c *pool.Config) { c.Order = "soonest" }, `order "soonest" is not one of`},
 		{"negative relax window", func(c *pool.Config) { c.WeekRelaxWindow = -time.Hour }, "week_relax_window is negative"},
 		{"negative max sessions", func(c *pool.Config) { c.MaxSessions = -1 }, "max_sessions is negative"},
+		{"negative deadline window", func(c *pool.Config) { c.DeadlineWindow = -time.Hour }, "deadline_window is negative"},
+		{"deadline min room over 100", func(c *pool.Config) { c.DeadlineMinRoom = 120 }, "deadline_min_room 120 is outside 0..100"},
+		{"deadline min room negative", func(c *pool.Config) { c.DeadlineMinRoom = -1 }, "deadline_min_room -1 is outside 0..100"},
+		{"deadline min room NaN", func(c *pool.Config) { c.DeadlineMinRoom = math.NaN() }, "deadline_min_room NaN"},
 		{"negative leave ratio", func(c *pool.Config) { c.StickyLeaveRatio = -1 }, "sticky_leave_ratio -1 is not a number of 0 or more"},
 		{"infinite leave ratio", func(c *pool.Config) { c.StickyLeaveRatio = math.Inf(1) }, "sticky_leave_ratio +Inf"},
 		{"relax max over 100", func(c *pool.Config) { c.WeekRelaxMax = 101 }, "defaults.week_relax_max 101 is outside 0..100"},
@@ -374,8 +389,22 @@ func TestExpiringValidate(t *testing.T) {
 func TestExpiringDefaults(t *testing.T) {
 	c := pool.New(nil, nil)
 	if c.WeekRelaxWindow != 24*time.Hour || c.WeekRelaxMax != 95 || c.MaxSessions != 4 || !c.Sticky || c.StickyLeaveRatio != 3 ||
-		c.Order != pool.OrderUrgency || c.OwnDefaults != (pool.Caps{Short: 95, Week: 98}) || c.Defaults != (pool.Caps{Short: 50, Week: 70}) {
-		t.Errorf("defaults: window %s, max %v, sessions %d, sticky %v", c.WeekRelaxWindow, c.WeekRelaxMax, c.MaxSessions, c.Sticky)
+		c.Order != pool.OrderUrgency || c.OwnDefaults != (pool.Caps{Short: 95, Week: 98}) || c.Defaults != (pool.Caps{Short: 50, Week: 70}) ||
+		c.DeadlineWindow != 24*time.Hour || c.DeadlineMinRoom != 2 {
+		t.Errorf("defaults: window %s, max %v, sessions %d, sticky %v, deadline %s / %v", c.WeekRelaxWindow, c.WeekRelaxMax, c.MaxSessions, c.Sticky, c.DeadlineWindow, c.DeadlineMinRoom)
+	}
+	if c.Rules() != pool.DefaultRules() {
+		t.Errorf("New's rules %+v are not DefaultRules %+v", c.Rules(), pool.DefaultRules())
+	}
+	classic, _ := pool.PresetNamed(pool.PresetClassic)
+	if classic.Rules.DeadlineWindow != 0 || pool.New(nil, nil).WithRules(classic.Rules).Rules() != classic.Rules {
+		t.Errorf("classic preset %+v", classic.Rules)
+	}
+	if names := pool.PresetNames(); len(names) != 2 || names[0] != pool.PresetRecommended || names[1] != pool.PresetClassic {
+		t.Errorf("preset names %v", names)
+	}
+	if _, ok := pool.PresetNamed("nope"); ok {
+		t.Error("an unknown preset was found")
 	}
 }
 
@@ -492,5 +521,67 @@ func TestSnapshotSpread(t *testing.T) {
 		if n > cfg.MaxSessions {
 			t.Errorf("%s has %d sessions (max %d)", m, n, cfg.MaxSessions)
 		}
+	}
+}
+
+// TestUrgencyCountsRoomToRelaxMax: a member whose weekly cap is still
+// rising counts the room up to the cap it reaches at the reset, not
+// only the room under the cap now. derek (week 87%, reset in 7h) has
+// 0.7% under its relaxed cap now but 8% before its cap reaches 95% at
+// the reset; erin (week 76%, reset in 13h) has 5.5% now and 19% to 95%.
+// Counted to the cap now, derek came last, behind alice's own account.
+// With the deadline group off, urgency alone ranks erin (19/13 = 1.46
+// %/h) before derek (8/7 = 1.14 %/h), both before alice; with it on
+// (the default) both are inside the 24h deadline window and derek, who
+// resets first, leads: using his room first loses nothing, while erin
+// first can let his expire. Usable still goes by the cap now: at or
+// over it a member is skipped, whatever room the reset would bring.
+func TestUrgencyCountsRoomToRelaxMax(t *testing.T) {
+	readings := map[string]pool.Reading{
+		"derek": read(13, 87, 7*time.Hour),
+		"erin":  read(41, 76, 13*time.Hour),
+		"alice": read(36, 52, 151*time.Hour),
+	}
+	ready := func(r pool.Result) []string {
+		var order []string
+		for _, c := range r.Candidates {
+			if c.State == pool.StateReady {
+				order = append(order, c.Name)
+			}
+		}
+		return order
+	}
+	noDeadline := expiring()
+	noDeadline.DeadlineWindow = 0
+	if _, r := pick(t, noDeadline, readings, pool.Options{}); !slices.Equal(ready(r), []string{"erin", "derek", "alice"}) {
+		t.Errorf("urgency alone: ready order %v, want erin, derek, alice", ready(r))
+	}
+	got, r := pick(t, expiring(), readings, pool.Options{})
+	if got != "derek" || !slices.Equal(ready(r), []string{"derek", "erin", "alice"}) {
+		t.Fatalf("picked %s, order %v; want derek, then erin, alice", got, ready(r))
+	}
+	want := "resets soonest: 8% left before its weekly cap reaches 95% at the reset in 7h (1.14%/h to use it all); its reset is within 24h (deadline_window), so using it first loses nothing"
+	if r.Selected.Reason != want {
+		t.Errorf("reason %q, want %q", r.Selected.Reason, want)
+	}
+	d := candidateOf(t, r, "derek")
+	if d.Urgency == nil || *d.Urgency != 1.14 || d.NeedsPerHour == nil || *d.NeedsPerHour != 1.14 { // (95 - 87) / 7
+		t.Errorf("derek urgency %v, needs %v, want 1.14", d.Urgency, d.NeedsPerHour)
+	}
+	if d.Room == nil || math.Abs(*d.Room-0.7) > 0.05 { // 87.7 - 87: the cap now
+		t.Errorf("derek room %v, want 0.7", d.Room)
+	}
+	if d.RoomAtReset == nil || *d.RoomAtReset != 8 || !d.Deadline {
+		t.Errorf("derek room at reset %v, deadline %v; want 8, true", d.RoomAtReset, d.Deadline)
+	}
+	if e := candidateOf(t, r, "erin"); e.Urgency == nil || *e.Urgency != 1.46 || !e.Deadline { // (95 - 76) / 13
+		t.Errorf("erin urgency %v, deadline %v; want 1.46, true", e.Urgency, e.Deadline)
+	}
+	if a := candidateOf(t, r, "alice"); a.Deadline || a.RoomAtReset != nil {
+		t.Errorf("alice deadline %v, room at reset %v; want false, nil (151h out, cap 98 never rises)", a.Deadline, a.RoomAtReset)
+	}
+	readings["derek"] = read(13, 88, 7*time.Hour)
+	if got, _ = pick(t, expiring(), readings, pool.Options{}); got != "erin" {
+		t.Errorf("derek over its cap now (88 >= 87.7): picked %s, want erin", got)
 	}
 }

@@ -17,7 +17,7 @@ import (
 func TestPoolPresetWrites(t *testing.T) {
 	a, home := fixtureApp(t, flagConfig, nil, nil)
 	dry, err := a.PoolPreset(context.Background(), PoolPresetOptions{Name: pool.PresetClassic, ID: "auto", DryRun: true})
-	if err != nil || dry.Written || !dry.DryRun || len(dry.Changes) != 7 {
+	if err != nil || dry.Written || !dry.DryRun || len(dry.Changes) != 9 {
 		t.Fatalf("dry run %+v %v", dry, err)
 	}
 	if readConfig(t, home) != flagConfig {
@@ -29,7 +29,8 @@ func TestPoolPresetWrites(t *testing.T) {
 	}
 	want := []Change{
 		{"pool.defaults.week_relax_max", "", "95"}, {"pool.order", "", "deadline"}, {"pool.max_sessions", "", "0"}, {"pool.sticky", "", "false"},
-		{"pool.sticky_leave_ratio", "", "0"}, {"pool.shared_borrow_window", "", "48h"}, {"pool.week_relax_window", "", "0s"},
+		{"pool.sticky_leave_ratio", "", "0"}, {"pool.deadline_min_room", "", "2"}, {"pool.shared_borrow_window", "", "48h"}, {"pool.week_relax_window", "", "0s"},
+		{"pool.deadline_window", "", "0s"},
 	}
 	if !slices.Equal(ch.Changes, want) {
 		t.Errorf("changes %+v", ch.Changes)

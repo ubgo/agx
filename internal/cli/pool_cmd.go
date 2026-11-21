@@ -87,7 +87,7 @@ func (c *cliCtx) poolShowCmd() *cobra.Command {
 		st := c.style()
 		return render.Output{Data: data, Text: func(w io.Writer) error { return poolShowText(w, info, st) }}, err
 	})
-	cmd.Long = "Show one pool login's full settings: its agents, own and shared members with each member's caps, weekly relax max, capacity and enabled state, then force, the rule values (order, week_relax_window, week_relax_max, max_sessions, sticky, sticky_leave_ratio, the shared borrow window, the 5-hour cutoff), the group defaults, usage_max_age, key_ttl, the picker and the log. Each value says where it comes from: default (agx's default for an omitted key), pool (a pool-wide key, defaults.* included), group (own_caps or shared_caps) or member (the member's accounts entry). It reads config only: no probe, no cache. agx pool preset writes a named set of rule values. " + poolManageNote
+	cmd.Long = "Show one pool login's full settings: its agents, own and shared members with each member's caps, weekly relax max, capacity and enabled state, then force, the rule values (order, deadline_window, deadline_min_room, week_relax_window, week_relax_max, max_sessions, sticky, sticky_leave_ratio, the shared borrow window, the 5-hour cutoff), the group defaults, usage_max_age, key_ttl, the picker and the log. Each value says where it comes from: default (agx's default for an omitted key), pool (a pool-wide key, defaults.* included), group (own_caps or shared_caps) or member (the member's accounts entry). It reads config only: no probe, no cache. agx pool preset writes a named set of rule values. " + poolManageNote
 	cmd.Example = "  agx pool show --id auto\n  agx pool show --id auto --json --field data.settings"
 	cmd.Flags().StringVar(&o.ID, "id", "", "the pool login")
 	return fields(cmd, poolShowFields...)
@@ -105,7 +105,7 @@ func (c *cliCtx) poolPresetCmd() *cobra.Command {
 	for _, p := range pool.Presets() {
 		about = append(about, p.Name+" ("+p.About+")")
 	}
-	cmd.Long = "Write a preset's rule values into a pool login's block in config.jsonc: order, week_relax_window, defaults.week_relax_max, max_sessions, sticky, sticky_leave_ratio and shared_borrow_window. A preset is a CLI shortcut, not a mode: afterwards each value is an ordinary key, shown by agx pool show, that you can change by hand or with agx config set. Caps are not touched (they are your team's agreement). Comments in the file are kept. Presets: " + strings.Join(about, "; ") + ". --dry-run shows each change and writes nothing. " + poolManageNote
+	cmd.Long = "Write a preset's rule values into a pool login's block in config.jsonc: order, deadline_window, deadline_min_room, week_relax_window, defaults.week_relax_max, max_sessions, sticky, sticky_leave_ratio and shared_borrow_window. A preset is a CLI shortcut, not a mode: afterwards each value is an ordinary key, shown by agx pool show, that you can change by hand or with agx config set. Caps are not touched (they are your team's agreement). Comments in the file are kept. Presets: " + strings.Join(about, "; ") + ". --dry-run shows each change and writes nothing. " + poolManageNote
 	cmd.Example = "  agx pool preset --name recommended --id auto --dry-run\n  agx pool preset --name classic --id auto\n  agx pool show --id auto"
 	f := cmd.Flags()
 	f.StringVar(&o.Name, "name", "", "the preset: "+strings.Join(pool.PresetNames(), " or "))
@@ -296,7 +296,9 @@ const (
 	pickNoWindows = "no windows"
 	pickUnknown   = "reset unknown"
 	pickPassed    = "reset passed"
-	pickRules     = "Rules: "
+	// pickDeadline marks a member of the deadline group.
+	pickDeadline = "resets within deadline_window"
+	pickRules    = "Rules: "
 	// pickDefaultModel is the probe line without a model.
 	pickDefaultModel = "Probe model: the agent's default (all-models windows only)"
 )
@@ -400,12 +402,18 @@ func candidateLine(c app.PoolCandidate, v usageView, st render.Style) string {
 	figures += ", " + pickReset(c, v)
 	if c.RoomPercent != nil {
 		figures += ", room " + strconv.FormatFloat(*c.RoomPercent, 'f', -1, 64) + "%"
+		if c.RoomAtResetPercent != nil {
+			figures += " (" + strconv.FormatFloat(*c.RoomAtResetPercent, 'f', -1, 64) + "% by the reset)"
+		}
 	}
 	if c.CapsSource.Short != "" {
 		figures += ", caps " + capsText(c, v)
 	}
-	if c.UrgencyPercentPerHour != nil && c.State != pool.StateBlocked {
-		figures += ", needs " + strconv.FormatFloat(*c.UrgencyPercentPerHour, 'f', -1, 64) + "%/h"
+	if c.NeedsPercentPerHour != nil && c.State != pool.StateBlocked {
+		figures += ", needs " + strconv.FormatFloat(*c.NeedsPercentPerHour, 'f', -1, 64) + "%/h"
+	}
+	if c.Deadline {
+		figures += ", " + pickDeadline
 	}
 	if c.Sessions > 0 {
 		figures += fmt.Sprintf(", %d other sessions", c.Sessions)

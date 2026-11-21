@@ -61,6 +61,20 @@ type Policy struct {
 	// Stick (H) keeps a session on its account while it is usable, not
 	// near a cap and still in the best tier.
 	Stick Hysteresis
+	// Deadline (K) puts the accounts whose reset is within its Window
+	// and that have at least MinRoom of room first inside a tier,
+	// soonest reset first (package pool, deadline_window).
+	Deadline DeadlineFirst
+}
+
+// DeadlineFirst is strategy K's knobs; a zero Window is off. It applies
+// only to the urgency order.
+type DeadlineFirst struct {
+	Window  time.Duration
+	MinRoom float64
+	// Leave lets a sticky session leave an account outside the deadline
+	// group when the first account is in it.
+	Leave bool
 }
 
 // UrgentTier is strategy B's knobs; a zero Window is off.
@@ -80,6 +94,14 @@ type WeekRelax struct {
 	// Short is a 5-hour cap the shared account gets at the reset,
 	// rising the same way from the normal one; 0 keeps the normal cap.
 	Short float64
+	// NowOnly makes the urgency count only the room under the weekly
+	// cap now (the rule before v0.4.20) instead of the room up to Max,
+	// the cap reached at the reset.
+	NowOnly bool
+	// Always counts the room up to Max for any known reset, as a review
+	// of v0.4.20 proposed; off, only once the cap is rising (the reset at
+	// or within Start), as package pool does.
+	Always bool
 }
 
 // IdleShort is strategy D's knobs; a zero Short is off.
@@ -109,6 +131,10 @@ type Hysteresis struct {
 	// Margin is how close to a cap (percent) an account may get before a
 	// session leaves it for a better one.
 	Margin float64
+	// Leader compares the ratio against the first account even when it
+	// is full (agx before v0.4.20) instead of the account the session
+	// would go to.
+	Leader bool
 }
 
 // Tiers, in pick order.
@@ -145,9 +171,11 @@ type option struct {
 	key   float64
 	// urgency is room ÷ hours to the reset, whatever the order.
 	urgency float64
-	caps    pool.Caps
-	short   float64
-	week    float64
+	// deadline is the account's place in the deadline group (K).
+	deadline bool
+	caps     pool.Caps
+	short    float64
+	week     float64
 }
 
 // Assign implements Picker. Each busy session asks in turn (session
@@ -185,7 +213,7 @@ func (pp *policyPicker) Assign(v View) []string {
 		load, ahead := others(pos, i, s.Current)
 		pick := ""
 		if j := slices.IndexFunc(opts, func(o option) bool { return o.name == s.Current }); pp.p.Stick.On && j >= 0 &&
-			pp.keep(opts[j], opts[0]) && (limit <= 0 || ahead < limit) {
+			pp.keep(opts[j], opts[pp.target(opts[:first], s.Current, load, limit)]) && (limit <= 0 || ahead < limit) {
 			pick = s.Current
 		}
 		if pick == "" {
@@ -239,6 +267,18 @@ func others(pos map[int]string, i int, cur string) (map[string]int, int) {
 	return load, ahead
 }
 
+// target is the account a session on cur would leave for: the first of
+// the first tier that is cur or not full (package pool's assign); 0 when
+// every one is full and cur is not among them.
+func (pp *policyPicker) target(tier []option, cur string, load map[string]int, limit int) int {
+	if !pp.p.Stick.Leader {
+		if k := slices.IndexFunc(tier, func(o option) bool { return o.name == cur || limit <= 0 || load[o.name] < limit }); k >= 0 {
+			return k
+		}
+	}
+	return 0
+}
+
 // keep reports whether a session may stay on cur although best ranks
 // first: cur is in the best tier and not within the margin of a cap.
 func (pp *policyPicker) keep(cur, best option) bool {
@@ -246,6 +286,9 @@ func (pp *policyPicker) keep(cur, best option) bool {
 		return false
 	}
 	if r := pp.p.Stick.Ratio; r > 0 && best.name != cur.name && best.urgency > 0 && best.urgency >= r*cur.urgency {
+		return false
+	}
+	if pp.p.Deadline.Leave && best.deadline && !cur.deadline {
 		return false
 	}
 	m := pp.p.Stick.Margin
@@ -299,6 +342,9 @@ func (pp *policyPicker) options(v View, scoped bool) []option {
 		if short >= p.Cutoff || short >= caps.Short || week >= caps.Week {
 			continue
 		}
+		// final is the weekly cap reached at the reset: the urgency
+		// counts the room up to it (package pool, FinalWeek).
+		final := pp.finalWeek(mb, caps, until, known)
 		modelRoom, modelBlocked := math.Inf(1), false
 		for _, w := range rd.Scoped {
 			if !scoped {
@@ -309,7 +355,7 @@ func (pp *policyPicker) options(v View, scoped bool) []option {
 				continue
 			}
 			modelBlocked = modelBlocked || w.Percent >= caps.Week
-			modelRoom = math.Min(modelRoom, caps.Week-w.Percent)
+			modelRoom = math.Min(modelRoom, final-w.Percent)
 		}
 		if modelBlocked {
 			continue
@@ -331,13 +377,18 @@ func (pp *policyPicker) options(v View, scoped bool) []option {
 		if mb.Group == pool.GroupOwn && o.tier == tierMain {
 			ownUsable = true
 		}
-		room := math.Min(caps.Week-week, modelRoom)
+		room := math.Min(math.Max(0, final-week), modelRoom)
+		o.deadline = p.Order == OrderUrgency && p.Deadline.Window > 0 && known && until >= 0 && until <= p.Deadline.Window && room >= p.Deadline.MinRoom
 		if p.Weighted && mb.Capacity > 0 {
 			// Room in work, not percent: a bigger plan's percent is
 			// worth more sessions.
 			room *= mb.Capacity
 		}
 		o.key = sortKey(p.Order, room, until, known)
+		if o.deadline {
+			// The deadline group sorts by the reset alone.
+			o.key = until.Hours()
+		}
 		if known && until >= 0 {
 			o.urgency = room / math.Max(until.Hours(), minUrgencyHours)
 		}
@@ -356,6 +407,11 @@ func (pp *policyPicker) options(v View, scoped bool) []option {
 		switch {
 		case a.tier != b.tier:
 			return a.tier - b.tier
+		case a.deadline != b.deadline:
+			if a.deadline {
+				return -1
+			}
+			return 1
 		case a.key < b.key:
 			return -1
 		case a.key > b.key:
@@ -401,6 +457,22 @@ func (pp *policyPicker) caps(mb Member, until time.Duration, known bool, now tim
 		c.Short = math.Max(c.Short, p.Idle.Short)
 	}
 	return c
+}
+
+// finalWeek is the weekly cap an account reaches at its reset when the
+// relax raises it (Relax.Max, at or within the window, or for any
+// known reset with Relax.Always), else its cap now; with Relax.NowOnly
+// always its cap now.
+func (pp *policyPicker) finalWeek(mb Member, caps pool.Caps, until time.Duration, known bool) float64 {
+	p := pp.p
+	base := p.Shared
+	if mb.Group == pool.GroupOwn {
+		base = p.Own
+	}
+	if p.Relax.NowOnly || p.Relax.Start <= 0 || !known || until < 0 || p.Relax.Max <= base.Week || (!p.Relax.Always && until > p.Relax.Start) {
+		return caps.Week
+	}
+	return math.Max(caps.Week, p.Relax.Max)
 }
 
 // ahead reports an own account spending faster than evenly over its

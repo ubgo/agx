@@ -47,7 +47,7 @@ When there is more quota than your sessions want, waste is the same under every 
 
 ## Rule sets in the report
 
-`A` is the classic preset and `REC` the default rule values, each also run through the real `pool.Select` (`A-real`, `REC-real`; a test proves the pairs make the same picks); the letters `B` to `H` and the `REC-…` and `REC+…` rows are variations used to choose the defaults, and `REC+W` adds each member's `capacity` where its plan is known.
+`A` is the classic preset and `REC` the default rule values, each also run through the real `pool.Select` (`A-real`, `REC-real`; a test proves the pairs make the same picks); the letters `B` to `H` and the `REC-…` and `REC+…` rows are variations used to choose the defaults, and `REC+W` adds each member's `capacity` where its plan is known. The v0.4.20 order has its own rows: `REC-K` is the defaults without the deadline group (urgency alone), `REC-N` the rules of v0.4.19 (urgency counting only the room under the cap now, and the sticky ratio measured against the first member even when it is full), `REC+A` counts the room up to the relax max for any reset rather than only inside the relax window, `REC-S` keeps the old sticky ratio, and `REC+KL` lets sticky sessions leave for the deadline group. `snapshot-21-evening` replays a recorded pool (made-up names) for the 24 hours after a moment when one teammate's account reset in 6.7 hours with 8% of room to come.
 
 ## Add a scenario
 

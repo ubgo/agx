@@ -14,6 +14,8 @@ shared  bob, carol
 [1mSettings:[0m
 force                         bob [2m(pool)[0m
 order                         urgency [2m(default)[0m
+deadline_window               24h [2m(default)[0m
+deadline_min_room             2 [2m(default)[0m
 week_relax_window             24h [2m(default)[0m
 defaults.week_relax_max       95 [2m(default)[0m
 max_sessions                  4 [2m(default)[0m

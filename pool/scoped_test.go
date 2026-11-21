@@ -34,7 +34,7 @@ func TestScopedWindowCaps(t *testing.T) {
 		{"under its cap: room is the least", withScoped(10, 20, 100*time.Hour, 60, 50*time.Hour, false), true, "", 10, 0.2},
 		{"weekly window leaves less", withScoped(10, 65, 100*time.Hour, 20, 50*time.Hour, false), true, "", 5, 0.05},
 		{"at its cap", withScoped(10, 20, 100*time.Hour, 70, 50*time.Hour, false), false, "fable week is 70% (cap 70%)", 0, -1},
-		{"relaxed by its own reset", withScoped(10, 20, 100*time.Hour, 72, 12*time.Hour, false), true, "", 10.5, 0.875},
+		{"relaxed by its own reset", withScoped(10, 20, 100*time.Hour, 72, 12*time.Hour, false), true, "", 10.5, 1.92}, // (95 - 72) / 12
 		{"refused until its reset", withScoped(10, 20, 100*time.Hour, 40, 30*time.Hour, true), false, "fable week is refused by the vendor until its reset (40%)", 30, -1},
 		{"refused but reset passed", withScoped(10, 20, 100*time.Hour, 100, -time.Hour, true), true, "", 50, 0.5},
 		{"unreadable", withScoped(10, 20, 100*time.Hour, math.NaN(), 30*time.Hour, false), false, "fable week usage is unreadable", 50, -1},
@@ -65,11 +65,11 @@ func TestScopedWindowCaps(t *testing.T) {
 // scoped windows is unchanged.
 func TestScopedWindowReasons(t *testing.T) {
 	cfg := expiring()
-	got := cfg.Reasons("derek", withScoped(10, 20, 100*time.Hour, 80, 50*time.Hour, false), true)
+	got := cfg.Reasons("derek", withScoped(10, 20, 100*time.Hour, 80, 50*time.Hour, false), true, now)
 	if !slices.Contains(got, "fable week is 80% (cap 70%)") {
 		t.Errorf("reasons %v", got)
 	}
-	if got := cfg.Reasons("derek", read(10, 20, 100*time.Hour), true); len(got) != 0 {
+	if got := cfg.Reasons("derek", read(10, 20, 100*time.Hour), true, now); len(got) != 0 {
 		t.Errorf("no scoped window: %v", got)
 	}
 	// A scoped window full on one member moves the pick to another.

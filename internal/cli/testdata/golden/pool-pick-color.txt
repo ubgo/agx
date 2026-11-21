@@ -1,9 +1,9 @@
 [2mPool: auto (claude, order urgency)[0m
 [1mUse: grace (shared)[0m
-most room to lose: 44% left under its weekly cap with 37.8h to the reset (1.2%/h to use it all)
+most room to lose: 44% left under its weekly cap with 37.8h to the reset (1.16%/h to use it all)
 [2mSource: cache (20s old)[0m
 [2mProbe model: the agent's default (all-models windows only)[0m
-Rules: order urgency [2m(default)[0m, week_relax_window 24h [2m(default)[0m, defaults.week_relax_max 95 [2m(default)[0m, max_sessions 4 [2m(default)[0m, sticky true [2m(default)[0m, sticky_leave_ratio 3 [2m(default)[0m, shared_borrow_window 48h [2m(default)[0m, short_unavailable_at_percent 99 [2m(default)[0m, own_caps.short 95 [2m(default)[0m, own_caps.week 98 [2m(default)[0m, defaults.short 50 [2m(default)[0m, defaults.week 70 [2m(default)[0m
+Rules: order urgency [2m(default)[0m, deadline_window 24h [2m(default)[0m, deadline_min_room 2 [2m(default)[0m, week_relax_window 24h [2m(default)[0m, defaults.week_relax_max 95 [2m(default)[0m, max_sessions 4 [2m(default)[0m, sticky true [2m(default)[0m, sticky_leave_ratio 3 [2m(default)[0m, shared_borrow_window 48h [2m(default)[0m, short_unavailable_at_percent 99 [2m(default)[0m, own_caps.short 95 [2m(default)[0m, own_caps.week 98 [2m(default)[0m, defaults.short 50 [2m(default)[0m, defaults.week 70 [2m(default)[0m
 
 [1mCandidates (ready accounts in pick order):[0m
 - grace [shared] [34m#1 READY[0m (5h 0%, week 26%, resets in 1 d 13 hr, room 44%, caps 50/70 (default), needs 1.16%/h)

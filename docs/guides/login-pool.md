@@ -117,10 +117,10 @@ added login carol-only (pool, pool 0 own, 1 shared)
 $ agx pool pick --id carol-only
 Pool: carol-only (claude, order urgency)
 Use: carol (shared)
-most room to lose: 44% left under its weekly cap with 38h to the reset (1.2%/h to use it all)
+most room to lose: 44% left under its weekly cap with 38h to the reset (1.16%/h to use it all)
 Source: cache (20s old)
 Probe model: the agent's default (all-models windows only)
-Rules: order urgency (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 70 (default)
+Rules: order urgency (default), deadline_window 24h (default), deadline_min_room 2 (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 70 (default)
 
 Candidates (ready accounts in pick order):
 - carol [shared] #1 READY (5h 0%, week 26%, resets in 1 d 14 hr, room 44%, caps 50/70 (default), needs 1.16%/h)
@@ -177,13 +177,13 @@ logins.team.pool.defaults.week = 80
 $ agx pool pick --id team
 Pool: team (claude, order urgency)
 Use: erin (shared)
-most room to lose: 50.1% left under its weekly cap with 3h to the reset (16.7%/h to use it all)
+resets soonest: 52% left before its weekly cap reaches 95% at the reset in 3h (17.33%/h to use it all); its reset is within 24h (deadline_window), so using it first loses nothing
 Source: cache (20s old)
 Probe model: the agent's default (all-models windows only)
-Rules: order urgency (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 80 (pool)
+Rules: order urgency (default), deadline_window 24h (default), deadline_min_room 2 (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 80 (pool)
 
 Candidates (ready accounts in pick order):
-- erin [shared] #1 READY (5h 55%, week 43%, resets in 3 hr 0 min, room 50.1%, caps 60 (member)/93.1 (pool), needs 16.71%/h) (weekly cap 80% rises to 95% over the last 24h before the reset: 93.1% now)
+- erin [shared] #1 READY (5h 55%, week 43%, resets in 3 hr 0 min, room 50.1% (52% by the reset), caps 60 (member)/93.1 (pool), needs 17.33%/h, resets within deadline_window) (weekly cap 80% rises to 95% over the last 24h before the reset: 93.1% now)
 - alice [own] #2 READY (5h 3%, week 29%, resets in 6 d 0 hr, room 69%, caps 95/98 (member), needs 0.48%/h)
 - derek [shared] skip: disabled in config; no usage reading (no windows, reset unknown, caps 50 (default)/80 (pool))
 
@@ -262,17 +262,17 @@ picky  claude  alice,bob  carol             —      sh $HOME/picker.sh
 $ agx pool pick --id auto
 Pool: auto (claude, order urgency)
 Use: carol (shared)
-most room to lose: 44% left under its weekly cap with 38h to the reset (1.2%/h to use it all)
+most room to lose: 44% left under its weekly cap with 38h to the reset (1.16%/h to use it all)
 Source: cache (20s old)
 Probe model: the agent's default (all-models windows only)
-Rules: order urgency (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (pool), short_unavailable_at_percent 99 (pool), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (pool), defaults.week 70 (pool)
+Rules: order urgency (default), deadline_window 24h (default), deadline_min_room 2 (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (pool), short_unavailable_at_percent 99 (pool), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (pool), defaults.week 70 (pool)
 
 Candidates (ready accounts in pick order):
 - carol [shared] #1 READY (5h 0%, week 26%, resets in 1 d 14 hr, room 44%, caps 50/70 (pool), needs 1.16%/h)
 - alice [own] #2 READY (5h 3%, week 29%, resets in 6 d 0 hr, room 69%, caps 95/98 (member), needs 0.48%/h)
 - derek [shared] WAIT (5h 0%, week 15%, resets in 4 d 0 hr, room 55%, caps 50/70 (pool), needs 0.57%/h) (shared reset not within 48h while an own account is usable)
 - bob [own] skip: status is limit-reached; 5h is 100% (unavailable at 99%); 5h is 100% (cap 95%) (5h 100%, week 61%, resets in 3 d 0 hr, room 37%, caps 95/98 (member))
-- erin [shared] skip: 5h is 55% (cap 50%) (5h 55%, week 43%, resets in 3 hr 0 min, room 48.9%, caps 50/91.9 (pool)) (weekly cap 70% rises to 95% over the last 24h before the reset: 91.9% now)
+- erin [shared] skip: 5h is 55% (cap 50%) (5h 55%, week 43%, resets in 3 hr 0 min, room 48.9% (52% by the reset), caps 50/91.9 (pool)) (weekly cap 70% rises to 95% over the last 24h before the reset: 91.9% now)
 ```
 
 `#N READY` is the pick order, `WAIT` is usable but held back by the borrow window, `skip:` lists every reason. `room` is the weekly cap minus the weekly use. `--json` carries the same, for scripts: `agx pool pick --id auto --json --field data.selected.name` prints `carol`.
@@ -316,6 +316,8 @@ pool      auto (claude): own alice, bob; shared carol, derek, erin              
           key ttl 1m0s                                                                                  from config logins.auto.pool.key_ttl
           usage max age 1m0s                                                                            from config logins.auto.pool.usage_max_age
           order urgency                                                                                 from default
+          deadline_window 24h                                                                           from default
+          deadline_min_room 2                                                                           from default
           week_relax_window 24h                                                                         from default
           defaults.week_relax_max 95                                                                    from default
           max_sessions 4                                                                                from default
@@ -330,12 +332,12 @@ pool      auto (claude): own alice, bob; shared carol, derek, erin              
           probe model: the agent's default (all-models windows only)                                    from default
           member entries: 2                                                                             from config logins.auto.pool.accounts
           pick now: carol (rules), from the cache (20s old); agx pool pick --id auto probes             from login-usage cache
-note      live login: switch with agx live use --id 20261119-100000-at00 --login NAME (refresh 1m0s)    from login auto (pool)
+note      live login: switch with agx live use --id 20261119-100000-opfn --login NAME (refresh 1m0s)    from login auto (pool)
 settings  apiKeyHelper                                                                                  from login auto (pool)
-          delivered as file ~/.agx/runs/20261119-100000-at00/settings-20261119-100000-at00.json (0600)  from settings_delivery file
-run       ~/.agx/runs/20261119-100000-at00                                                              from AGX_RUN_ID=20261119-100000-at00
-command   claude --settings ~/.agx/runs/20261119-100000-at00/settings-20261119-100000-at00.json         from built by agentio
-env       set AGX_RUN_ID=20261119-100000-at00                                                           from launch environment
+          delivered as file ~/.agx/runs/20261119-100000-opfn/settings-20261119-100000-opfn.json (0600)  from settings_delivery file
+run       ~/.agx/runs/20261119-100000-opfn                                                              from AGX_RUN_ID=20261119-100000-opfn
+command   claude --settings ~/.agx/runs/20261119-100000-opfn/settings-20261119-100000-opfn.json         from built by agentio
+env       set AGX_RUN_ID=20261119-100000-opfn                                                           from launch environment
           set AGX_RUN_AGENT=claude                                                                      from launch environment
           set AGX_RUN_PROFILE=personal                                                                  from launch environment
           set AGX_RUN_LOGIN=auto                                                                        from launch environment
@@ -383,7 +385,7 @@ Use: derek (shared)
 the only member of this run (--pool-only); its caps and the pool's rules still apply
 Source: cache (20s old)
 Probe model: the agent's default (all-models windows only)
-Rules: order urgency (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (pool), short_unavailable_at_percent 99 (pool), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (pool), defaults.week 70 (pool)
+Rules: order urgency (default), deadline_window 24h (default), deadline_min_room 2 (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (pool), short_unavailable_at_percent 99 (pool), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (pool), defaults.week 70 (pool)
 
 Candidates (ready accounts in pick order):
 - derek [shared] #1 READY (5h 0%, week 15%, resets in 4 d 0 hr, room 55%, caps 50/70 (pool), needs 0.57%/h)
@@ -394,10 +396,10 @@ Pool: auto (claude, order urgency)
 No configured account is currently usable.
 Source: cache (20s old)
 Probe model: the agent's default (all-models windows only)
-Rules: order urgency (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (pool), short_unavailable_at_percent 99 (pool), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (pool), defaults.week 70 (pool)
+Rules: order urgency (default), deadline_window 24h (default), deadline_min_room 2 (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (pool), short_unavailable_at_percent 99 (pool), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (pool), defaults.week 70 (pool)
 
 Candidates (ready accounts in pick order):
-- erin [shared] skip: 5h is 55% (cap 50%) (5h 55%, week 43%, resets in 3 hr 0 min, room 48.9%, caps 50/91.9 (pool)) (weekly cap 70% rises to 95% over the last 24h before the reset: 91.9% now)
+- erin [shared] skip: 5h is 55% (cap 50%) (5h 55%, week 43%, resets in 3 hr 0 min, room 48.9% (52% by the reset), caps 50/91.9 (pool)) (weekly cap 70% rises to 95% over the last 24h before the reset: 91.9% now)
 [exit 1]
 
 $ agx pool pick --id auto --pool-only derek --pool-only-week 15
@@ -406,7 +408,7 @@ Pool: auto (claude, order urgency)
 No configured account is currently usable.
 Source: cache (20s old)
 Probe model: the agent's default (all-models windows only)
-Rules: order urgency (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (pool), short_unavailable_at_percent 99 (pool), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (pool), defaults.week 70 (pool)
+Rules: order urgency (default), deadline_window 24h (default), deadline_min_room 2 (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (pool), short_unavailable_at_percent 99 (pool), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (pool), defaults.week 70 (pool)
 
 Candidates (ready accounts in pick order):
 - derek [shared] skip: week is 15% (cap 15%) (5h 0%, week 15%, resets in 4 d 0 hr, room 0%, caps 50 (pool)/15 (--pool-only-week))
@@ -577,7 +579,7 @@ Use: alice (own)
 picked by the picker command (sh)
 Source: cache (20s old)
 Probe model: the agent's default (all-models windows only)
-Rules: order urgency (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 70 (default)
+Rules: order urgency (default), deadline_window 24h (default), deadline_min_room 2 (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 70 (default)
 
 Candidates (ready accounts in pick order):
 - carol [shared] #1 READY (5h 0%, week 26%, resets in 1 d 14 hr, room 44%, caps 50/70 (default), needs 1.16%/h)
@@ -593,8 +595,8 @@ In short ([How the pool chooses](pool-rules.md) has every detail):
 2. **Usable.** A member is skipped for any listed reason: disabled, no reading, a per-use API key, a status other than `ok`, the 5-hour cutoff, a cap reached, or a per-model weekly window of the session's model at its cap or refused.
 3. **Tiers.** While one of your own members is usable, a teammate's member joins only when its week resets within `shared_borrow_window`; the others `WAIT`.
 4. **Weekly relax.** Over the last 24 hours before a member's weekly reset its weekly cap rises to 95, since that room is lost at the reset anyway; the 5-hour cap never rises.
-5. **Order.** The most room to lose per hour first (`order: "urgency"`), or the soonest reset first (`"deadline"`).
-6. **A pick per session.** A session stays on its member while it is in the pool (unless another is 3 times as urgent), and a member takes at most 4 sessions before the next one is used.
+5. **Order.** Members whose weekly reset is within a day and that have at least 2% of room go first, soonest reset first; then the most room to lose per hour (`order: "urgency"`). Or the soonest reset first (`"deadline"`).
+6. **A pick per session.** A session stays on its member while it is in the pool (unless the member it would go to is 3 times as urgent), and a member takes at most 4 sessions before the next one is used.
 
 Caps always apply: a reset coming soon moves a member up the order, it never lifts a cap beyond the relax. Examples with the example's names:
 

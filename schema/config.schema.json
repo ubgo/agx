@@ -976,6 +976,14 @@
                     "type": "number",
                     "minimum": 0
                   },
+                  "deadline_window": {
+                    "type": "string"
+                  },
+                  "deadline_min_room": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
                   "probe_models": {
                     "type": [
                       "array",

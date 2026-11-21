@@ -1,0 +1,117 @@
+// Pool simulator scenario (task sim; docs/guides/pool-simulator.md).
+{
+  "about": "A recorded 12-member pool on a Saturday evening (3 own at 95/98, 9 shared with the weekend's 5-hour cap of 95; names replaced, numbers kept) for the next 24 hours: one shared member resets in 6.7h at week 87%, another in 12.7h at 78%. Eight sessions busy half the time.",
+  "seed": 2101,
+  "seeds": 12,
+  "horizon": "24h",
+  "accounts": [
+    {
+      "name": "alice",
+      "group": "own",
+      "short": 43,
+      "week": 53,
+      "reset_hours": 151.7
+    },
+    {
+      "name": "bob",
+      "group": "shared",
+      "short": 52,
+      "week": 78,
+      "reset_hours": 12.7
+    },
+    {
+      "name": "carol",
+      "group": "own",
+      "short": 4,
+      "week": 79,
+      "reset_hours": 117.7
+    },
+    {
+      "name": "derek",
+      "group": "shared",
+      "short": 14,
+      "week": 87,
+      "reset_hours": 6.7
+    },
+    {
+      "name": "erin",
+      "group": "shared",
+      "short": 3,
+      "week": 18,
+      "reset_hours": 91.7
+    },
+    {
+      "name": "frank",
+      "group": "shared",
+      "short": 5,
+      "week": 32,
+      "reset_hours": 78.7
+    },
+    {
+      "name": "grace",
+      "group": "shared",
+      "short": 5,
+      "week": 10,
+      "reset_hours": 131.7
+    },
+    {
+      "name": "heidi",
+      "group": "shared",
+      "short": 19,
+      "week": 11,
+      "reset_hours": 135.7
+    },
+    {
+      "name": "ivan",
+      "group": "shared",
+      "short": 39,
+      "week": 9,
+      "reset_hours": 150.7
+    },
+    {
+      "name": "judy",
+      "group": "shared",
+      "short": 6,
+      "week": 25,
+      "reset_hours": 111.7
+    },
+    {
+      "name": "ken",
+      "group": "own",
+      "short": -1,
+      "week": 100,
+      "reset_hours": 81.7
+    },
+    {
+      "name": "liam",
+      "group": "shared",
+      "short": 4,
+      "week": 98,
+      "reset_hours": 51.7
+    }
+  ],
+  "sessions": {
+    "count": [
+      8,
+      8
+    ],
+    "duty": [
+      0.5,
+      0.5
+    ],
+    "hours": [
+      0,
+      0
+    ]
+  },
+  "caps": {
+    "own": {
+      "short": 95,
+      "week": 98
+    },
+    "shared": {
+      "short": 95,
+      "week": 70
+    }
+  }
+}

@@ -120,6 +120,7 @@ var poolValueKeys = []struct {
 	{[]string{"max_sessions"}, SchemaInteger, false},
 	{[]string{"sticky"}, SchemaBoolean, false},
 	{[]string{"sticky_leave_ratio"}, SchemaNumber, false},
+	{[]string{"deadline_min_room"}, SchemaNumber, true},
 	{[]string{"schedules", schemaItems, "caps", "short"}, SchemaNumber, true},
 	{[]string{"schedules", schemaItems, "caps", "week"}, SchemaNumber, true},
 	{[]string{"schedules", schemaItems, "caps", "week_relax_max"}, SchemaNumber, true},

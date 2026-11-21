@@ -206,6 +206,7 @@ type poolSettingFlags struct {
 	defShort, defWeek, cutoff, borrow, maxAge, keyTTL, picker string
 	// The rule flags.
 	order, relaxWindow, maxSessions, sticky, defRelax, leaveRatio      string
+	deadlineWindow, deadlineMinRoom                                    string
 	capRelax, groupShort, groupWeek, groupRelax, capacity, probeModels []string
 	// The timed-cap flags.
 	until, timezone                       string
@@ -227,6 +228,8 @@ func addPoolSettingFlags(cmd *cobra.Command, ps *poolSettingFlags) {
 	f.StringVar(&ps.keyTTL, "pool-key-ttl", "", "how long the agent keeps a key before it asks again, like 60s (empty: default 60s)")
 	f.StringVar(&ps.picker, "pool-picker", "", "a shell command that picks the member instead of the built-in rules (empty removes it)")
 	f.StringVar(&ps.order, "pool-order", "", "how the pool ranks its members: urgency (the most room to lose per hour first) or deadline (the soonest weekly reset first) (empty: default urgency)")
+	f.StringVar(&ps.deadlineWindow, "pool-deadline-window", "", "under the urgency order, members whose weekly reset is this close (and that have deadline_min_room of room) go first, soonest reset first, like 24h; 0s = never (empty: default 24h)")
+	f.StringVar(&ps.deadlineMinRoom, "pool-deadline-min-room", "", "the least room, in percent up to the weekly cap reached at the reset, a member inside the deadline window needs to go first (empty: default 2)")
 	f.StringVar(&ps.relaxWindow, "pool-week-relax-window", "", "a member's weekly cap rises to its relax max over this long before its reset, like 24h; 0s = never (empty: default 24h)")
 	f.StringVar(&ps.maxSessions, "pool-max-sessions", "", "how many sessions one member takes before the next is used; 0 = no limit (empty: default 4)")
 	f.StringVar(&ps.sticky, "pool-sticky", "", "keep a session on its member while it is still in the pool: true or false (empty: default true)")
@@ -272,6 +275,7 @@ func (ps *poolSettingFlags) settings(cmd *cobra.Command) app.PoolSettings {
 		Order: one("pool-order", ps.order), WeekRelaxWindow: one("pool-week-relax-window", ps.relaxWindow),
 		MaxSessions: one("pool-max-sessions", ps.maxSessions), Sticky: one("pool-sticky", ps.sticky),
 		StickyLeaveRatio: one("pool-sticky-leave-ratio", ps.leaveRatio),
+		DeadlineWindow:   one("pool-deadline-window", ps.deadlineWindow), DeadlineMinRoom: one("pool-deadline-min-room", ps.deadlineMinRoom),
 		DefaultWeekRelax: one("pool-default-week-relax", ps.defRelax), CapWeekRelax: list("pool-cap-week-relax", ps.capRelax),
 		Capacity:      list("pool-capacity", ps.capacity),
 		GroupCapShort: list("pool-group-cap-short", ps.groupShort), GroupCapWeek: list("pool-group-cap-week", ps.groupWeek),

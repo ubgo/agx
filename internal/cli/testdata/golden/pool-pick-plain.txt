@@ -1,9 +1,9 @@
 Pool: auto (claude, order urgency)
 Use: grace (shared)
-most room to lose: 44% left under its weekly cap with 37.8h to the reset (1.2%/h to use it all)
+most room to lose: 44% left under its weekly cap with 37.8h to the reset (1.16%/h to use it all)
 Source: cache (20s old)
 Probe model: the agent's default (all-models windows only)
-Rules: order urgency (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 70 (default)
+Rules: order urgency (default), deadline_window 24h (default), deadline_min_room 2 (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 70 (default)
 
 Candidates (ready accounts in pick order):
 - grace [shared] #1 READY (5h 0%, week 26%, resets in 1 d 13 hr, room 44%, caps 50/70 (default), needs 1.16%/h)

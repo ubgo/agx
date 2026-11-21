@@ -31,6 +31,8 @@ const (
 	poolKeyForce        = "force"
 	poolKeyOrder        = "order"
 	poolKeyRelaxWindow  = "week_relax_window"
+	poolKeyDeadline     = "deadline_window"
+	poolKeyDeadlineRoom = "deadline_min_room"
 	poolKeyRelaxMax     = "defaults.week_relax_max"
 	poolKeyMaxSessions  = "max_sessions"
 	poolKeySticky       = "sticky"
@@ -51,7 +53,7 @@ const (
 
 // poolRuleKeys are the settings that decide the pick (agx pool pick and a
 // launch's dry run show them): the rule values and the group defaults.
-var poolRuleKeys = []string{poolKeyOrder, poolKeyRelaxWindow, poolKeyRelaxMax, poolKeyMaxSessions, poolKeySticky, poolKeyStickyLeave,
+var poolRuleKeys = []string{poolKeyOrder, poolKeyDeadline, poolKeyDeadlineRoom, poolKeyRelaxWindow, poolKeyRelaxMax, poolKeyMaxSessions, poolKeySticky, poolKeyStickyLeave,
 	poolKeyBorrow, poolKeyCutoff, poolKeyOwnShort, poolKeyOwnWeek, poolKeyDefaultShort, poolKeyDefaultWeek}
 
 // Words of an off setting: no force, no picker, no log.
@@ -275,6 +277,8 @@ func poolSettings(p config.Pool) []PoolSetting {
 		order, orderSrc = p.Order, SourcePool
 	}
 	add(poolKeyOrder, order, orderSrc)
+	addDuration(poolKeyDeadline, p.DeadlineWindow, pool.DefaultDeadlineWindow)
+	addPercent(poolKeyDeadlineRoom, p.DeadlineMinRoom, pool.DefaultDeadlineMinRoom)
 	addDuration(poolKeyRelaxWindow, p.WeekRelaxWindow, pool.DefaultWeekRelaxWindow)
 	addPercent(poolKeyRelaxMax, p.Defaults.WeekRelaxMax, pool.DefaultWeekRelaxMax)
 	sessions, sessionsSrc := strconv.Itoa(pool.DefaultMaxSessions), SourceDefault

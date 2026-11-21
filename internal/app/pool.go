@@ -152,9 +152,22 @@ type PoolCandidate struct {
 	// WeekCapConfigured is the configured weekly cap when caps.week is
 	// relaxed above it near the reset; nil otherwise.
 	WeekCapConfigured *float64 `json:"week_cap_configured,omitempty"`
-	// UrgencyPercentPerHour is room ÷ hours to the reset times the
-	// capacity, the urgency order's key; nil when unknown.
+	// RoomAtResetPercent is the room before the reset, up to the weekly
+	// cap reached there (above room_percent while the cap will still
+	// rise), for the window that leaves the least; omitted when it equals
+	// room_percent or the reset is unknown.
+	RoomAtResetPercent *float64 `json:"room_at_reset_percent,omitempty"`
+	// NeedsPercentPerHour is that room ÷ hours to that reset: the rate
+	// needed to use it all ("needs X%/h"); UrgencyPercentPerHour is it
+	// times the member's capacity, the urgency order's key. Both nil when
+	// unknown; a rate above 0 is at least 0.01.
+	NeedsPercentPerHour   *float64 `json:"needs_percent_per_hour,omitempty"`
 	UrgencyPercentPerHour *float64 `json:"urgency_percent_per_hour,omitempty"`
+	// Deadline is true when the member is usable and its reset is
+	// within the pool's deadline_window with at least deadline_min_room
+	// of room: it goes before the members of its list (ready, or
+	// waiting) ranked by urgency, soonest reset first.
+	Deadline bool `json:"deadline,omitempty"`
 	// Scoped are the member's per-model windows of the probe models,
 	// each an extra weekly cap ([] = none).
 	Scoped []pool.ScopedState `json:"scoped"`
@@ -460,6 +473,7 @@ func candidateOf(c pool.Candidate, account string, src memberSource) PoolCandida
 		Account: account, Short: c.Short, Week: c.Week, WeeklyResetsAt: c.WeeklyResetsAt, RoomPercent: c.Room,
 		Caps: c.Caps, Reasons: c.Reasons, Notes: c.Notes, Source: sourceNone,
 		WeekCapConfigured: c.WeekCapConfigured, UrgencyPercentPerHour: c.Urgency, Sessions: c.Load, Scoped: c.Scoped,
+		RoomAtResetPercent: c.RoomAtReset, NeedsPercentPerHour: c.NeedsPerHour, Deadline: c.Deadline,
 		TimedCaps: c.Timed, ExpiredOverride: c.ExpiredOverride,
 	}
 	if pc.Scoped == nil {
@@ -522,7 +536,10 @@ type pickerRules struct {
 	Accounts                  map[string]pickCaps `json:"accounts"`
 }
 
-// pickCaps is one member's caps and enabled flag after defaults.
+// pickCaps is one member's caps and enabled flag after defaults: the
+// caps of its entry, group or the defaults, with any schedule or override
+// that applies now, before the weekly relax (members[].caps are the caps
+// in effect now, relax included).
 type pickCaps struct {
 	Short   float64 `json:"short"`
 	Week    float64 `json:"week"`
@@ -545,8 +562,9 @@ func (a *App) runPicker(ctx context.Context, name string, lg config.Login, rules
 	in := pickerInput{Version: PickerInputVersion, Pool: name, Agent: rep.Agent, Now: rep.Now.UTC().Format(time.RFC3339), Members: rep.Candidates,
 		Rules: pickerRules{SharedBorrowWindowHours: rules.BorrowWindow.Hours(), ShortUnavailableAtPercent: rules.ShortUnavailableAt,
 			Defaults: rules.Defaults, Own: append([]string{}, rules.Own...), Shared: append([]string{}, rules.Shared...), Accounts: map[string]pickCaps{}}}
+	timed := rules.At(rep.Now)
 	for _, m := range lg.Pool.Members() {
-		caps := rules.CapsFor(m)
+		caps := timed.CapsFor(m)
 		in.Rules.Accounts[m] = pickCaps{Short: caps.Short, Week: caps.Week, Enabled: rules.Enabled(m)}
 	}
 	if res.Selected != nil {
@@ -566,7 +584,7 @@ func (a *App) runPicker(ctx context.Context, name string, lg config.Login, rules
 		if choice, err = pickerChoice(out, lg.Pool.Members()); err == nil {
 			rd, found := readings[choice]
 			sel := &PoolSelection{Name: choice, Group: groupOf(lg.Pool, choice), PickedBy: PickedByPicker,
-				Reason: "picked by the picker command (" + firstWord(lg.Pool.Picker.Command) + ")", Warnings: rules.Reasons(choice, rd, found)}
+				Reason: "picked by the picker command (" + firstWord(lg.Pool.Picker.Command) + ")", Warnings: rules.Reasons(choice, rd, found, rep.Now)}
 			for _, c := range rep.Candidates {
 				if c.Name == choice {
 					sel.WeeklyResetsAt, sel.RoomPercent = c.WeeklyResetsAt, c.RoomPercent

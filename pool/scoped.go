@@ -15,6 +15,9 @@ import (
 // member is blocked when any of them is at or over its cap, or when the
 // vendor refuses requests on it now (Rejected) and its reset has not
 // passed; its room is the least room over the weekly window and these.
+// A window without a known reset keeps the configured weekly cap (its
+// cap rises toward its own reset, which is unknown) and limits the room
+// until the weekly reset.
 
 // ScopedWindow is one per-model window of a reading.
 type ScopedWindow struct {
@@ -45,6 +48,9 @@ type ScopedState struct {
 
 	until      *time.Duration
 	unreadable bool
+	// finalCap is the cap the window reaches at its reset (finalCap):
+	// the urgency counts the room up to it.
+	finalCap float64
 }
 
 // scopedStates are member name's scoped windows under c at now: each
@@ -59,12 +65,13 @@ func (c Config) scopedStates(name string, rd Reading, now time.Time) []ScopedSta
 	relaxMax := c.RelaxMaxFor(name)
 	out := make([]ScopedState, 0, len(rd.Scoped))
 	for _, w := range rd.Scoped {
-		s := ScopedState{Name: w.Name, Cap: configured, ResetsAt: w.ResetsAt, Rejected: w.Rejected}
+		s := ScopedState{Name: w.Name, Cap: configured, ResetsAt: w.ResetsAt, Rejected: w.Rejected, finalCap: configured}
 		if w.ResetsAt != nil && !w.ResetsAt.IsZero() && !now.IsZero() {
 			until := w.ResetsAt.Sub(now)
 			s.until = &until
 			s.Stale = until < 0
 			s.Cap = RelaxedWeek(configured, relaxMax, c.WeekRelaxWindow, until)
+			s.finalCap = c.finalCap(name, *w.ResetsAt, until)
 		}
 		if math.IsNaN(w.Percent) || math.IsInf(w.Percent, 0) {
 			s.unreadable = true

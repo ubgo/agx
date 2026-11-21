@@ -75,6 +75,7 @@ func TestPoolInfoEverySet(t *testing.T) {
 		Own: []string{"alice"}, Shared: []string{"bob"}, Force: &force, SharedBorrowWindow: "24h",
 		ShortUnavailableAtPercent: f(95), Defaults: config.PoolCaps{Short: f(40), Week: f(60), WeekRelaxMax: f(90)},
 		Order: "deadline", WeekRelaxWindow: "12h", MaxSessions: intp(2), Sticky: boolp(false), StickyLeaveRatio: f(4),
+		DeadlineWindow: "6h", DeadlineMinRoom: f(5),
 		OwnCaps: config.PoolCaps{Week: f(97)}, SharedCaps: config.PoolCaps{Short: f(30)},
 		Accounts:    map[string]config.PoolAccount{"bob": {Enabled: &off, Week: f(65), Capacity: f(5)}},
 		UsageMaxAge: "2m", KeyTTL: "30s", Log: "~/p.log", Picker: &config.PoolPicker{Command: "pk"}, Timezone: "UTC",

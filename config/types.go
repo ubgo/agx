@@ -321,6 +321,14 @@ type Pool struct {
 	// urgent member's urgency is at least this many times its own
 	// (default 3; 0 = never).
 	StickyLeaveRatio *float64 `json:"sticky_leave_ratio,omitempty"`
+	// DeadlineWindow: under the urgency order, the members whose weekly
+	// reset is within it and that have at least deadline_min_room of
+	// room go first, soonest reset first (default "24h"; "0s" = never).
+	DeadlineWindow string `json:"deadline_window,omitempty"`
+	// DeadlineMinRoom is the least room, in percent up to the weekly cap
+	// reached at the reset, a member inside deadline_window needs to go
+	// first (default 2).
+	DeadlineMinRoom *float64 `json:"deadline_min_room,omitempty"`
 	// ProbeModels are the models to probe the members with when a
 	// session's own model is unknown (no --model, profile model or agent
 	// setting): a per-model weekly window shows only when the probe asks

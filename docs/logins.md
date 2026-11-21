@@ -471,10 +471,10 @@ logins.bob.allow_api_key = false
 $ agx pool pick --id team --cached
 Pool: team (claude, order urgency)
 Use: alice (own)
-most room to lose: 63% left under its weekly cap with 72h to the reset (0.9%/h to use it all)
+most room to lose: 63% left under its weekly cap with 72h to the reset (0.88%/h to use it all)
 Source: cache (30s old)
 Probe model: the agent's default (all-models windows only)
-Rules: order urgency (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 70 (default)
+Rules: order urgency (default), deadline_window 24h (default), deadline_min_room 2 (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 70 (default)
 
 Candidates (ready accounts in pick order):
 - alice [own] #1 READY (5h 20%, week 35%, resets in 3 d 0 hr, room 63%, caps 95/98 (default), needs 0.88%/h)

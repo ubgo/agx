@@ -19,6 +19,8 @@ Schedules (caps that change on set days and hours):
 Settings:
 force                         off (default)
 order                         urgency (default)
+deadline_window               24h (default)
+deadline_min_room             2 (default)
 week_relax_window             24h (default)
 defaults.week_relax_max       95 (default)
 max_sessions                  4 (default)
@@ -42,10 +44,10 @@ log                           none (default)
 $ agx pool pick --id auto
 Pool: auto (claude, order urgency)
 Use: carol (shared)
-most room to lose: 29% left under its weekly cap with 68h to the reset (0.4%/h to use it all)
+most room to lose: 29% left under its weekly cap with 68h to the reset (0.43%/h to use it all)
 Source: cache (20s old)
 Probe model: the agent's default (all-models windows only)
-Rules: order urgency (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 70 (default)
+Rules: order urgency (default), deadline_window 24h (default), deadline_min_room 2 (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 70 (default)
 
 Candidates (ready accounts in pick order):
 - carol [shared] #1 READY (5h 62%, week 41%, resets in 2 d 20 hr, room 29%, caps 95 (schedule weekend until Sun 16:00)/70 (default), needs 0.43%/h)
@@ -62,11 +64,11 @@ Pool: auto (claude, order urgency)
 No configured account is currently usable.
 Source: cache (45h0m20s old)
 Probe model: the agent's default (all-models windows only)
-Rules: order urgency (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 70 (default)
+Rules: order urgency (default), deadline_window 24h (default), deadline_min_room 2 (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 70 (default)
 
 Candidates (ready accounts in pick order):
 - alice [own] skip: 5h is 96% (cap 95%) (5h 96%, week 81%, resets in 2 d 3 hr, room 17%, caps 95/98 (default))
-- carol [shared] skip: 5h is 62% (cap 50%) (5h 62%, week 41%, resets in 23 hr 0 min, room 30%, caps 50/71 (default)) (weekly cap 70% rises to 95% over the last 24h before the reset: 71% now)
+- carol [shared] skip: 5h is 62% (cap 50%) (5h 62%, week 41%, resets in 23 hr 0 min, room 30% (54% by the reset), caps 50/71 (default)) (weekly cap 70% rises to 95% over the last 24h before the reset: 71% now)
 - derek [shared] skip: 5h is 55% (cap 50%) (5h 55%, week 30%, resets in 3 d 2 hr, room 40%, caps 50/70 (default))
 - erin [shared] skip: week is 72% (cap 70%) (5h 12%, week 72%, resets in 4 d 1 hr, room 0%, caps 50/70 (default)) (override ended Fri 20 Nov 18:00 +0300 and is ignored; agx pool prune removes it)
 [exit 1]
@@ -89,13 +91,13 @@ changed login auto (pool, pool 1 own, 3 shared)
 $ agx pool pick --id auto
 Pool: auto (claude, order urgency)
 Use: derek (shared)
-most room to lose: 60% left under its weekly cap with 119h to the reset (0.5%/h to use it all)
+most room to lose: 20% left under its weekly cap of 90% before its override ends in 35h (0.57%/h to use it all)
 Source: cache (20s old)
 Probe model: the agent's default (all-models windows only)
-Rules: order urgency (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 70 (default)
+Rules: order urgency (default), deadline_window 24h (default), deadline_min_room 2 (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 70 (default)
 
 Candidates (ready accounts in pick order):
-- derek [shared] #1 READY (5h 55%, week 30%, resets in 4 d 23 hr, room 60%, caps 95/90 (override until Sun 20:59), needs 0.5%/h)
+- derek [shared] #1 READY (5h 55%, week 30%, resets in 4 d 23 hr, room 60%, caps 95/90 (override until Sun 20:59), needs 0.57%/h)
 - carol [shared] #2 READY (5h 62%, week 41%, resets in 2 d 20 hr, room 29%, caps 95 (schedule weekend until Sun 16:00)/70 (default), needs 0.43%/h)
 - alice [own] skip: 5h is 96% (cap 95%) (5h 96%, week 81%, resets in 4 d 0 hr, room 17%, caps 95/98 (default))
 - erin [shared] skip: week is 72% (cap 70%) (5h 12%, week 72%, resets in 5 d 22 hr, room 0%, caps 95 (schedule weekend until Sun 16:00)/70 (default)) (override ended Fri 20 Nov 18:00 +0300 and is ignored; agx pool prune removes it)

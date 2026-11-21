@@ -13,6 +13,16 @@
         "source": "default"
       },
       {
+        "key": "deadline_window",
+        "value": "24h",
+        "source": "default"
+      },
+      {
+        "key": "deadline_min_room",
+        "value": "2",
+        "source": "default"
+      },
+      {
         "key": "week_relax_window",
         "value": "24h",
         "source": "default"
@@ -110,6 +120,7 @@
           "short": "default",
           "week": "default"
         },
+        "needs_percent_per_hour": 0.65,
         "urgency_percent_per_hour": 0.65,
         "scoped": [],
         "sessions": 0,
