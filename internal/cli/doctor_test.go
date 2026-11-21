@@ -17,7 +17,7 @@ const (
 	plainTokenValue = "fake-token-ALPHA"
 	refTokenValue   = "fake-token-BRAVO"
 	// newerClaude is above agentio's tested claude range (edge 8).
-	newerClaude = "2.1.330"
+	newerClaude = "2.1.400"
 	// deadPID is a pid no test machine runs (above every pid_max).
 	deadPID = 2147483646
 )
@@ -121,7 +121,7 @@ func TestEdge08DoctorVersionNewer(t *testing.T) {
 	nativeClaude(t, f, newerClaude)
 	f.WriteConfig(claudeConfig)
 	env, _ := runDoctor(t, f, "--agent", "claude")
-	c, ok := find(env.Data, "version-tested", "claude "+newerClaude+" is newer than tested (2.1.329)")
+	c, ok := find(env.Data, "version-tested", "claude "+newerClaude+" is newer than tested (2.1.330)")
 	if !ok || c.Status != "warn" {
 		t.Fatalf("no newer warning: %+v", env.Data)
 	}

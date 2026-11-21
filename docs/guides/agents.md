@@ -18,7 +18,7 @@ Read this page when a command says an agent cannot do something, when you want t
 ```sh
 $ agx agent list
 AGENT     KIND      BINARY    VERSION  TESTED            COMPAT   CAPABILITIES
-claude    built-in  claude    unknown  2.1.323..2.1.329  unknown  installer,binary-version,identity,usage,cached-usage,subscription,token-login,token-prober,login-commander,conversations,history-checker,history-mover,conversation-mover,prompt-history,live-sessions,process-classifier,turns,home-linker,instruction-files,mcp-servers,skills,plugins,config,run-events,doctor,live-credential,
+claude    built-in  claude    unknown  2.1.323..2.1.330  unknown  installer,binary-version,identity,usage,cached-usage,subscription,token-login,token-prober,login-commander,conversations,history-checker,history-mover,conversation-mover,prompt-history,live-sessions,process-classifier,turns,home-linker,instruction-files,mcp-servers,skills,plugins,config,run-events,doctor,live-credential,
                                                                   launch-config,process-sessions,stop-planner,turn-files,hooks
 codex     built-in  codex     unknown  0.162.1..0.162.1  unknown  installer,binary-version,identity,usage,cached-usage,subscription,login-commander,conversations,history-checker,prompt-history,live-sessions,process-classifier,turns,home-linker,instruction-files,mcp-servers,skills,plugins,config,models,run-events,doctor,launch-config,process-sessions,stop-planner,turn-files,hooks
 gemini    built-in  gemini    unknown  0.68.0..0.68.0    unknown  installer,binary-version,identity,token-login,conversations,history-checker,process-classifier,home-linker,instruction-files,mcp-servers,skills,plugins,config,doctor,process-sessions,stop-planner,turn-files,hooks
@@ -202,7 +202,7 @@ agx agent show --id claude --vendor-checks
 agx doctor --agent claude --vendor-checks
 ```
 
-`agent show` adds the answer as `vendor_version` (or `vendor_error`) in its data; `doctor` adds a `vendor` row such as `claude --version: claude 2.1.330 is newer than tested (2.1.329)`. See [check your setup](doctor.md#step-3-ask-for-more-checks).
+`agent show` adds the answer as `vendor_version` (or `vendor_error`) in its data; `doctor` adds a `vendor` row such as `claude --version: claude 2.1.400 is newer than tested (2.1.330)`. See [check your setup](doctor.md#step-3-ask-for-more-checks).
 
 ## Step 4: read a refusal
 

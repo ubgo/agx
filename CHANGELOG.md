@@ -2,6 +2,16 @@
 
 All notable changes to agx are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and agx uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.17] - 2026-11-21
+
+### Changed
+
+- Claude Code 2.1.330 is tested: built on agentio `claude` v0.1.4 and `builtin` v0.1.3, whose tested range for Claude Code is now 2.1.323..2.1.330. `agx run`, `agx doctor` and `agx agent list` no longer warn that an installed 2.1.330 is outside the tested range.
+
+### Fixed
+
+- A conversation whose transcript holds a record with a missing or malformed `timestamp` (Claude Code wrote such records; 2.1.330 fixed `--resume` failing on them) is read in full: agentio used to skip that record, so a title or last prompt on it could go missing.
+
 ## [0.4.16] - 2026-11-20
 
 ### Changed

@@ -90,7 +90,7 @@ $ agx config check
 ```sh
 $ agx agent list --field data.*.id --field data.*.kind --field data.*.binary --field data.*.tested
 ID        KIND      BINARY    TESTED
-claude    built-in  claude    2.1.323..2.1.329
+claude    built-in  claude    2.1.323..2.1.330
 codex     built-in  codex     0.162.1..0.162.1
 gemini    built-in  gemini    0.68.0..0.68.0
 pi        built-in  pi        1.5.2..1.5.2

@@ -33,7 +33,7 @@ func TestAgentListJSONGolden(t *testing.T) {
 	}
 	f.Golden(t, "agent-list", r.Stdout)
 	h := f.Run("agent", "list")
-	for _, want := range []string{"AGENT", "claude", "built-in", newerClaude, "2.1.323..2.1.329", "newer", "mycli", "custom"} {
+	for _, want := range []string{"AGENT", "claude", "built-in", newerClaude, "2.1.323..2.1.330", "newer", "mycli", "custom"} {
 		if !strings.Contains(h.Stdout, want) {
 			t.Errorf("table lacks %q:\n%s", want, h.Stdout)
 		}

@@ -9,9 +9,9 @@
       "kind": "built-in",
       "binary": "claude",
       "path": "<root>/bin/claude",
-      "version": "2.1.330",
+      "version": "2.1.400",
       "method": "native",
-      "tested": "2.1.323..2.1.329",
+      "tested": "2.1.323..2.1.330",
       "compat": "newer",
       "capabilities": [
         "installer",
