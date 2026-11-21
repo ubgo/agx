@@ -42,6 +42,7 @@ func TodayConfig(sc Scenario) pool.Config {
 		pool.GroupOwn:    {Short: &o.Short, Week: &o.Week},
 		pool.GroupShared: {Short: &s.Short, Week: &s.Week},
 	}
+	c.Location, c.Schedules = sc.Location, sc.Schedules
 	return c
 }
 

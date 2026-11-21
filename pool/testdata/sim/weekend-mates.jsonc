@@ -1,0 +1,10 @@
+// Pool simulator scenario (task sim; docs/guides/pool-simulator.md).
+// The baseline of weekend-mates-schedule: the same pools and seeds, no schedule.
+{
+  "about": "One own account and three to five teammates' accounts whose teammates work Monday to Friday only (Istanbul time), three to six sessions every day; no schedule, so the teammates' accounts keep their 50/70 caps on the weekend too.",
+  "seed": 401,
+  "seeds": 60,
+  "own": { "count": [1, 1], "plans": ["max5"] },
+  "shared": { "count": [3, 5], "plans": ["max5", "max20"], "workdays": ["mon", "tue", "wed", "thu", "fri"] },
+  "sessions": { "count": [3, 6] }
+}

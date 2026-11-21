@@ -60,10 +60,31 @@ func SchemaChild(root, n *schema.Schema, key string) (*schema.Schema, bool) {
 	return nil, false
 }
 
+// schemaItems in a schemaAt path is the items of an array.
+const schemaItems = "[]"
+
+// arrayItems is the items schema of an array n (through its
+// alternatives); nil when n is not an array.
+func arrayItems(root, n *schema.Schema) *schema.Schema {
+	for _, alt := range SchemaAlternatives(root, n) {
+		if alt.Items != nil {
+			return alt.Items
+		}
+	}
+	return nil
+}
+
 // schemaAt walks keys from root; an error names the first missing key.
 func schemaAt(root *schema.Schema, keys ...string) (*schema.Schema, error) {
 	n := root
 	for i, k := range keys {
+		if k == schemaItems {
+			if it := arrayItems(root, n); it != nil {
+				n = it
+				continue
+			}
+			return nil, fmt.Errorf("config schema has no %s", strings.Join(keys[:i+1], "."))
+		}
 		c, ok := SchemaChild(root, n, k)
 		if !ok {
 			return nil, fmt.Errorf("config schema has no %s", strings.Join(keys[:i+1], "."))
@@ -99,6 +120,12 @@ var poolValueKeys = []struct {
 	{[]string{"max_sessions"}, SchemaInteger, false},
 	{[]string{"sticky"}, SchemaBoolean, false},
 	{[]string{"sticky_leave_ratio"}, SchemaNumber, false},
+	{[]string{"schedules", schemaItems, "caps", "short"}, SchemaNumber, true},
+	{[]string{"schedules", schemaItems, "caps", "week"}, SchemaNumber, true},
+	{[]string{"schedules", schemaItems, "caps", "week_relax_max"}, SchemaNumber, true},
+	{[]string{"accounts", "*", "override", "short"}, SchemaNumber, true},
+	{[]string{"accounts", "*", "override", "week"}, SchemaNumber, true},
+	{[]string{"accounts", "*", "override", "week_relax_max"}, SchemaNumber, true},
 }
 
 // tightenPoolSchema states in the schema what the pool rules need, so the
@@ -122,6 +149,15 @@ func tightenPoolSchema(root *schema.Schema) error {
 			n.Minimum = jsonNumber(pool.MinPercent)
 			n.Maximum = jsonNumber(pool.MaxPercent)
 		}
+	}
+	// A schedule's days are day names: the editor offers them.
+	days, err := schemaAt(root, "logins", "*", "pool", "schedules", schemaItems, "days", schemaItems)
+	if err != nil {
+		return err
+	}
+	days.Enum = nil
+	for _, d := range pool.DayNames() {
+		days.Enum = append(days.Enum, json.RawMessage(strconv.Quote(d)))
 	}
 	return nil
 }

@@ -147,11 +147,17 @@
         "source": "pool"
       },
       {
+        "key": "timezone",
+        "value": "local",
+        "source": "default"
+      },
+      {
         "key": "log",
         "value": "~/pool.log",
         "source": "pool"
       }
-    ]
+    ],
+    "schedules": []
   },
   "decisions": [],
   "warnings": [],

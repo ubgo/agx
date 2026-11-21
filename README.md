@@ -64,10 +64,10 @@ Prebuilt binaries (macOS and Linux on amd64 and arm64, Windows on amd64) are on 
 
 ```sh
 # macOS on Apple Silicon: swap darwin_arm64 for darwin_amd64, linux_amd64 or linux_arm64
-curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.17/agx_v0.4.17_darwin_arm64.tar.gz
-curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.17/checksums.txt
+curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.18/agx_v0.4.18_darwin_arm64.tar.gz
+curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.18/checksums.txt
 shasum -a 256 -c checksums.txt --ignore-missing
-tar -xzf agx_v0.4.17_darwin_arm64.tar.gz agx && sudo mv agx /usr/local/bin/
+tar -xzf agx_v0.4.18_darwin_arm64.tar.gz agx && sudo mv agx /usr/local/bin/
 agx version
 ```
 
@@ -326,6 +326,23 @@ For Claude Code, yes: start it with `--live-login`, then `agx live use --id <run
 ### Can agx move a running Claude session between accounts automatically?
 
 Yes, with a login pool: a login of kind `pool` lists your own Claude logins and your teammates' shared ones, and `agx run --login auto` starts Claude with agx as its key helper. Each time Claude asks for a key (every minute by default), agx reads the members' usage (one small probe each, cached and shared by every session) and hands out the token of the member with the most room to lose before its weekly reset, using your own accounts almost fully and teammates' only up to their caps, and spreading several sessions over several accounts. `agx pool pick --id auto` shows the pick and why. To keep one session on one account but within its caps, add `--pool-only NAME`: it gets no key while that account is over a cap, rather than switching. It is Claude Code only. See [Share a pool of Claude accounts](docs/guides/login-pool.md).
+
+### Can a pool use a teammate's account more on weekends?
+
+Yes, with a schedule: on the days and hours it names, its caps replace the members' caps. If your teammates work Monday to Friday, raise only their 5-hour cap on the weekend; their weekly room still has to last their week, so leave the weekly cap alone. The schedule stops 5 hours before Monday, so their first 5-hour window on Monday is fresh. `agx pool pick --id auto` then shows `caps 95 (schedule weekend until Sun 19:00)`. Why only the 5-hour cap, and what it did in the simulator, is in [schedules and overrides](docs/guides/pool-rules.md#schedules-and-overrides).
+
+```sh
+agx login edit --id auto --pool-timezone Europe/Istanbul --pool-schedule 'weekend days=sat,sun members=shared short=95'
+```
+
+### Can a pool use one person's account fully today?
+
+Yes, with an override that ends: `--until` turns the per-member cap flags into caps that apply until a time (a duration, a date and time, or `'sun 23:59'`), then they are ignored and `agx pool prune` removes them.
+
+```sh
+agx login edit --id auto --pool-cap-short carol=95 --pool-cap-week carol=95 --until 'sun 23:59'
+agx login edit --id auto --pool-clear-override carol    # end it early
+```
 
 ### How does a pool decide, and can I change it?
 

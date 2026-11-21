@@ -1,0 +1,14 @@
+// Pool simulator scenario (task sim; docs/guides/pool-simulator.md).
+// weekend-mates with the weekend schedule the guide recommends: compare the two.
+{
+  "about": "weekend-mates with a weekend schedule: the teammates' accounts get a 5-hour cap of 95 on Saturday and Sunday (Istanbul time), released 5 hours before Monday; the weekly cap stays 70.",
+  "seed": 401,
+  "seeds": 60,
+  "own": { "count": [1, 1], "plans": ["max5"] },
+  "shared": { "count": [3, 5], "plans": ["max5", "max20"], "workdays": ["mon", "tue", "wed", "thu", "fri"] },
+  "sessions": { "count": [3, 6] },
+  "timezone": "Europe/Istanbul",
+  "schedules": [
+    { "name": "weekend", "days": ["sat", "sun"], "members": ["shared"], "caps": { "short": 95 }, "release_before": "5h" }
+  ]
+}

@@ -213,6 +213,8 @@ type Account struct {
 	// member's room by it, so a bigger plan's percent counts for more
 	// work.
 	Capacity *float64
+	// Override is caps until a time (schedule.go); nil = none.
+	Override *Override
 }
 
 // GroupCaps are the caps of a group's members without their own entry;
@@ -260,6 +262,16 @@ type Config struct {
 	// urgent member's urgency is at least this many times its own; 0 =
 	// never.
 	StickyLeaveRatio float64
+	// Location is the time zone of schedules without their own; nil =
+	// time.Local.
+	Location *time.Location
+	// Schedules are recurring windows of different caps (schedule.go).
+	Schedules []Schedule
+
+	// timed and expired are set by At: each member's timed caps and the
+	// end of each expired override.
+	timed   map[string]TimedCaps
+	expired map[string]time.Time
 }
 
 // New returns a Config with the documented defaults, for callers that
@@ -326,7 +338,10 @@ func (c Config) Validate() error {
 			return fmt.Errorf("pool: accounts.%s.capacity %v is not a number above 0", name, *a.Capacity)
 		}
 	}
-	return c.validateGroups()
+	if err := c.validateGroups(); err != nil {
+		return err
+	}
+	return c.validateTimed(seen)
 }
 
 // validPercent is a finite value in 0..100.
@@ -496,6 +511,11 @@ type Candidate struct {
 	Urgency *float64 `json:"urgency,omitempty"`
 	// Scoped are the reading's per-model windows with the cap each gets.
 	Scoped []ScopedState `json:"scoped,omitempty"`
+	// Timed are the caps a schedule or an override sets now; nil = none.
+	Timed *TimedCaps `json:"timed_caps,omitempty"`
+	// ExpiredOverride is when the member's override expired (it is
+	// ignored); nil = none, or it still applies.
+	ExpiredOverride *time.Time `json:"expired_override,omitempty"`
 	// Load is how many other sessions use this member (Options.Load).
 	Load    int      `json:"load"`
 	Reasons []string `json:"reasons"`
@@ -553,9 +573,11 @@ const (
 	noteBadReset    = "weekly reset time is unreadable; treated as unknown"
 	reasonUnlisted  = "not listed in own or shared"
 	noteStaleReset  = "weekly reset time has passed; usage data is stale"
-	statusMissing   = "missing"
-	shortLabel      = "5h"
-	weekLabel       = "week"
+	// noteExpiredOverride names an override that has ended.
+	noteExpiredOverride = "override ended %s and is ignored; agx pool prune removes it"
+	statusMissing       = "missing"
+	shortLabel          = "5h"
+	weekLabel           = "week"
 )
 
 // Select applies the rules (package comment) and returns the report. The
@@ -567,6 +589,7 @@ func Select(cfg Config, readings map[string]Reading, o Options) (Result, error) 
 	if o.Now.IsZero() {
 		return Result{}, ErrBadNow
 	}
+	cfg = cfg.At(o.Now)
 	if o.Only != "" {
 		pinned, err := onlyConfig(cfg, o)
 		if err != nil {
@@ -680,6 +703,13 @@ func candidate(cfg Config, name string, g Group, order int, rd Reading, found bo
 	c := &Candidate{
 		Name: name, Group: g, order: order, Enabled: cfg.Enabled(name), Caps: cfg.CapsFor(name),
 		Status: statusMissing, Reasons: []string{}, Notes: []string{},
+	}
+	if t := cfg.Timed(name); t.any() {
+		c.Timed = &t
+	}
+	if at, ok := cfg.ExpiredOverride(name); ok {
+		c.ExpiredOverride = &at
+		c.Notes = append(c.Notes, fmt.Sprintf(noteExpiredOverride, at.Format(untilLayout)))
 	}
 	if found {
 		cfg.relax(c, rd, now)

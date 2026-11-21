@@ -39,7 +39,8 @@ When there is more quota than your sessions want, waste is the same under every 
 - **Windows.** Each account resets its week at its own time every seven days. The 5-hour window starts with the first use after the previous one ended and lasts five hours, independent of the weekly reset.
 - **Plans.** Pro, Max 5x and Max 20x: the same work burns five times the percent on Pro and a quarter of it on Max 20x. A plan can also be unknown: a real plan is drawn, but the pick is not told (as for a user who sets no `capacity`).
 - **Your sessions.** A busy session burns 12% of a Max 5x 5-hour window an hour; a full 5-hour window is an eighth of a week. Sessions are busy in 15-minute spells, steady or in shared bursts.
-- **Teammates.** On a shared account a teammate works on their own schedule (light, medium, heavy or irregular; or none at all), whatever the pool does.
+- **Teammates.** On a shared account a teammate works on their own schedule (light, medium, heavy or irregular; or none at all), whatever the pool does: from about 09:00 their time (UTC+3) for nine hours, Monday to Friday and for one in five also Saturday, unless the scenario names their `workdays`.
+- **Schedules.** A scenario's `timezone` and `schedules` are read exactly as a pool's in config and handed to the real `pool.Select`, so the `-real` rows apply them (the hand-written rule sets do not). `weekend-mates` and `weekend-mates-schedule` are the same pools with and without a weekend schedule; compare their `REC-real` rows ([what they show](pool-rules.md#use-teammates-accounts-more-on-their-days-off)).
 - **Limits.** When a step would pass 100%, everyone on the account gets the same share of what is left; your refused part is a 429, the teammate's a lockout.
 - **Per-model weeks.** A scenario can give some sessions a model with a weekly window of its own (like Fable 5.2's `7d_oi`): those sessions also fill that window, which holds fewer 5-hour windows than the all-models week, and only their picks see it, as agx's do when it probes with the session's model. `REC-blind` is the defaults without per-model windows (agx before v0.4.16 read them), so its 429s show what reading them saves.
 - **What a pick sees.** Only what agx sees: whole-number percentages one step old, the reset times, each per-model window of the session's model, and which member each running session uses.
@@ -59,11 +60,13 @@ A scenario is one file in `pool/testdata/sim/`, JSONC, unknown keys refused. Eac
   "seeds": 12,           // how many runs
   "gate": false,         // true: part of the go test gate (record its baseline with -update)
   "own": { "count": [2, 2], "plans": ["max5", "max20"] },   // pro, max5, max20 or unknown
-  "shared": { "count": [3, 3], "mates": ["irregular"] },  // light, medium, heavy, irregular, none
+  "shared": { "count": [3, 3], "mates": ["irregular"], "workdays": ["mon", "tue", "wed", "thu", "fri"] },  // mates: light, medium, heavy, irregular, none
   "resets": "random",    // random, spread or bunched
   "sessions": { "count": [2, 5], "duty": [0.5, 0.7], "pattern": "steady", "hours": [8, 2], "utc_offset": "0s" },  // pattern: steady, bursty or any
   "caps": { "own": { "short": 95, "week": 98 }, "shared": { "short": 50, "week": 70 } },
-  "model": { "share": 0.7, "week_ratio": 4 }   // optional: 70% of sessions on a model whose own week holds 4 full 5-hour windows
+  "model": { "share": 0.7, "week_ratio": 4 },  // optional: 70% of sessions on a model whose own week holds 4 full 5-hour windows
+  "timezone": "Europe/Istanbul",                // optional: the pool's timezone and schedules, as in config
+  "schedules": [ { "name": "weekend", "days": ["sat", "sun"], "members": ["shared"], "caps": { "short": 95 } } ]
 }
 ```
 

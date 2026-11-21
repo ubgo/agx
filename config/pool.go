@@ -61,8 +61,24 @@ func (p Pool) Rules() (pool.Config, error) {
 	if len(p.Accounts) > 0 {
 		c.Accounts = make(map[string]pool.Account, len(p.Accounts))
 		for name, a := range p.Accounts {
-			c.Accounts[name] = pool.Account{Short: a.Short, Week: a.Week, Enabled: a.Enabled, WeekRelaxMax: a.WeekRelaxMax, Capacity: a.Capacity}
+			acct := pool.Account{Short: a.Short, Week: a.Week, Enabled: a.Enabled, WeekRelaxMax: a.WeekRelaxMax, Capacity: a.Capacity}
+			if a.Override != nil {
+				o, err := a.Override.Rule(name)
+				if err != nil {
+					return c, err
+				}
+				acct.Override = &o
+			}
+			c.Accounts[name] = acct
 		}
+	}
+	loc, err := p.Location()
+	if err != nil {
+		return c, err
+	}
+	c.Location = loc
+	if c.Schedules, err = ScheduleRules(p.Schedules); err != nil {
+		return c, err
 	}
 	if err := p.ruleValues(&c); err != nil {
 		return c, err
@@ -164,4 +180,73 @@ func (p Pool) ruleValues(c *pool.Config) error {
 		c.StickyLeaveRatio = *p.StickyLeaveRatio
 	}
 	return nil
+}
+
+// Location is the pool's timezone (nil = this machine's local time).
+func (p Pool) Location() (*time.Location, error) {
+	return loadZone("timezone", p.Timezone)
+}
+
+// loadZone reads an IANA time zone name ("" = nil, local time).
+func loadZone(key, name string) (*time.Location, error) {
+	if name == "" {
+		return nil, nil
+	}
+	if strings.EqualFold(name, "local") {
+		return nil, fmt.Errorf("pool: %s %q: leave it out for this machine's local time, or give an IANA name like \"Europe/Istanbul\"", key, name)
+	}
+	loc, err := time.LoadLocation(name)
+	if err != nil {
+		return nil, fmt.Errorf("pool: %s %q is not an IANA time zone (like \"Europe/Istanbul\", \"America/New_York\", \"UTC\")", key, name)
+	}
+	return loc, nil
+}
+
+// ScheduleRules turns schedule entries into the pool's schedules; an
+// error names the schedule and the key. Members are checked by
+// pool.Config.Validate. The simulator reads its scenario files' schedules
+// through it, so they mean what they mean in config.
+func ScheduleRules(in []PoolSchedule) ([]pool.Schedule, error) {
+	out := make([]pool.Schedule, 0, len(in))
+	for i, s := range in {
+		label := fmt.Sprintf("schedules[%d]", i)
+		if s.Name != "" {
+			label = "schedule " + s.Name
+		}
+		days, err := pool.ParseDays(s.Days)
+		if err != nil {
+			return nil, fmt.Errorf("pool: %s: %w", label, err)
+		}
+		start, end, err := pool.ParseHours(s.Hours)
+		if err != nil {
+			return nil, fmt.Errorf("pool: %s: %w", label, err)
+		}
+		loc, err := loadZone(label+" timezone", s.Timezone)
+		if err != nil {
+			return nil, err
+		}
+		release := time.Duration(0)
+		if s.Caps.Short != nil {
+			release = pool.DefaultScheduleReleaseBefore
+		}
+		if s.ReleaseBefore != "" {
+			if release, err = parseDuration(label+" release_before", s.ReleaseBefore); err != nil {
+				return nil, err
+			}
+		}
+		out = append(out, pool.Schedule{
+			Name: s.Name, Days: days, Start: start, End: end, Location: loc, Members: append([]string{}, s.Members...),
+			Caps: pool.ScheduleCaps{Short: s.Caps.Short, Week: s.Caps.Week, WeekRelaxMax: s.Caps.WeekRelaxMax}, ReleaseBefore: release,
+		})
+	}
+	return out, nil
+}
+
+// Rule is the override of member name; until must be an RFC 3339 time.
+func (o PoolOverride) Rule(name string) (pool.Override, error) {
+	t, err := time.Parse(time.RFC3339, o.Until)
+	if err != nil {
+		return pool.Override{}, fmt.Errorf("pool: accounts.%s.override.until %q is not an RFC 3339 time (like \"2026-11-22T23:59:00+03:00\")", name, o.Until)
+	}
+	return pool.Override{Caps: pool.ScheduleCaps{Short: o.Short, Week: o.Week, WeekRelaxMax: o.WeekRelaxMax}, Until: t}, nil
 }

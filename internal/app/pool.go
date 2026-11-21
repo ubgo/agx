@@ -146,7 +146,8 @@ type PoolCandidate struct {
 	RoomPercent  *float64  `json:"room_percent"`
 	Caps         pool.Caps `json:"caps"`
 	// CapsSource says where each cap comes from: member, group, pool
-	// (defaults) or default.
+	// (defaults), default, schedule or override (timed_caps says which
+	// and until when).
 	CapsSource CapSources `json:"caps_source"`
 	// WeekCapConfigured is the configured weekly cap when caps.week is
 	// relaxed above it near the reset; nil otherwise.
@@ -157,6 +158,12 @@ type PoolCandidate struct {
 	// Scoped are the member's per-model windows of the probe models,
 	// each an extra weekly cap ([] = none).
 	Scoped []pool.ScopedState `json:"scoped"`
+	// TimedCaps are the caps a schedule or an override sets now, each
+	// with its kind, schedule name and end; omitted = none.
+	TimedCaps *pool.TimedCaps `json:"timed_caps,omitempty"`
+	// ExpiredOverride is the end of the member's override when it has
+	// ended (it is ignored; agx pool prune removes it).
+	ExpiredOverride *time.Time `json:"expired_override,omitempty"`
 	// Sessions is how many other live runs use the member.
 	Sessions int      `json:"sessions"`
 	Reasons  []string `json:"reasons"`
@@ -322,6 +329,9 @@ func (a *App) poolPick(ctx context.Context, name string, lg config.Login, o Pool
 	if now.IsZero() {
 		now = a.Now()
 	}
+	// The caps in effect now: schedules and overrides folded in, so the
+	// --pool-only check, the picker's input and its warnings read them.
+	rules = rules.At(now)
 	rep.Agent, rep.Now, rep.ShortUnavailableAt = string(ag.ID()), now, rules.ShortUnavailableAt
 	rep.BorrowWindowHours = rules.BorrowWindow.Hours()
 	rep.Order = rules.Rules().Order
@@ -388,6 +398,7 @@ func (a *App) poolPick(ctx context.Context, name string, lg config.Login, o Pool
 		pc := candidateOf(c, cfg.Config.Logins[c.Name].Account, sources[c.Name])
 		_, pc.CapsSource.Short, _ = memberValue(*lg.Pool, c.Name, c.Group, memberShort)
 		_, pc.CapsSource.Week, _ = memberValue(*lg.Pool, c.Name, c.Group, memberWeek)
+		timedSources(&pc)
 		if c.Name == o.Only.Member && o.Only.Caps.Short != nil {
 			pc.CapsSource.Short = flagPoolOnlyShort
 		}
@@ -449,6 +460,7 @@ func candidateOf(c pool.Candidate, account string, src memberSource) PoolCandida
 		Account: account, Short: c.Short, Week: c.Week, WeeklyResetsAt: c.WeeklyResetsAt, RoomPercent: c.Room,
 		Caps: c.Caps, Reasons: c.Reasons, Notes: c.Notes, Source: sourceNone,
 		WeekCapConfigured: c.WeekCapConfigured, UrgencyPercentPerHour: c.Urgency, Sessions: c.Load, Scoped: c.Scoped,
+		TimedCaps: c.Timed, ExpiredOverride: c.ExpiredOverride,
 	}
 	if pc.Scoped == nil {
 		pc.Scoped = []pool.ScopedState{}
@@ -469,6 +481,21 @@ func candidateOf(c pool.Candidate, account string, src memberSource) PoolCandida
 		}
 	}
 	return pc
+}
+
+// timedSources names a schedule or an override as the source of the
+// caps it sets now (TimedCaps says which one and until when).
+func timedSources(pc *PoolCandidate) {
+	t := pc.TimedCaps
+	if t == nil {
+		return
+	}
+	if t.Short != nil {
+		pc.CapsSource.Short = t.Short.Kind
+	}
+	if t.Week != nil {
+		pc.CapsSource.Week = t.Week.Kind
+	}
 }
 
 // pickerInput is what a picker command reads on stdin (version 1, docs:

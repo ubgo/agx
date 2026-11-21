@@ -2,6 +2,16 @@
 
 All notable changes to agx are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and agx uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.18] - 2026-11-21
+
+### Added
+
+- Pool schedules: `logins.<pool>.pool.schedules` are recurring windows of different caps (`name`, `days` `mon`…`sun`, `hours` `HH:MM-HH:MM` that may cross midnight, `members` by name or group `own`/`shared`, `timezone`, `caps` `short`/`week`/`week_relax_max`, `release_before`), and `timezone` is the pool's zone (IANA; omitted = local time). While a schedule applies, its caps replace the members' caps; it stops `release_before` before its window ends (default `5h` when it sets `short`, so a teammate who starts right after finds a fresh 5-hour window). A schedule naming a member beats one naming its group, cap by cap; at the same level the highest value wins. Windows follow the wall clock across daylight-saving changes. Flags: `agx login edit --pool-timezone ZONE --pool-schedule 'NAME days=sat,sun members=shared short=95'` and `--pool-schedule-remove NAME`. Guide: [schedules and overrides](docs/guides/pool-rules.md#schedules-and-overrides), which explains why to raise only the 5-hour cap on teammates' days off.
+- Overrides that end: `--until TIME` makes `--pool-cap-short`, `--pool-cap-week` and `--pool-cap-week-relax` one member's caps until a time (`6h`, `2026-11-23T08:00`, `'sun 23:59'`, `18:00`, in the pool's zone), stored as `accounts.NAME.override` beside the normal caps. An override beats every schedule; once ended it is ignored and the pick says so. `--pool-clear-override NAME` ends one now; `agx pool prune --id POOL [--dry-run]` removes the ended ones.
+- `agx pool pick` names a timed cap's source in each member's caps (`caps 95 (schedule weekend until Sun 19:00)/70 (default)`, `caps 95/90 (override until Sun 23:59)`), and its JSON gains `timed_caps` (kind, schedule name, end per cap) and `expired_override`. `agx pool show` lists the schedules with whether they apply now and until when, each member's override (active or ended) and the `timezone` setting.
+- The pool simulator reads `timezone` and `schedules` in scenario files through the same code as config, and teammates' `workdays`. New scenarios `weekend-mates` and `weekend-mates-schedule` (teammates who work Monday to Friday, with and without a weekend schedule): with the schedule sessions waited about 5% less and got slightly more quota (97.2% instead of 97.1% served), with no 5-hour lockouts added, and somewhat more teammate lockouts by the weekly limit (0.68 instead of 0.50 hours a week).
+- The binary embeds the time-zone database, so schedule zones work where the system has none.
+
 ## [0.4.17] - 2026-11-21
 
 ### Changed

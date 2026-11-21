@@ -76,19 +76,24 @@ type PoolSettings struct {
 	Picker *string
 	// The rule settings (login_pool_rules.go).
 	Rules PoolRuleSettings
+	// The timed-cap settings (login_pool_timed.go).
+	Timed PoolTimedSettings
 }
 
 // given reports any setting flag.
 func (s PoolSettings) given() bool {
 	return s.CapShort != nil || s.CapWeek != nil || s.Disable != nil || s.Enable != nil ||
 		s.DefaultShort != nil || s.DefaultWeek != nil || s.ShortCutoff != nil ||
-		s.BorrowWindow != nil || s.UsageMaxAge != nil || s.KeyTTL != nil || s.Picker != nil || s.Rules.given()
+		s.BorrowWindow != nil || s.UsageMaxAge != nil || s.KeyTTL != nil || s.Picker != nil || s.Rules.given() || s.Timed.given()
 }
 
 // poolPlan is the set of document edits one pool command makes, with the
 // before/after line of each changed key (keys relative to the login).
 type poolPlan struct {
-	login   string
+	login string
+	// now is the time --until counts from and an override is checked
+	// against.
+	now     time.Time
 	edits   []edit
 	changes []Change
 }
@@ -157,6 +162,16 @@ func (p *poolPlan) planMembers(cur config.Pool, own, shared []string, force *str
 func (p *poolPlan) planSettings(cur config.Pool, members []string, s PoolSettings) error {
 	if err := p.planAccounts(cur, members, s); err != nil {
 		return err
+	}
+	if s.Timed.Timezone != nil {
+		if err := p.planTimezone(cur, *s.Timed.Timezone); err != nil {
+			return err
+		}
+	}
+	if s.Timed.Schedules != nil || s.Timed.ScheduleRemove != nil {
+		if err := p.planSchedules(cur, members, s.Timed); err != nil {
+			return err
+		}
 	}
 	if err := p.planCapsBlock(keyPoolDefaults, cur.Defaults, []capFlag{
 		{flagPoolDefaultShort, keyPoolShort, s.DefaultShort},
@@ -314,7 +329,7 @@ func (p *poolPlan) planAccounts(cur config.Pool, members []string, s PoolSetting
 	for _, f := range []struct {
 		flag  string
 		names []string
-	}{{flagPoolDisable, s.Disable}, {flagPoolEnable, s.Enable}} {
+	}{{flagPoolDisable, s.Disable}, {flagPoolEnable, s.Enable}, {flagPoolClearOverride, s.Timed.ClearOverride}} {
 		for _, n := range f.names {
 			if err := checkMember(f.flag+" "+n, n, members, p.login); err != nil {
 				return err
@@ -337,6 +352,12 @@ func (p *poolPlan) planAccounts(cur config.Pool, members []string, s PoolSetting
 		}
 		return next[name]
 	}
+	if s.Timed.Until != nil {
+		if err := p.planOverrides(cur, s.Timed, shorts, weeks, relaxes, touch, next); err != nil {
+			return err
+		}
+		shorts, weeks, relaxes = nil, nil, nil
+	}
 	for _, m := range shorts {
 		a := touch(m.name)
 		a.Short = m.cap
@@ -351,6 +372,11 @@ func (p *poolPlan) planAccounts(cur config.Pool, members []string, s PoolSetting
 		a := touch(m.name)
 		a.WeekRelaxMax = m.cap
 		next[m.name] = a
+	}
+	for _, n := range s.Timed.ClearOverride {
+		a := touch(n)
+		a.Override = nil
+		next[n] = a
 	}
 	for _, m := range capacities {
 		a := touch(m.name)
@@ -408,11 +434,19 @@ func (p *poolPlan) planAccount(name string, old, next config.PoolAccount) {
 		enabledEdit = deleteIf(entry(keyPoolEnabled), true)
 	}
 	p.change(label(keyPoolEnabled), enabledText(old.Enabled), enabledText(next.Enabled), enabledEdit)
+	overrideEdit := deleteIf(entry(keyPoolOverride), true)
+	switch {
+	case empty:
+		overrideEdit = deleteIf(entry(), true)
+	case next.Override != nil:
+		overrideEdit = setValue(entry(keyPoolOverride), *next.Override)
+	}
+	p.change(label(keyPoolOverride), overrideText(old.Override), overrideText(next.Override), overrideEdit)
 }
 
 // accountEmpty reports a member entry with nothing in it.
 func accountEmpty(a config.PoolAccount) bool {
-	return a.Short == nil && a.Week == nil && a.Enabled == nil && a.WeekRelaxMax == nil && a.Capacity == nil
+	return a.Short == nil && a.Week == nil && a.Enabled == nil && a.WeekRelaxMax == nil && a.Capacity == nil && a.Override == nil
 }
 
 // enabledText is a member's effective enabled (omitted = true).

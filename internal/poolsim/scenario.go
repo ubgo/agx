@@ -15,6 +15,7 @@ import (
 
 	"github.com/ubgo/textdata/jsonc"
 
+	"github.com/ubgo/agx/config"
 	"github.com/ubgo/agx/pool"
 )
 
@@ -174,6 +175,11 @@ type File struct {
 	WeekRatio float64 `json:"week_ratio,omitempty"`
 	// Model is a per-model weekly window; omitted = none.
 	Model *FileModel `json:"model,omitempty"`
+	// Timezone and Schedules are the pool's timezone and schedules,
+	// written as in config (logins.<name>.pool) and read by the same code,
+	// so the real rules apply them; omitted = none.
+	Timezone  string                `json:"timezone,omitempty"`
+	Schedules []config.PoolSchedule `json:"schedules,omitempty"`
 }
 
 // FileModel is a per-model weekly window (Fable's 7d_oi): a share of our
@@ -196,6 +202,9 @@ type Members struct {
 	// Mates are drawn per shared member (default light, medium, medium,
 	// heavy).
 	Mates []string `json:"mates,omitempty"`
+	// Workdays are the teammates' working days (mon … sun, in their
+	// zone); omitted = Monday to Friday, and Saturday for one in five.
+	Workdays []string `json:"workdays,omitempty"`
 }
 
 // Sessions are our sessions.
@@ -340,8 +349,33 @@ func (f File) check() error {
 	if _, err := f.offset(); err != nil {
 		return err
 	}
+	for _, m := range []Members{f.Own, f.Shared} {
+		if len(m.Workdays) > 0 {
+			if _, err := pool.ParseDays(m.Workdays); err != nil {
+				return fmt.Errorf("workdays: %w", err)
+			}
+		}
+	}
+	if _, _, err := f.schedules(); err != nil {
+		return err
+	}
 	_, err := f.horizon()
 	return err
+}
+
+// schedules are the file's timezone and schedules as the real rules read
+// them (config.ScheduleRules, the code config.jsonc goes through).
+func (f File) schedules() (*time.Location, []pool.Schedule, error) {
+	loc, err := (config.Pool{Timezone: f.Timezone}).Location()
+	if err != nil {
+		return nil, nil, err
+	}
+	if loc == nil {
+		// A scenario never depends on the machine running it.
+		loc = time.UTC
+	}
+	sch, err := config.ScheduleRules(f.Schedules)
+	return loc, sch, err
 }
 
 // offset is the sessions' zone.
@@ -474,6 +508,7 @@ func (f File) make(seed uint64) Scenario {
 	if f.Caps.Shared != nil {
 		sc.BaseCaps[pool.GroupShared] = *f.Caps.Shared
 	}
+	sc.Location, sc.Schedules, _ = f.schedules() // check validated them
 	hours := [2]int{8, 2}
 	if f.Sessions.Hours != nil {
 		hours = *f.Sessions.Hours
@@ -527,7 +562,7 @@ func (f File) make(seed uint64) Scenario {
 		rate := ownWeekRate
 		if group == pool.GroupShared {
 			rate = sharedWeekRate
-			a.Mate = mateOf(seed, i, pickOne(seed, i, drawMate, spec.Mates, defaultMates))
+			a.Mate = withWorkdays(mateOf(seed, i, pickOne(seed, i, drawMate, spec.Mates, defaultMates)), spec.Workdays)
 		}
 		a.Week = pickFloat(seed, i, drawWeekRate, rate) * (1 - h/WeekPeriod.Hours())
 		if draw(seed, i, drawShortOn) < runningShortShare {
@@ -593,6 +628,15 @@ func mateOf(seed uint64, idx int, p string) *Teammate {
 		t.Workdays[d] = true
 	}
 	t.Workdays[time.Saturday] = draw(seed, idx, drawMateSat) < saturdayShare
+	return t
+}
+
+// withWorkdays sets a teammate's working days when days names them.
+func withWorkdays(t *Teammate, days []string) *Teammate {
+	if t == nil || len(days) == 0 {
+		return t
+	}
+	t.Workdays, _ = pool.ParseDays(days) // check validated them
 	return t
 }
 

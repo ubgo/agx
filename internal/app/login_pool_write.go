@@ -31,7 +31,7 @@ func (o LoginEditOptions) poolGiven() bool {
 // messages.
 const poolFlagsText = flagPoolOwn + ", " + flagPoolShared + ", " + flagPoolForce + ", " + flagPoolCapShort + ", " + flagPoolCapWeek + ", " +
 	flagPoolDisable + ", " + flagPoolEnable + ", " + flagPoolDefaultShort + ", " + flagPoolDefaultWeek + ", " + flagPoolShortCutoff + ", " +
-	flagPoolBorrowWindow + ", " + flagPoolUsageMaxAge + ", " + flagPoolKeyTTL + ", " + flagPoolPicker + ", " + poolRuleFlagsText
+	flagPoolBorrowWindow + ", " + flagPoolUsageMaxAge + ", " + flagPoolKeyTTL + ", " + flagPoolPicker + ", " + poolRuleFlagsText + ", " + poolTimedFlagsText
 
 // addPool is login add --kind pool: a login with members and no value,
 // plus any pool setting flags. The members, the agent and every number
@@ -55,7 +55,7 @@ func (a *App) addPool(ctx context.Context, o LoginAddOptions, cfg *config.Loaded
 	if err := a.poolAgent(o.Agents[0]); err != nil {
 		return ch, err
 	}
-	plan := poolPlan{login: o.Name}
+	plan := poolPlan{login: o.Name, now: a.Now()}
 	plan.change(keyPoolOwn, absent, strings.Join(o.PoolOwn, " "))
 	plan.change(keyPoolShared, absent, strings.Join(o.PoolShared, " "))
 	if err := plan.planSettings(config.Pool{}, slices.Concat(o.PoolOwn, o.PoolShared), o.Pool); err != nil {
@@ -124,7 +124,7 @@ func (a *App) editPool(ctx context.Context, o LoginEditOptions, cfg *config.Load
 	if o.PoolShared != nil {
 		shared = o.PoolShared
 	}
-	plan := poolPlan{login: o.ID}
+	plan := poolPlan{login: o.ID, now: a.Now()}
 	plan.planMembers(p, o.PoolOwn, o.PoolShared, o.PoolForce)
 	if err := plan.planSettings(p, slices.Concat(own, shared), o.Pool); err != nil {
 		return ch, err

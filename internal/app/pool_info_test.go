@@ -77,7 +77,7 @@ func TestPoolInfoEverySet(t *testing.T) {
 		Order: "deadline", WeekRelaxWindow: "12h", MaxSessions: intp(2), Sticky: boolp(false), StickyLeaveRatio: f(4),
 		OwnCaps: config.PoolCaps{Week: f(97)}, SharedCaps: config.PoolCaps{Short: f(30)},
 		Accounts:    map[string]config.PoolAccount{"bob": {Enabled: &off, Week: f(65), Capacity: f(5)}},
-		UsageMaxAge: "2m", KeyTTL: "30s", Log: "~/p.log", Picker: &config.PoolPicker{Command: "pk"},
+		UsageMaxAge: "2m", KeyTTL: "30s", Log: "~/p.log", Picker: &config.PoolPicker{Command: "pk"}, Timezone: "UTC",
 	}}
 	info := poolInfo("team", lg)
 	if info.Force != "bob" || info.Picker != "pk" || strings.Join(info.Agents, ",") != "claude" {

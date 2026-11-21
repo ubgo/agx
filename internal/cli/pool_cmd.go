@@ -34,7 +34,7 @@ var poolPickFields = []string{"data.pool", "data.agent", "data.selected", "data.
 	"data.candidates.*.eligible", "data.candidates.*.enabled", "data.candidates.*.status", "data.candidates.*.account",
 	"data.candidates.*.short", "data.candidates.*.week", "data.candidates.*.weekly_resets_at", "data.candidates.*.hours_to_reset",
 	"data.candidates.*.room_percent", "data.candidates.*.caps", "data.candidates.*.caps_source", "data.candidates.*.week_cap_configured",
-	"data.candidates.*.urgency_percent_per_hour", "data.candidates.*.sessions", "data.candidates.*.scoped", "data.probe_models", "data.probe_models_source", "data.candidates.*.reasons", "data.candidates.*.notes",
+	"data.candidates.*.urgency_percent_per_hour", "data.candidates.*.timed_caps", "data.candidates.*.expired_override", "data.candidates.*.sessions", "data.candidates.*.scoped", "data.probe_models", "data.probe_models_source", "data.candidates.*.reasons", "data.candidates.*.notes",
 	"data.candidates.*.source", "data.candidates.*.age_seconds"}
 
 // Fields of agx pool list and agx pool show.
@@ -44,7 +44,8 @@ var (
 		"data.members", "data.members.*.name", "data.members.*.group", "data.members.*.enabled", "data.members.*.enabled_source",
 		"data.members.*.short", "data.members.*.short_source", "data.members.*.week", "data.members.*.week_source",
 		"data.members.*.week_relax_max", "data.members.*.week_relax_max_source", "data.members.*.capacity", "data.members.*.capacity_source",
-		"data.settings", "data.settings.*.key", "data.settings.*.value", "data.settings.*.source"}
+		"data.settings", "data.settings.*.key", "data.settings.*.value", "data.settings.*.source",
+		"data.members.*.override", "data.schedules", "data.schedules.*.name", "data.schedules.*.active", "data.schedules.*.until"}
 )
 
 // poolCmd is agx pool: the commands that read a login pool. Picking
@@ -52,7 +53,7 @@ var (
 // whose subcommands treat a login as a noun.
 func (c *cliCtx) poolCmd() *cobra.Command {
 	return group("pool", "Login pools: list them, show their settings, see which member they pick",
-		c.poolListCmd(), c.poolShowCmd(), c.poolPickCmd(), c.poolPresetCmd(),
+		c.poolListCmd(), c.poolShowCmd(), c.poolPickCmd(), c.poolPresetCmd(), c.poolPruneCmd(),
 	)
 }
 
@@ -113,6 +114,21 @@ func (c *cliCtx) poolPresetCmd() *cobra.Command {
 	return cmd
 }
 
+// poolPruneCmd is agx pool prune: remove the overrides that have ended.
+func (c *cliCtx) poolPruneCmd() *cobra.Command {
+	var o app.PoolPruneOptions
+	cmd := c.newCmd("prune", "Remove a pool's member overrides that have ended", CostWrite, func(cmd *cobra.Command, _ []string) (render.Output, error) {
+		ch, err := c.App().PoolPrune(cmd.Context(), o)
+		return loginChangeOutput("change", "changed", ch, err)
+	})
+	cmd.Long = "Remove every member override of a pool login whose end has passed (accounts.NAME.override, written by agx login edit --pool-cap-… NAME=N --until TIME). An ended override is already ignored by every pick and listed as ended by agx pool show; prune only tidies config.jsonc. Comments in the file are kept; nothing ended = nothing written. To end an override early use agx login edit --pool-clear-override NAME. " + poolManageNote
+	cmd.Example = "  agx pool prune --id auto --dry-run\n  agx pool prune --id auto"
+	f := cmd.Flags()
+	f.StringVar(&o.ID, "id", "", "the pool login")
+	f.BoolVar(&o.DryRun, "dry-run", false, "show the changes; write nothing")
+	return cmd
+}
+
 // poolShowText is the pool's labelled lines, one line per member with
 // its caps and enabled state, then one line per setting. Each value ends
 // with its source, dimmed.
@@ -138,9 +154,21 @@ func poolShowText(w io.Writer, info app.PoolInfo, st render.Style) error {
 		if !m.Enabled {
 			state = st.Paint(render.ToneWarn, poolDisabled)
 		}
-		ew.Line(fmt.Sprintf("- %s [%s] %s %s, short %s %s, week %s %s, week relax max %s %s, capacity %s %s", m.Name, m.Group, state, src(m.EnabledSource),
+		line := fmt.Sprintf("- %s [%s] %s %s, short %s %s, week %s %s, week relax max %s %s, capacity %s %s", m.Name, m.Group, state, src(m.EnabledSource),
 			numText(m.Short), src(m.ShortSource), numText(m.Week), src(m.WeekSource),
-			numText(m.WeekRelaxMax), src(m.WeekRelaxMaxSource), numText(m.Capacity), src(m.CapacitySource)))
+			numText(m.WeekRelaxMax), src(m.WeekRelaxMaxSource), numText(m.Capacity), src(m.CapacitySource))
+		if o := m.Override; o != nil {
+			line += "; " + overrideText(*o, st)
+		}
+		ew.Line(line)
+	}
+	ew.Line("")
+	ew.Line(st.Bold(poolSchedulesHeader))
+	if len(info.Schedules) == 0 {
+		ew.Line(render.Dash)
+	}
+	for _, sc := range info.Schedules {
+		ew.Line(scheduleText(sc, st))
 	}
 	ew.Line("")
 	ew.Line(st.Bold(poolSettingsHeader))
@@ -154,16 +182,61 @@ func poolShowText(w io.Writer, info app.PoolInfo, st render.Style) error {
 	return keyValues(w, rows)
 }
 
+// overrideText is a member's override: "override short 95 until Sun 22
+// Nov 23:59 (active)", or "(ended; ignored, agx pool prune removes it)".
+func overrideText(o app.PoolOverrideInfo, st render.Style) string {
+	state := st.Paint(render.ToneGood, "(active)")
+	if !o.Active {
+		state = st.Paint(render.ToneWarn, "(ended; ignored, agx pool prune removes it)")
+	}
+	return fmt.Sprintf("override %s until %s %s", timedCapsText(o.Short, o.Week, o.WeekRelaxMax), o.Until.Local().Format(showTimeLayout), state)
+}
+
+// scheduleText is one schedule: "- weekend: sat, sun 00:00-24:00
+// (Europe/Istanbul) for shared: short 95, released 5h before the end;
+// active until Sun 22 Nov 19:00".
+func scheduleText(sc app.PoolScheduleInfo, st render.Style) string {
+	zone := cmp.Or(sc.Timezone, "pool timezone")
+	line := fmt.Sprintf("- %s: %s %s (%s) for %s: %s, released %s before the end", sc.Name, strings.Join(sc.Days, ", "), cmp.Or(sc.Hours, pool.FullDay), zone,
+		strings.Join(sc.Members, ", "), timedCapsText(sc.Caps.Short, sc.Caps.Week, sc.Caps.WeekRelaxMax), sc.ReleaseBeforeEffective)
+	switch {
+	case sc.Active && sc.Until != nil:
+		return line + "; " + st.Paint(render.ToneGood, "active until "+sc.Until.Local().Format(showTimeLayout))
+	case sc.Active:
+		return line + "; " + st.Paint(render.ToneGood, "active")
+	}
+	return line + "; " + st.Paint(render.ToneDim, "not active now")
+}
+
+// timedCapsText lists the caps a schedule or an override sets: "short
+// 95, week 80".
+func timedCapsText(short, week, relax *float64) string {
+	var parts []string
+	for _, p := range []struct {
+		label string
+		v     *float64
+	}{{"short", short}, {"week", week}, {"week relax max", relax}} {
+		if p.v != nil {
+			parts = append(parts, p.label+" "+numText(*p.v))
+		}
+	}
+	return strings.Join(parts, ", ")
+}
+
+// showTimeLayout writes an end in agx pool show, in local time.
+const showTimeLayout = "Mon 2 Jan 15:04"
+
 // numText writes a number with at most one decimal, the shortest way
 // (95, 97.5, 91.9 for a relaxed 91.875).
 func numText(v float64) string { return strconv.FormatFloat(math.Round(v*10)/10, 'f', -1, 64) }
 
 // agx pool show's headings and member states.
 const (
-	poolMembersHeader  = "Members (caps in percent):"
-	poolSettingsHeader = "Settings:"
-	poolEnabled        = "enabled"
-	poolDisabled       = "disabled"
+	poolMembersHeader   = "Members (caps in percent):"
+	poolSettingsHeader  = "Settings:"
+	poolSchedulesHeader = "Schedules (caps that change on set days and hours):"
+	poolEnabled         = "enabled"
+	poolDisabled        = "disabled"
 )
 
 // poolPickCmd is agx pool pick: the pick a pool login makes now, with
@@ -329,7 +402,7 @@ func candidateLine(c app.PoolCandidate, v usageView, st render.Style) string {
 		figures += ", room " + strconv.FormatFloat(*c.RoomPercent, 'f', -1, 64) + "%"
 	}
 	if c.CapsSource.Short != "" {
-		figures += ", caps " + capsText(c)
+		figures += ", caps " + capsText(c, v)
 	}
 	if c.UrgencyPercentPerHour != nil && c.State != pool.StateBlocked {
 		figures += ", needs " + strconv.FormatFloat(*c.UrgencyPercentPerHour, 'f', -1, 64) + "%/h"
@@ -345,12 +418,49 @@ func candidateLine(c app.PoolCandidate, v usageView, st render.Style) string {
 }
 
 // capsText is a member's caps with their sources: "50/70 (group)", or
-// "95 (member)/70 (group)" when the sources differ.
-func capsText(c app.PoolCandidate) string {
-	if c.CapsSource.Short == c.CapsSource.Week {
-		return fmt.Sprintf("%s/%s (%s)", numText(c.Caps.Short), numText(c.Caps.Week), c.CapsSource.Short)
+// "95 (member)/70 (group)" when the sources differ. A schedule or an
+// override names itself and its end: "95 (schedule weekend until Sun
+// 19:00)/70 (group)".
+func capsText(c app.PoolCandidate, v usageView) string {
+	short, week := c.CapsSource.Short, c.CapsSource.Week
+	if t := c.TimedCaps; t != nil {
+		short, week = timedText(t.Short, short, v), timedText(t.Week, week, v)
 	}
-	return fmt.Sprintf("%s (%s)/%s (%s)", numText(c.Caps.Short), c.CapsSource.Short, numText(c.Caps.Week), c.CapsSource.Week)
+	if short == week {
+		return fmt.Sprintf("%s/%s (%s)", numText(c.Caps.Short), numText(c.Caps.Week), short)
+	}
+	return fmt.Sprintf("%s (%s)/%s (%s)", numText(c.Caps.Short), short, numText(c.Caps.Week), week)
+}
+
+// timedText names a timed cap's source in plain words: "schedule
+// weekend until Sun 19:00", "override until Sun 23:59"; src when the cap
+// is not timed.
+func timedText(t *pool.CapSource, src string, v usageView) string {
+	if t == nil {
+		return src
+	}
+	out := t.Kind
+	if t.Name != "" {
+		out += " " + t.Name
+	}
+	if t.Until != nil {
+		out += " until " + untilText(*t.Until, v)
+	}
+	return out
+}
+
+// untilWeekdayWithin is how near an end may be to be written by its
+// weekday alone: under six days, so a weekday never names two dates.
+const untilWeekdayWithin = 6 * 24 * time.Hour
+
+// untilText writes an end in the report's zone: "Sun 19:00" within a
+// week, else "Mon 30 Nov 08:00".
+func untilText(t time.Time, v usageView) string {
+	lt := t.In(v.loc)
+	if d := t.Sub(v.now); d >= 0 && d < untilWeekdayWithin {
+		return lt.Format("Mon 15:04")
+	}
+	return lt.Format("Mon 2 Jan 15:04")
 }
 
 // pickReset is the weekly reset as agx usage writes it ("resets in 1 d

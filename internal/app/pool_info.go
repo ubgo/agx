@@ -46,6 +46,7 @@ const (
 	poolKeyPicker       = "picker.command"
 	poolKeyPickerTime   = "picker.timeout"
 	poolKeyLog          = "log"
+	poolKeyTimezone     = "timezone"
 )
 
 // poolRuleKeys are the settings that decide the pick (agx pool pick and a
@@ -58,6 +59,8 @@ const (
 	poolOffForce  = "off"
 	poolOffPicker = "built-in rules"
 	poolOffLog    = "none"
+	// poolLocalZone is the timezone of a pool that sets none.
+	poolLocalZone = "local"
 )
 
 // PoolSummary is one pool in agx pool list.
@@ -96,6 +99,32 @@ type PoolMember struct {
 	WeekRelaxMaxSource string     `json:"week_relax_max_source"`
 	Capacity           float64    `json:"capacity"`
 	CapacitySource     string     `json:"capacity_source"`
+	// Override is the member's override, active or ended; nil = none.
+	Override *PoolOverrideInfo `json:"override,omitempty"`
+}
+
+// PoolOverrideInfo is one member's override in agx pool show.
+type PoolOverrideInfo struct {
+	Short        *float64  `json:"short,omitempty"`
+	Week         *float64  `json:"week,omitempty"`
+	WeekRelaxMax *float64  `json:"week_relax_max,omitempty"`
+	Until        time.Time `json:"until"`
+	// Active is false once Until has passed: it is ignored, and agx pool
+	// prune removes it.
+	Active bool `json:"active"`
+}
+
+// PoolScheduleInfo is one schedule in agx pool show, with whether it
+// applies now.
+type PoolScheduleInfo struct {
+	config.PoolSchedule
+	// ReleaseBeforeEffective is release_before as it applies (its
+	// default when omitted).
+	ReleaseBeforeEffective string `json:"release_before_effective"`
+	// Active is true while it applies; Until is when it stops (nil when
+	// it is not active or never ends).
+	Active bool       `json:"active"`
+	Until  *time.Time `json:"until"`
 }
 
 // PoolInfo is agx pool show's result.
@@ -103,6 +132,36 @@ type PoolInfo struct {
 	PoolSummary
 	Members  []PoolMember  `json:"members"`
 	Settings []PoolSetting `json:"settings"`
+	// Schedules are the pool's schedules in config order ([] = none).
+	Schedules []PoolScheduleInfo `json:"schedules"`
+}
+
+// poolTimed adds the overrides and schedules as they stand at now. A
+// value that does not parse is left out (agx config check reports it).
+func poolTimed(info *PoolInfo, p config.Pool, now time.Time) {
+	info.Schedules = []PoolScheduleInfo{}
+	for i := range info.Members {
+		m := &info.Members[i]
+		a, ok := p.Accounts[m.Name]
+		if !ok || a.Override == nil {
+			continue
+		}
+		o, err := a.Override.Rule(m.Name)
+		if err != nil {
+			continue
+		}
+		m.Override = &PoolOverrideInfo{Short: a.Override.Short, Week: a.Override.Week, WeekRelaxMax: a.Override.WeekRelaxMax, Until: o.Until, Active: o.Active(now)}
+	}
+	loc, _ := p.Location()
+	rules, err := config.ScheduleRules(p.Schedules)
+	if err != nil {
+		return
+	}
+	for i, s := range rules {
+		si := PoolScheduleInfo{PoolSchedule: p.Schedules[i], ReleaseBeforeEffective: durationText(s.ReleaseBefore)}
+		si.Active, si.Until = s.ActiveUntil(now, loc)
+		info.Schedules = append(info.Schedules, si)
+	}
 }
 
 // PoolList is every pool login in the file's order (agx pool list).
@@ -138,7 +197,9 @@ func (a *App) PoolShow(o PoolShowOptions) (PoolInfo, error) {
 	if lg.Kind != config.KindPool {
 		return PoolInfo{}, apperr.Usage(a.notAPool(poolCmdShow, o.ID, lg)).WithHint(poolListHint)
 	}
-	return poolInfo(o.ID, lg), nil
+	info := poolInfo(o.ID, lg)
+	poolTimed(&info, poolOf(lg), a.Now())
+	return info, nil
 }
 
 // poolSummary is a pool's list row. A pool login without its pool block
@@ -179,7 +240,7 @@ func nonNil(s []string) []string {
 // copied into agx config set.
 func poolInfo(name string, lg config.Login) PoolInfo {
 	p := poolOf(lg)
-	info := PoolInfo{PoolSummary: poolSummary(name, lg), Members: []PoolMember{}, Settings: poolSettings(p)}
+	info := PoolInfo{PoolSummary: poolSummary(name, lg), Members: []PoolMember{}, Settings: poolSettings(p), Schedules: []PoolScheduleInfo{}}
 	for _, m := range p.Own {
 		info.Members = append(info.Members, poolMember(p, m, pool.GroupOwn))
 	}
@@ -244,6 +305,11 @@ func poolSettings(p config.Pool) []PoolSetting {
 	}
 	add(poolKeyPicker, picker, pickerSrc)
 	add(poolKeyPickerTime, timeout, timeoutSrc)
+	zone, zoneSrc := poolLocalZone, SourceDefault
+	if p.Timezone != "" {
+		zone, zoneSrc = p.Timezone, SourcePool
+	}
+	add(poolKeyTimezone, zone, zoneSrc)
 	logPath, logSrc := poolOffLog, SourceDefault
 	if p.Log != "" {
 		logPath, logSrc = p.Log, SourcePool

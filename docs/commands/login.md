@@ -81,6 +81,11 @@ Add a login. Cost W (X with `--login-setup`). Guide: [Adding a login](../logins.
 | `--pool-group-cap-week` | the weekly cap of a group's members without their own, `own=PERCENT` or `shared=PERCENT`; `GROUP=` removes it (repeat) |
 | `--pool-group-cap-week-relax` | the weekly cap a group's members reach at their reset, `own=PERCENT` or `shared=PERCENT`; `GROUP=` removes it (repeat) |
 | `--pool-probe-model` | a model to probe the members with when a session's own model is unknown, so its per-model weekly window applies, like `claude-fable-5-2` or `fable` (repeat; `''` removes `probe_models`) |
+| `--until` | make this command's `--pool-cap-short`, `--pool-cap-week` and `--pool-cap-week-relax` an override that ends then (`accounts.NAME.override`): a duration (`6h`), a date and time (`2026-11-23T08:00`), `'DAY HH:MM'` (`'sun 23:59'`, the next such moment) or `HH:MM`, in the pool's timezone. An override that still applies keeps its other caps and takes the new end; `NAME=` drops that cap from it. See [schedules and overrides](../guides/pool-rules.md#schedules-and-overrides) |
+| `--pool-clear-override` | end a member's override now (repeat) |
+| `--pool-timezone` | the IANA time zone of the pool's schedules and `--until` times, like `Europe/Istanbul`; empty: this machine's local time |
+| `--pool-schedule` | add or replace a schedule by name: `'NAME days=sat,sun [hours=00:00-24:00] members=shared [timezone=ZONE] [short=N] [week=N] [week_relax_max=N] [release_before=5h]'` (days and members comma-separated; at least one cap) (repeat) |
+| `--pool-schedule-remove` | remove a schedule by name (repeat) |
 | `--dry-run` | with `--kind pool`: show the keys it would write; write nothing |
 | `--token-ref` | the token as a reference (`${gopass:…}`, `$(…)`, `${VAR}`) or a plain value, kept in config |
 | `--stdin` | read the token from stdin into `tokens.jsonc` (0600) |
@@ -203,6 +208,11 @@ Rotate or change a login. Every profile, default and binding that uses it keeps 
 | `--pool-group-cap-week` | the weekly cap of a group's members without their own, `own=PERCENT` or `shared=PERCENT`; `GROUP=` removes it (repeat) |
 | `--pool-group-cap-week-relax` | the weekly cap a group's members reach at their reset, `own=PERCENT` or `shared=PERCENT`; `GROUP=` removes it (repeat) |
 | `--pool-probe-model` | a model to probe the members with when a session's own model is unknown, so its per-model weekly window applies, like `claude-fable-5-2` or `fable` (repeat; `''` removes `probe_models`) |
+| `--until` | make this command's `--pool-cap-short`, `--pool-cap-week` and `--pool-cap-week-relax` an override that ends then (`accounts.NAME.override`): a duration (`6h`), a date and time (`2026-11-23T08:00`), `'DAY HH:MM'` (`'sun 23:59'`, the next such moment) or `HH:MM`, in the pool's timezone. An override that still applies keeps its other caps and takes the new end; `NAME=` drops that cap from it. See [schedules and overrides](../guides/pool-rules.md#schedules-and-overrides) |
+| `--pool-clear-override` | end a member's override now (repeat) |
+| `--pool-timezone` | the IANA time zone of the pool's schedules and `--until` times, like `Europe/Istanbul`; empty: this machine's local time |
+| `--pool-schedule` | add or replace a schedule by name: `'NAME days=sat,sun [hours=00:00-24:00] members=shared [timezone=ZONE] [short=N] [week=N] [week_relax_max=N] [release_before=5h]'` (days and members comma-separated; at least one cap) (repeat) |
+| `--pool-schedule-remove` | remove a schedule by name (repeat) |
 | `--dry-run` | on a pool: show the changes; write nothing |
 
 On a pool, every key changes here: the members, the force, each member's caps and `enabled`, the defaults, the windows, the picker and the account label. Each changed key prints a line with its value before and after (`—` for a key that is not set); `--dry-run` prints the same lines and writes nothing, and flags that match the file print `no change` and write nothing. An empty value removes a key, so its documented default applies again. `--dry-run` is for pools only: a token login's value is read once (stdin, a setup command) and written as given. A login never becomes a pool in place, or the reverse: add a new one.

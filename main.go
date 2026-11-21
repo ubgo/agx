@@ -13,6 +13,9 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	// Pool schedules name IANA time zones; embedding the database keeps
+	// them working where the system has none (Windows, slim containers).
+	_ "time/tzdata"
 
 	"github.com/ubgo/agx/internal/apperr"
 	"github.com/ubgo/agx/internal/cli"

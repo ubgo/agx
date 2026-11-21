@@ -33,6 +33,9 @@ Members (caps in percent):
 - derek [shared] enabled (default), short 50 (pool), week 70 (pool), week relax max 95 (default), capacity 1 (default)
 - erin [shared] enabled (default), short 50 (pool), week 70 (pool), week relax max 95 (default), capacity 1 (default)
 
+Schedules (caps that change on set days and hours):
+—
+
 Settings:
 force                         off (default)
 order                         urgency (default)
@@ -51,6 +54,7 @@ usage_max_age                 60s (pool)
 key_ttl                       60s (pool)
 picker.command                built-in rules (default)
 picker.timeout                10s (default)
+timezone                      local (default)
 log                           none (default)
 
 #endregion
@@ -501,5 +505,5 @@ changed login auto (pool, pool 2 own, 3 shared)
   pool.week_relax_window        —  ->  24h
 
 $ agx pool show --id auto --json --field data.settings
-[{"key":"force","value":"off","source":"default"},{"key":"order","value":"urgency","source":"pool"},{"key":"week_relax_window","value":"24h","source":"pool"},{"key":"defaults.week_relax_max","value":"95","source":"pool"},{"key":"max_sessions","value":"4","source":"pool"},{"key":"sticky","value":"true","source":"pool"},{"key":"sticky_leave_ratio","value":"3","source":"pool"},{"key":"shared_borrow_window","value":"48h","source":"pool"},{"key":"short_unavailable_at_percent","value":"99","source":"pool"},{"key":"own_caps.short","value":"95","source":"default"},{"key":"own_caps.week","value":"98","source":"default"},{"key":"defaults.short","value":"50","source":"pool"},{"key":"defaults.week","value":"70","source":"pool"},{"key":"usage_max_age","value":"60s","source":"pool"},{"key":"key_ttl","value":"60s","source":"pool"},{"key":"picker.command","value":"built-in rules","source":"default"},{"key":"picker.timeout","value":"10s","source":"default"},{"key":"log","value":"none","source":"default"}]
+[{"key":"force","value":"off","source":"default"},{"key":"order","value":"urgency","source":"pool"},{"key":"week_relax_window","value":"24h","source":"pool"},{"key":"defaults.week_relax_max","value":"95","source":"pool"},{"key":"max_sessions","value":"4","source":"pool"},{"key":"sticky","value":"true","source":"pool"},{"key":"sticky_leave_ratio","value":"3","source":"pool"},{"key":"shared_borrow_window","value":"48h","source":"pool"},{"key":"short_unavailable_at_percent","value":"99","source":"pool"},{"key":"own_caps.short","value":"95","source":"default"},{"key":"own_caps.week","value":"98","source":"default"},{"key":"defaults.short","value":"50","source":"pool"},{"key":"defaults.week","value":"70","source":"pool"},{"key":"usage_max_age","value":"60s","source":"pool"},{"key":"key_ttl","value":"60s","source":"pool"},{"key":"picker.command","value":"built-in rules","source":"default"},{"key":"picker.timeout","value":"10s","source":"default"},{"key":"timezone","value":"local","source":"default"},{"key":"log","value":"none","source":"default"}]
 #endregion

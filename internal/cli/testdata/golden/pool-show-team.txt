@@ -8,6 +8,9 @@ Members (caps in percent):
 - bob [shared] enabled (default), short 40 (pool), week 60 (pool), week relax max 95 (default), capacity 1 (default)
 - carol [shared] disabled (member), short 40 (pool), week 60 (pool), week relax max 95 (default), capacity 1 (default)
 
+Schedules (caps that change on set days and hours):
+—
+
 Settings:
 force                         bob (pool)
 order                         urgency (default)
@@ -26,4 +29,5 @@ usage_max_age                 2m (pool)
 key_ttl                       30s (pool)
 picker.command                my-picker (pool)
 picker.timeout                5s (pool)
+timezone                      local (default)
 log                           ~/pool.log (pool)

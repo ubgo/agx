@@ -1,0 +1,161 @@
+#: Saturday 21 November 2026, 13:00 in Istanbul (10:00 UTC). The login-usage cache in home/.agx/cache was probed 20 s before, so no command probes an account.
+#options env=AGX_TEST_NOW=2026-11-21T10:00:00Z env=ALICE_TOKEN=fake-token-alice env=CAROL_TOKEN=fake-token-carol env=DEREK_TOKEN=fake-token-derek env=ERIN_TOKEN=fake-token-erin
+#region show
+$ agx pool show --id auto
+name    auto
+agents  claude
+own     alice
+shared  carol, derek, erin
+
+Members (caps in percent):
+- alice [own] enabled (default), short 95 (default), week 98 (default), week relax max 95 (default), capacity 1 (default)
+- carol [shared] enabled (default), short 50 (default), week 70 (default), week relax max 95 (default), capacity 1 (default)
+- derek [shared] enabled (default), short 50 (default), week 70 (default), week relax max 95 (default), capacity 1 (default)
+- erin [shared] enabled (default), short 50 (default), week 70 (default), week relax max 95 (default), capacity 1 (default); override short 90 until Fri 20 Nov 15:00 (ended; ignored, agx pool prune removes it)
+
+Schedules (caps that change on set days and hours):
+- weekend: sat, sun 00:00-24:00 (pool timezone) for shared: short 95, released 5h before the end; active until Sun 22 Nov 16:00
+
+Settings:
+force                         off (default)
+order                         urgency (default)
+week_relax_window             24h (default)
+defaults.week_relax_max       95 (default)
+max_sessions                  4 (default)
+sticky                        true (default)
+sticky_leave_ratio            3 (default)
+shared_borrow_window          48h (default)
+short_unavailable_at_percent  99 (default)
+own_caps.short                95 (default)
+own_caps.week                 98 (default)
+defaults.short                50 (default)
+defaults.week                 70 (default)
+usage_max_age                 60s (default)
+key_ttl                       60s (default)
+picker.command                built-in rules (default)
+picker.timeout                10s (default)
+timezone                      Europe/Istanbul (pool)
+log                           none (default)
+
+#endregion
+#region pick
+$ agx pool pick --id auto
+Pool: auto (claude, order urgency)
+Use: carol (shared)
+most room to lose: 29% left under its weekly cap with 68h to the reset (0.4%/h to use it all)
+Source: cache (20s old)
+Probe model: the agent's default (all-models windows only)
+Rules: order urgency (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 70 (default)
+
+Candidates (ready accounts in pick order):
+- carol [shared] #1 READY (5h 62%, week 41%, resets in 2 d 20 hr, room 29%, caps 95 (schedule weekend until Sun 16:00)/70 (default), needs 0.43%/h)
+- derek [shared] #2 READY (5h 55%, week 30%, resets in 4 d 23 hr, room 40%, caps 95 (schedule weekend until Sun 16:00)/70 (default), needs 0.34%/h)
+- alice [own] skip: 5h is 96% (cap 95%) (5h 96%, week 81%, resets in 4 d 0 hr, room 17%, caps 95/98 (default))
+- erin [shared] skip: week is 72% (cap 70%) (5h 12%, week 72%, resets in 5 d 22 hr, room 0%, caps 95 (schedule weekend until Sun 16:00)/70 (default)) (override ended Fri 20 Nov 18:00 +0300 and is ignored; agx pool prune removes it)
+
+#endregion
+#region pick-monday
+$ agx pool pick --id auto --cached --now 2026-11-23T07:00:00Z
+agx: pool auto: no member is usable: alice (5h is 96% (cap 95%)), carol (5h is 62% (cap 50%)), derek (5h is 55% (cap 50%)), erin (week is 72% (cap 70%))
+  agx pool pick --id auto --pool-force NAME
+Pool: auto (claude, order urgency)
+No configured account is currently usable.
+Source: cache (45h0m20s old)
+Probe model: the agent's default (all-models windows only)
+Rules: order urgency (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 70 (default)
+
+Candidates (ready accounts in pick order):
+- alice [own] skip: 5h is 96% (cap 95%) (5h 96%, week 81%, resets in 2 d 3 hr, room 17%, caps 95/98 (default))
+- carol [shared] skip: 5h is 62% (cap 50%) (5h 62%, week 41%, resets in 23 hr 0 min, room 30%, caps 50/71 (default)) (weekly cap 70% rises to 95% over the last 24h before the reset: 71% now)
+- derek [shared] skip: 5h is 55% (cap 50%) (5h 55%, week 30%, resets in 3 d 2 hr, room 40%, caps 50/70 (default))
+- erin [shared] skip: week is 72% (cap 70%) (5h 12%, week 72%, resets in 4 d 1 hr, room 0%, caps 50/70 (default)) (override ended Fri 20 Nov 18:00 +0300 and is ignored; agx pool prune removes it)
+[exit 1]
+
+#endregion
+#region pick-json
+$ agx pool pick --id auto --json --field data.candidates.1.timed_caps
+{"short":{"kind":"schedule","name":"weekend","until":"2026-11-22T19:00:00+03:00"}}
+
+#endregion
+#region override
+$ agx login edit --id auto --pool-cap-short derek=95 --pool-cap-week derek=90 --until 'sun 23:59' --dry-run
+would change login auto (--dry-run)
+  pool.accounts.derek.override  —  ->  short 95, week 90 until 2026-11-22T23:59:00+03:00
+
+$ agx login edit --id auto --pool-cap-short derek=95 --pool-cap-week derek=90 --until 'sun 23:59'
+changed login auto (pool, pool 1 own, 3 shared)
+  pool.accounts.derek.override  —  ->  short 95, week 90 until 2026-11-22T23:59:00+03:00
+
+$ agx pool pick --id auto
+Pool: auto (claude, order urgency)
+Use: derek (shared)
+most room to lose: 60% left under its weekly cap with 119h to the reset (0.5%/h to use it all)
+Source: cache (20s old)
+Probe model: the agent's default (all-models windows only)
+Rules: order urgency (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 70 (default)
+
+Candidates (ready accounts in pick order):
+- derek [shared] #1 READY (5h 55%, week 30%, resets in 4 d 23 hr, room 60%, caps 95/90 (override until Sun 20:59), needs 0.5%/h)
+- carol [shared] #2 READY (5h 62%, week 41%, resets in 2 d 20 hr, room 29%, caps 95 (schedule weekend until Sun 16:00)/70 (default), needs 0.43%/h)
+- alice [own] skip: 5h is 96% (cap 95%) (5h 96%, week 81%, resets in 4 d 0 hr, room 17%, caps 95/98 (default))
+- erin [shared] skip: week is 72% (cap 70%) (5h 12%, week 72%, resets in 5 d 22 hr, room 0%, caps 95 (schedule weekend until Sun 16:00)/70 (default)) (override ended Fri 20 Nov 18:00 +0300 and is ignored; agx pool prune removes it)
+
+$ agx login edit --id auto --pool-clear-override derek
+changed login auto (pool, pool 1 own, 3 shared)
+  pool.accounts.derek.override  short 95, week 90 until 2026-11-22T23:59:00+03:00  ->  —
+
+#endregion
+#region schedule-flags
+$ agx login edit --id auto --pool-schedule 'nights days=mon,tue,wed,thu,fri hours=22:00-07:00 members=erin short=80' --dry-run
+would change login auto (--dry-run)
+  pool.schedules  weekend days=sat,sun members=shared short=95 release_before=5h  ->  weekend days=sat,sun members=shared short=95 release_before=5h; nights days=mon,tue,wed,thu,fri hours=22:00-07:00 members=erin short=80
+
+$ agx login edit --id auto --pool-schedule-remove weekend --dry-run
+would change login auto (--dry-run)
+  pool.schedules  weekend days=sat,sun members=shared short=95 release_before=5h  ->  —
+
+#endregion
+#region prune
+$ agx pool prune --id auto --dry-run
+would change login auto (--dry-run)
+  pool.accounts.erin.override  short 90 until 2026-11-20T18:00:00+03:00  ->  —
+
+$ agx pool prune --id auto
+changed login auto (pool, pool 1 own, 3 shared)
+  pool.accounts.erin.override  short 90 until 2026-11-20T18:00:00+03:00  ->  —
+
+#endregion
+#region refusals
+$ agx login edit --id auto --until 6h
+agx: --until ends the caps of this command's --pool-cap-short, --pool-cap-week or --pool-cap-week-relax NAME=N; give one
+[exit 2]
+
+$ agx login edit --id auto --pool-cap-short carol=95 --until 'someday 10:00'
+agx: --until "someday 10:00": "someday" is not a day (mon, tue, wed, thu, fri, sat, sun); use a duration ("6h"), a date and time ("2026-11-23T08:00"), "DAY HH:MM" ("sun 23:59") or "HH:MM"
+[exit 2]
+
+$ agx login edit --id auto --pool-cap-short carol=95 --until 2026-11-01T08:00
+agx: --until "2026-11-01T08:00" is not in the future
+[exit 2]
+
+$ agx login edit --id auto --pool-schedule 'late days=fri,sat2 members=shared short=90'
+agx: --pool-schedule late: day "sat2" is not one of mon, tue, wed, thu, fri, sat, sun
+[exit 2]
+
+$ agx login edit --id auto --pool-schedule 'late days=fri hours=25:00-02:00 members=shared short=90'
+agx: --pool-schedule late: hours "25:00-02:00": "25:00" is past 23:59 (24:00 only ends a window)
+[exit 2]
+
+$ agx login edit --id auto --pool-schedule 'late days=fri members=frank short=90'
+agx: --pool-schedule late: frank is neither a member of the pool (alice, carol, derek, erin) nor a group (own, shared)
+[exit 2]
+
+$ agx login edit --id auto --pool-schedule 'late days=fri members=shared short=190'
+agx: --pool-schedule late short: 190 is not a number from 0 to 100
+[exit 2]
+
+$ agx login edit --id auto --pool-timezone Mars/Olympus
+agx: --pool-timezone: timezone "Mars/Olympus" is not an IANA time zone (like "Europe/Istanbul", "America/New_York", "UTC")
+[exit 2]
+
+#endregion

@@ -346,3 +346,42 @@ func (r *recorder) Assign(v View) []string {
 	*r.seen = append(*r.seen, v.Readings["alice"])
 	return always("alice").Assign(v)
 }
+
+// TestScenarioSchedules: a scenario file's schedules reach the real
+// pool.Config through config.ScheduleRules, so pool.Select applies them:
+// on Saturday in Istanbul a teammate's account gets the schedule's 5-hour
+// cap, on Monday its normal one; its teammates work Monday to Friday.
+func TestScenarioSchedules(t *testing.T) {
+	g, err := LoadFile(filepath.Join(simDir, "weekend-mates-schedule.jsonc"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sc := g.Make(g.Seed)
+	cfg := RecommendedConfig(sc)
+	if len(cfg.Schedules) != 1 || cfg.Location == nil || cfg.Location.String() != "Europe/Istanbul" {
+		t.Fatalf("schedules %+v, location %v", cfg.Schedules, cfg.Location)
+	}
+	var shared string
+	for _, a := range sc.Accounts {
+		if a.Group == pool.GroupShared {
+			shared = a.Name
+			if a.Mate == nil || a.Mate.Workdays[time.Saturday] || a.Mate.Workdays[time.Sunday] || !a.Mate.Workdays[time.Monday] {
+				t.Errorf("%s works %v", a.Name, a.Mate)
+			}
+		}
+	}
+	saturday := time.Date(2026, 11, 21, 10, 0, 0, 0, time.UTC)
+	if got := cfg.At(saturday).CapsFor(shared).Short; got != 95 {
+		t.Errorf("Saturday 5-hour cap %v", got)
+	}
+	if got := cfg.At(saturday.Add(48 * time.Hour)).CapsFor(shared).Short; got != pool.DefaultShortCap {
+		t.Errorf("Monday 5-hour cap %v", got)
+	}
+	base, err := LoadFile(filepath.Join(simDir, "weekend-mates.jsonc"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := RecommendedConfig(base.Make(base.Seed)); len(got.Schedules) != 0 {
+		t.Errorf("baseline has schedules %+v", got.Schedules)
+	}
+}

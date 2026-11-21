@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "logins": {
+    "alice": {
+      "agent": "claude",
+      "account": "alice@example.com",
+      "probed_at": "2026-11-21T09:59:40Z",
+      "status": "ok",
+      "windows": [
+        { "class": "short", "percent": 96, "resets_at": "2026-11-21T11:00:00Z" },
+        { "class": "week", "percent": 81, "resets_at": "2026-11-25T10:00:00Z" }
+      ]
+    },
+    "carol": {
+      "agent": "claude",
+      "account": "carol@example.com",
+      "probed_at": "2026-11-21T09:59:40Z",
+      "status": "ok",
+      "windows": [
+        { "class": "short", "percent": 62, "resets_at": "2026-11-21T12:00:00Z" },
+        { "class": "week", "percent": 41, "resets_at": "2026-11-24T06:00:00Z" }
+      ]
+    },
+    "derek": {
+      "agent": "claude",
+      "account": "derek@example.com",
+      "probed_at": "2026-11-21T09:59:40Z",
+      "status": "ok",
+      "windows": [
+        { "class": "short", "percent": 55, "resets_at": "2026-11-21T13:00:00Z" },
+        { "class": "week", "percent": 30, "resets_at": "2026-11-26T09:00:00Z" }
+      ]
+    },
+    "erin": {
+      "agent": "claude",
+      "account": "erin@example.com",
+      "probed_at": "2026-11-21T09:59:40Z",
+      "status": "ok",
+      "windows": [
+        { "class": "short", "percent": 12, "resets_at": "2026-11-21T14:00:00Z" },
+        { "class": "week", "percent": 72, "resets_at": "2026-11-27T08:00:00Z" }
+      ]
+    }
+  }
+}

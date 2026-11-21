@@ -1011,6 +1011,37 @@
                         "capacity": {
                           "type": "number",
                           "minimum": 0
+                        },
+                        "override": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "short": {
+                                  "type": "number",
+                                  "minimum": 0,
+                                  "maximum": 100
+                                },
+                                "week": {
+                                  "type": "number",
+                                  "minimum": 0,
+                                  "maximum": 100
+                                },
+                                "week_relax_max": {
+                                  "type": "number",
+                                  "minimum": 0,
+                                  "maximum": 100
+                                },
+                                "until": {
+                                  "type": "string"
+                                }
+                              },
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         }
                       },
                       "additionalProperties": false
@@ -1043,6 +1074,63 @@
                         "type": "null"
                       }
                     ]
+                  },
+                  "timezone": {
+                    "type": "string"
+                  },
+                  "schedules": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "days": {
+                          "type": [
+                            "array",
+                            "null"
+                          ],
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "mon",
+                              "tue",
+                              "wed",
+                              "thu",
+                              "fri",
+                              "sat",
+                              "sun"
+                            ]
+                          }
+                        },
+                        "hours": {
+                          "type": "string"
+                        },
+                        "members": {
+                          "type": [
+                            "array",
+                            "null"
+                          ],
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "timezone": {
+                          "type": "string"
+                        },
+                        "caps": {
+                          "$ref": "#/$defs/PoolCaps"
+                        },
+                        "release_before": {
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": false
+                    }
                   }
                 },
                 "additionalProperties": false

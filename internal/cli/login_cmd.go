@@ -183,7 +183,7 @@ func (c *cliCtx) loginEditCmd() *cobra.Command {
 		ch, err := c.App().LoginEdit(cmd.Context(), o)
 		return loginChangeOutput("change", "changed", ch, err)
 	})
-	cmd.Example = "  pbpaste | agx login edit --id pasted --stdin\n  agx login edit --id personal --account me@example.com\n  agx login edit --id auto --pool-force alice\n  agx login edit --id auto --pool-force ''\n  agx login edit --id auto --pool-cap-short alice=95 --pool-cap-week alice=98 --pool-disable carol --dry-run"
+	cmd.Example = "  pbpaste | agx login edit --id pasted --stdin\n  agx login edit --id personal --account me@example.com\n  agx login edit --id auto --pool-force alice\n  agx login edit --id auto --pool-force ''\n  agx login edit --id auto --pool-cap-short alice=95 --pool-cap-week alice=98 --pool-disable carol --dry-run\n  agx login edit --id auto --pool-cap-short bob=95 --until 'sun 23:59'\n  agx login edit --id auto --pool-timezone Europe/Istanbul --pool-schedule 'weekend days=sat,sun members=shared short=95'"
 	f := cmd.Flags()
 	f.StringVar(&o.ID, "id", "", "the login to change")
 	f.StringArrayVar(&agents, "agent", nil, "replace the agents it serves (repeat)")
@@ -207,6 +207,9 @@ type poolSettingFlags struct {
 	// The rule flags.
 	order, relaxWindow, maxSessions, sticky, defRelax, leaveRatio      string
 	capRelax, groupShort, groupWeek, groupRelax, capacity, probeModels []string
+	// The timed-cap flags.
+	until, timezone                       string
+	clearOverride, schedule, scheduleDrop []string
 }
 
 // addPoolSettingFlags declares the pool setting flags add and edit share.
@@ -235,6 +238,11 @@ func addPoolSettingFlags(cmd *cobra.Command, ps *poolSettingFlags) {
 	f.StringArrayVar(&ps.groupWeek, "pool-group-cap-week", nil, "the weekly cap of a group's members without their own: own=PERCENT or shared=PERCENT; GROUP= removes it (repeat)")
 	f.StringArrayVar(&ps.probeModels, "pool-probe-model", nil, "a model to probe the members with when a session's own model is unknown, so its per-model weekly window applies (repeat; '' removes probe_models)")
 	f.StringArrayVar(&ps.groupRelax, "pool-group-cap-week-relax", nil, "the weekly cap a group's members reach at their reset: own=PERCENT or shared=PERCENT; GROUP= removes it (repeat)")
+	f.StringVar(&ps.until, "until", "", "make this command's --pool-cap-short, --pool-cap-week and --pool-cap-week-relax an override that ends then: 6h, 2026-11-23T08:00, 'sun 23:59' or 18:00, in the pool's timezone")
+	f.StringArrayVar(&ps.clearOverride, "pool-clear-override", nil, "end a member's override now (repeat)")
+	f.StringVar(&ps.timezone, "pool-timezone", "", "the IANA time zone of the pool's schedules and --until times, like Europe/Istanbul (empty: this machine's local time)")
+	f.StringArrayVar(&ps.schedule, "pool-schedule", nil, "add or replace a schedule: 'NAME days=sat,sun [hours=00:00-24:00] members=shared [timezone=ZONE] [short=N] [week=N] [week_relax_max=N] [release_before=5h]' (repeat)")
+	f.StringArrayVar(&ps.scheduleDrop, "pool-schedule-remove", nil, "remove a schedule by name (repeat)")
 }
 
 // settings returns the flags that were given; an empty value is kept
@@ -269,6 +277,11 @@ func (ps *poolSettingFlags) settings(cmd *cobra.Command) app.PoolSettings {
 		GroupCapShort: list("pool-group-cap-short", ps.groupShort), GroupCapWeek: list("pool-group-cap-week", ps.groupWeek),
 		GroupCapWeekRelax: list("pool-group-cap-week-relax", ps.groupRelax),
 		ProbeModels:       list("pool-probe-model", ps.probeModels),
+	}
+	s.Timed = app.PoolTimedSettings{
+		Until: one("until", ps.until), ClearOverride: list("pool-clear-override", ps.clearOverride),
+		Timezone: one("pool-timezone", ps.timezone), Schedules: list("pool-schedule", ps.schedule),
+		ScheduleRemove: list("pool-schedule-remove", ps.scheduleDrop),
 	}
 	return s
 }

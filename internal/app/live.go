@@ -109,6 +109,8 @@ func (a *App) livePlan(ctx context.Context, o LaunchOptions, res resolve.Result,
 	if isPool && o.PoolOnly.given() {
 		pl := res.Login.Login.Pool
 		rules, _ := pl.Rules() // the config loaded, so it parses
+		// The caps in effect now: a schedule or an override may raise them.
+		rules = rules.At(a.Now())
 		if err := checkPoolOnly(res.Login.Name, pl, rules, o.PoolOnly, o.PoolForce, true); err != nil {
 			return nil, err
 		}
@@ -158,6 +160,7 @@ func (a *App) poolPlanNotes(ctx context.Context, o LaunchOptions, res resolve.Re
 	}
 	pl := lg.Pool
 	rules, _ := pl.Rules() // the config loaded, so it parses
+	rules = rules.At(a.Now())
 	ttl, _ := pl.TTL()
 	maxAge, _ := pl.MaxAge()
 	out := []report.Decision{{Name: decPool, Value: fmt.Sprintf("%s (%s): own %s; shared %s", name, res.Agent.ID(),

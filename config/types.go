@@ -341,6 +341,49 @@ type Pool struct {
 	// Picker is a command of the user's that picks the member instead of
 	// the built-in rules; nil = the built-in rules decide.
 	Picker *PoolPicker `json:"picker,omitempty"`
+	// Timezone is the IANA time zone ("Europe/Istanbul") of the
+	// schedules without their own and of --until times; omitted = this
+	// machine's local time.
+	Timezone string `json:"timezone,omitempty"`
+	// Schedules are recurring windows of different caps: on their days
+	// and hours their caps replace the named members' caps.
+	Schedules []PoolSchedule `json:"schedules,omitempty"`
+}
+
+// PoolSchedule is one entry of logins.<name>.pool.schedules.
+type PoolSchedule struct {
+	// Name labels it in agx pool pick and show.
+	Name string `json:"name"`
+	// Days are the weekdays a window starts on: mon, tue, wed, thu, fri,
+	// sat, sun.
+	Days []string `json:"days"`
+	// Hours are "HH:MM-HH:MM" in its time zone (omitted = all day,
+	// 00:00-24:00); an end at or before the start ends the next day.
+	Hours string `json:"hours,omitempty"`
+	// Members are member names and group names (own, shared). A schedule
+	// that names a member beats one that names its group.
+	Members []string `json:"members"`
+	// Timezone is its IANA time zone; omitted = the pool's timezone.
+	Timezone string `json:"timezone,omitempty"`
+	// Caps are the caps while it applies: any of short, week,
+	// week_relax_max; one it leaves out stays as it is.
+	Caps PoolCaps `json:"caps"`
+	// ReleaseBefore stops it this long before its window ends (a Go
+	// duration; omitted = "5h" when it sets short, else "0s").
+	ReleaseBefore string `json:"release_before,omitempty"`
+}
+
+// PoolOverride is accounts.<member>.override: caps until a time, then
+// ignored (agx login edit --pool-cap-… NAME=N --until TIME).
+type PoolOverride struct {
+	// Short, Week and WeekRelaxMax are the caps until Until; one left
+	// out stays as it is.
+	Short        *float64 `json:"short,omitempty"`
+	Week         *float64 `json:"week,omitempty"`
+	WeekRelaxMax *float64 `json:"week_relax_max,omitempty"`
+	// Until is when it ends, an RFC 3339 time with its zone
+	// ("2026-11-22T23:59:00+03:00").
+	Until string `json:"until"`
 }
 
 // PoolPicker is logins.<name>.pool.picker: a command run through the
@@ -379,6 +422,8 @@ type PoolAccount struct {
 	// ratios matter; omitted = 1): the urgency order weighs its room by
 	// it.
 	Capacity *float64 `json:"capacity,omitempty"`
+	// Override is caps until a time; after it, it is ignored.
+	Override *PoolOverride `json:"override,omitempty"`
 }
 
 // Members are the pool's own then shared logins, in config order.

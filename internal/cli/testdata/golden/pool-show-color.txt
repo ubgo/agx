@@ -8,6 +8,9 @@ shared  bob, carol
 - bob [shared] enabled [2m(default)[0m, short 40 [2m(pool)[0m, week 60 [2m(pool)[0m, week relax max 95 [2m(default)[0m, capacity 1 [2m(default)[0m
 - carol [shared] [33mdisabled[0m [2m(member)[0m, short 40 [2m(pool)[0m, week 60 [2m(pool)[0m, week relax max 95 [2m(default)[0m, capacity 1 [2m(default)[0m
 
+[1mSchedules (caps that change on set days and hours):[0m
+—
+
 [1mSettings:[0m
 force                         bob [2m(pool)[0m
 order                         urgency [2m(default)[0m
@@ -26,4 +29,5 @@ usage_max_age                 2m [2m(pool)[0m
 key_ttl                       30s [2m(pool)[0m
 picker.command                my-picker [2m(pool)[0m
 picker.timeout                5s [2m(pool)[0m
+timezone                      local [2m(default)[0m
 log                           ~/pool.log [2m(pool)[0m

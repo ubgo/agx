@@ -17,6 +17,9 @@ Members (caps in percent):
 - mallory [shared] enabled (default), short 50 (default), week 70 (default), week relax max 95 (default), capacity 1 (default)
 - niaj [shared] enabled (default), short 50 (default), week 70 (default), week relax max 95 (default), capacity 1 (default)
 
+Schedules (caps that change on set days and hours):
+—
+
 Settings:
 force                         off (default)
 order                         urgency (default)
@@ -35,4 +38,5 @@ usage_max_age                 60s (default)
 key_ttl                       60s (default)
 picker.command                built-in rules (default)
 picker.timeout                10s (default)
+timezone                      local (default)
 log                           none (default)

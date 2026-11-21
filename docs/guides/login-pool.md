@@ -78,13 +78,20 @@ Every way to use a pool, with the names of the [example](../../examples/acct-log
    agx login edit --id auto --pool-cap-short erin=40 --pool-cap-week erin=60
    ```
 
-8. **Which account is my session on?** When to use it: inside Claude, whose `/status` only says `apiKeyHelper`.
+8. **Raise caps for a while.** When to use it: teammates do not work on weekends, so their accounts may give more then (a schedule), or carol is away today and her account may be used fully (an override that ends). See [schedules and overrides](pool-rules.md#schedules-and-overrides).
+
+   ```sh
+   agx login edit --id auto --pool-timezone Europe/Istanbul --pool-schedule 'weekend days=sat,sun members=shared short=95'
+   agx login edit --id auto --pool-cap-short carol=95 --pool-cap-week carol=95 --until 'sun 23:59'
+   ```
+
+9. **Which account is my session on?** When to use it: inside Claude, whose `/status` only says `apiKeyHelper`.
 
    ```sh
    ! agx whoami
    ```
 
-9. **Why didn't it pick carol?** When to use it: the pick surprises you; every member is listed with `READY`, `WAIT` or `skip:` and every reason ([reading the report](#step-2-see-what-it-picks)).
+10. **Why didn't it pick carol?** When to use it: the pick surprises you; every member is listed with `READY`, `WAIT` or `skip:` and every reason ([reading the report](#step-2-see-what-it-picks)).
 
    ```sh
    agx pool pick --id auto

@@ -132,6 +132,10 @@ type Scenario struct {
 	BaseCaps map[pool.Group]pool.Caps
 	// Seed drives the teammates' days and our sessions' busy steps.
 	Seed uint64
+	// Location and Schedules are the pool's timezone and schedules
+	// (File.Schedules); the real rules apply them.
+	Location  *time.Location
+	Schedules []pool.Schedule
 }
 
 // Generator builds a scenario for one seed: one scenario file.

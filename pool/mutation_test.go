@@ -184,6 +184,23 @@ var mutants = []mutant{
 	{"spread off in the simulated pool", "pool/rules.go", "full := func(c *Candidate) bool { return limit > 0 && c.Load >= limit }", "full := func(c *Candidate) bool { return false }", simRegression},
 	{"relax off in the simulated pool", "pool/pool.go", "if found {\n\t\tcfg.relax(c, rd, now)", "if found {\n\t\t_ = cfg.relax", simRegression},
 	{"per-model windows off in the simulated pool", "internal/poolsim/policy.go", "if pp.blind || !s.Scoped {", "if true {", simRegression},
+	// Schedules and overrides (schedule.go).
+	{"Select ignores schedules and overrides", "pool/pool.go", "cfg = cfg.At(o.Now)", "cfg = cfg.At(time.Time{})", nil},
+	{"group schedule beats member schedule", "pool/schedule.go", "[][3]timedCap{ovr, byName, byGroup}", "[][3]timedCap{ovr, byGroup, byName}", nil},
+	{"schedule beats override", "pool/schedule.go", "[][3]timedCap{ovr, byName, byGroup}", "[][3]timedCap{byName, byGroup, ovr}", nil},
+	{"least permissive schedule wins", "pool/schedule.go", "if v == nil || (t.v != nil && *v <= *t.v) {", "if v == nil || (t.v != nil && *v >= *t.v) {", nil},
+	{"ended override still applies", "pool/schedule.go", "if o.Active(now) {", "if true {", nil},
+	{"override end inclusive", "pool/schedule.go", "func (o Override) Active(now time.Time) bool { return now.Before(o.Until) }", "func (o Override) Active(now time.Time) bool { return !now.After(o.Until) }", nil},
+	{"release_before ignored", "pool/schedule.go", "until := sp.to.Add(-s.ReleaseBefore)", "until := sp.to", nil},
+	{"window across midnight ends the same day", "pool/schedule.go", "if s.End <= s.Start {\n\t\t\tendDay++", "if false {\n\t\t\tendDay++", nil},
+	{"schedule zone ignored", "pool/schedule.go", "if s.Location != nil {\n\t\tloc = s.Location", "if false {\n\t\tloc = s.Location", nil},
+	{"back-to-back windows not joined", "pool/schedule.go", "if !sp.from.After(last.to) {", "if sp.from.Before(last.to) {", nil},
+	{"group schedule applies to every group", "pool/schedule.go", "byGroup = byGroup || Group(m) == g", "byGroup = true", nil},
+	{"schedule names an unknown member", "pool/schedule.go", "if m != string(GroupOwn) && m != string(GroupShared) && !members[m] {", "if false {", nil},
+	{"schedule caps unchecked", "pool/schedule.go", "if err := validateCaps(label+\" caps\", s.Caps); err != nil {", "if err := validateCaps(label+\" caps\", s.Caps); false && err != nil {", nil},
+	{"--until in the past allowed", "pool/schedule.go", "if !t.After(now) {", "if false {", nil},
+	{"default release_before dropped", "config/pool.go", "release = pool.DefaultScheduleReleaseBefore", "release = 0", nil},
+	{"schedule timezone ignored", "config/pool.go", "c.Location = loc", "_ = loc", nil},
 }
 
 // appRules runs the internal/app tests of the session rules.
