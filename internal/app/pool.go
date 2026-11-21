@@ -385,7 +385,7 @@ func (a *App) poolPick(ctx context.Context, name string, lg config.Login, o Pool
 	}
 	sel := pool.Options{Now: now, Force: o.Force, Only: o.Only.Member, OnlyCaps: o.Only.Caps}
 	if rules.MaxSessions > 0 || rules.Sticky {
-		sel.Load, sel.Current, sel.CurrentAhead = a.poolLoad(name, lg, o.RunID, now, rep.warn)
+		sel.Load, sel.Current, sel.CurrentAhead = a.poolLoad(ctx, name, lg, o.RunID, now, rep.warn)
 	}
 	res, err := pool.Select(rules, readings, sel)
 	if errors.Is(err, pool.ErrForcedMissing) {
@@ -971,12 +971,12 @@ const activeRunTTLs = 2
 
 // poolLoad reads the live runs of pool name (max_sessions, sticky): how many
 // runs other than runID use each member now (they asked within
-// activeRunTTLs key_ttls), runID's own member, and how many of the runs
+// activeRunTTLs key_ttls and their agent still runs), runID's own member, and how many of the runs
 // on that member started before runID (run ids begin with their start
 // time, so they compare in start order). A run folder that cannot be
 // read is skipped; a runs folder that cannot be read is one warning and
 // no load.
-func (a *App) poolLoad(name string, lg config.Login, runID string, now time.Time, warn func(string)) (map[string]int, string, int) {
+func (a *App) poolLoad(ctx context.Context, name string, lg config.Login, runID string, now time.Time, warn func(string)) (map[string]int, string, int) {
 	folders, err := run.List(a.paths.Runs)
 	if err != nil {
 		warn("live runs: " + err.Error() + "; sessions per member not counted")
@@ -988,6 +988,7 @@ func (a *App) poolLoad(name string, lg config.Login, runID string, now time.Time
 		id, member string
 	}
 	var seats []seat
+	var recent []run.Folder
 	current := ""
 	for _, f := range folders {
 		st, err := live.Read(f.Dir)
@@ -1000,11 +1001,19 @@ func (a *App) poolLoad(name string, lg config.Login, runID string, now time.Time
 		}
 		if now.Sub(st.InUseAt) <= activeRunTTLs*ttl {
 			seats = append(seats, seat{f.ID, st.InUse})
+			recent = append(recent, f)
 		}
 	}
+	// A run that asked for a key a moment ago but has ended (a short
+	// headless run) holds no session: count only runs whose agent still
+	// runs (an unknown liveness counts, as before).
+	lives := a.runsLiveness(ctx, recent)
 	load := map[string]int{}
 	ahead := 0
 	for _, s := range seats {
+		if lives[s.id].liveness == agentio.LivenessEnded {
+			continue
+		}
 		load[s.member]++
 		if s.member == current && s.id < runID {
 			ahead++

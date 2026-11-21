@@ -79,7 +79,12 @@ func (a *App) LiveList(ctx context.Context, agent agentio.ID) ([]LiveRun, error)
 	if err != nil {
 		return nil, apperr.Wrap(err, apperr.CodeIO, apperr.ClassFailure, "read "+a.paths.Runs+": "+err.Error())
 	}
-	out := []LiveRun{}
+	type liveFolder struct {
+		f  run.Folder
+		st live.State
+	}
+	var lf []liveFolder
+	var fs []run.Folder
 	for _, f := range folders {
 		if agent != "" && f.Record.Agent != string(agent) {
 			continue
@@ -91,11 +96,17 @@ func (a *App) LiveList(ctx context.Context, agent agentio.ID) ([]LiveRun, error)
 		if err != nil {
 			return nil, apperr.Wrap(err, apperr.CodeIO, apperr.ClassFailure, f.ID+": "+err.Error())
 		}
-		r := a.liveRun(ctx, f, st)
-		if r.Liveness == agentio.LivenessEnded.String() {
+		lf = append(lf, liveFolder{f, st})
+		fs = append(fs, f)
+	}
+	lives := a.runsLiveness(ctx, fs)
+	out := []LiveRun{}
+	for _, x := range lf {
+		l := lives[x.f.ID]
+		if l.liveness == agentio.LivenessEnded {
 			continue
 		}
-		out = append(out, r)
+		out = append(out, liveRunOf(x.f, x.st, l))
 	}
 	return out, nil
 }
@@ -373,6 +384,12 @@ func (a *App) liveFolder(runID string) (run.Folder, live.State, error) {
 // liveRun assembles the printable row of a live run.
 func (a *App) liveRun(ctx context.Context, f run.Folder, st live.State) LiveRun {
 	l, reason := a.runLiveness(ctx, f)
+	return liveRunOf(f, st, runLive{l, reason})
+}
+
+// liveRunOf is a run's live view with its liveness already decided.
+func liveRunOf(f run.Folder, st live.State, rl runLive) LiveRun {
+	l, reason := rl.liveness, rl.reason
 	return LiveRun{
 		ID: f.ID, Dir: f.Dir, Agent: st.Agent, Profile: f.Record.Profile, Home: f.Record.Home, Folder: f.Record.Folder,
 		StartLogin: st.StartLogin, ChosenLogin: st.ChosenLogin, InUse: st.InUse, InUseAt: st.InUseAt, Next: st.Want(), Only: st.PoolOnly, NoKey: st.NoKey,

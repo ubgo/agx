@@ -177,7 +177,7 @@ var mutants = []mutant{
 	{"own members show the pool defaults", "internal/app/pool_info.go", "\t\t\tdef = pool.DefaultOwnShortCap\n\t\t} else {", "\t\t\tdef = pool.DefaultOwnShortCap\n\t\t}\n\t\t{", appPreset},
 	{"config max_sessions ignored", "config/pool.go", "c.MaxSessions = *p.MaxSessions", "_ = p.MaxSessions", nil},
 	{"config group caps ignored", "config/pool.go", "c.Groups[g] = pool.GroupCaps{Short: gc.Short, Week: gc.Week, WeekRelaxMax: gc.WeekRelaxMax}", "_ = gc", nil},
-	{"live runs not counted", "internal/app/pool.go", "sel.Load, sel.Current, sel.CurrentAhead = a.poolLoad(name, lg, o.RunID, now, rep.warn)", "_, _, _ = a.poolLoad(name, lg, o.RunID, now, rep.warn)", appRules},
+	{"live runs not counted", "internal/app/pool.go", "sel.Load, sel.Current, sel.CurrentAhead = a.poolLoad(ctx, name, lg, o.RunID, now, rep.warn)", "_, _, _ = a.poolLoad(ctx, name, lg, o.RunID, now, rep.warn)", appRules},
 	{"idle runs counted", "internal/app/pool.go", "if now.Sub(st.InUseAt) <= activeRunTTLs*ttl {", "if true {", appRules},
 	{"credential run not passed", "internal/app/livecmd.go", "poolModeCredential, st.PoolForce, only, f.ID)", "poolModeCredential, st.PoolForce, only, \"\")", appRules},
 	// The simulator's regression: the defaults must keep their gains.
@@ -201,7 +201,13 @@ var mutants = []mutant{
 	{"--until in the past allowed", "pool/schedule.go", "if !t.After(now) {", "if false {", nil},
 	{"default release_before dropped", "config/pool.go", "release = pool.DefaultScheduleReleaseBefore", "release = 0", nil},
 	{"schedule timezone ignored", "config/pool.go", "c.Location = loc", "_ = loc", nil},
+	// Live sessions (run_liveness.go).
+	{"ended runs counted as sessions", "internal/app/pool.go", "if lives[s.id].liveness == agentio.LivenessEnded {", "if false {", appLiveness},
+	{"one process-table read per run folder", "internal/app/run_liveness.go", "if lives, err := a.d.Host.ProcessesAlive(ctx, refs); err == nil {", "if lives, err := a.d.Host.ProcessesAlive(ctx, refs); false && err == nil {", appLiveness},
 }
+
+// appLiveness runs the internal/app tests of live-run liveness.
+var appLiveness = []string{"-run", "PoolLoadSkipsEndedRuns|LiveListOneTableRead", "./internal/app/"}
 
 // appRules runs the internal/app tests of the session rules.
 var appRules = []string{"-run", "PoolSessions|PoolClassic", "./internal/app/"}

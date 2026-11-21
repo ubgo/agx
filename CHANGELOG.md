@@ -2,6 +2,13 @@
 
 All notable changes to agx are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and agx uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.19] - 2026-11-21
+
+### Fixed
+
+- A pool counted a run that had just ended as a session on its member for up to two `key_ttl`s after its last key request, so a stream of short headless runs (`agx run --login auto -p …`) made members look full of sessions that no longer existed (`10 other sessions` where `agx live list` showed 3). Only runs whose agent still runs count now. Sessions that are alive but idle still do not count (they hold no load until they ask for a key again), so `agx live list` may still show more runs on a member than `agx pool pick` counts or than `max_sessions`; the guide says so.
+- `agx live list` read the whole process table once per run folder: with a few thousand run folders on a busy machine it took over two minutes. It now decides every ended run with one read, as does the pool's session count.
+
 ## [0.4.18] - 2026-11-21
 
 ### Added
