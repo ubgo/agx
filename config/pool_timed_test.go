@@ -75,6 +75,11 @@ func TestPoolSchedulesProblems(t *testing.T) {
 		{"cap over 100", sched(`"days": ["sat"], "members": ["shared"], "caps": { "short": 101 }`), "must be <= 100"},
 		{"null cap", sched(`"days": ["sat"], "members": ["shared"], "caps": { "short": null }`), "short"},
 		{"string cap", sched(`"days": ["sat"], "members": ["shared"], "caps": { "short": "95" }`), "short"},
+		{"week_before_reset over 100", sched(`"days": ["sat"], "members": ["shared"], "caps": { "week_before_reset": 101 }`), "must be <= 100"},
+		{"week_before_reset negative", sched(`"days": ["sat"], "members": ["shared"], "caps": { "week_before_reset": -1 }`), "must be >= 0"},
+		{"week_before_reset null", sched(`"days": ["sat"], "members": ["shared"], "caps": { "week_before_reset": null }`), "week_before_reset"},
+		{"week_before_reset string", sched(`"days": ["sat"], "members": ["shared"], "caps": { "week_before_reset": "95" }`), "week_before_reset"},
+		{"week_before_reset outside caps", sched(`"days": ["sat"], "members": ["shared"], "caps": { "short": 90 }, "week_before_reset": 95`), "week_before_reset"},
 		{"bad release", sched(`"days": ["sat"], "members": ["shared"], "caps": { "short": 90 }, "release_before": "5 hours"`), `release_before "5 hours" is not a duration`},
 		{"negative release", sched(`"days": ["sat"], "members": ["shared"], "caps": { "short": 90 }, "release_before": "-1h"`), "is negative"},
 		{"unknown schedule key", sched(`"days": ["sat"], "members": ["shared"], "caps": { "short": 90 }, "weeks": 2`), "weeks"},
@@ -98,11 +103,52 @@ func TestPoolSchedulesProblems(t *testing.T) {
 // scenario files through.
 func TestScheduleRulesDirect(t *testing.T) {
 	short := 95.0
-	got, err := config.ScheduleRules([]config.PoolSchedule{{Name: "w", Days: []string{"sat"}, Members: []string{"shared"}, Caps: config.PoolCaps{Short: &short}, ReleaseBefore: "2h"}})
+	got, err := config.ScheduleRules([]config.PoolSchedule{{Name: "w", Days: []string{"sat"}, Members: []string{"shared"}, Caps: config.PoolScheduleCaps{Short: &short}, ReleaseBefore: "2h"}})
 	if err != nil || len(got) != 1 || got[0].ReleaseBefore != 2*time.Hour || !got[0].Days[time.Saturday] {
 		t.Fatalf("%+v %v", got, err)
 	}
 	if _, err := config.ScheduleRules([]config.PoolSchedule{{Name: "w", Days: []string{"sat"}, Hours: "x"}}); err == nil {
 		t.Error("bad hours accepted")
+	}
+}
+
+// TestPoolScheduleBeforeResetLoad: caps.week_before_reset loads into the
+// schedule, alone (release_before then defaults to 0s, the schedule's
+// whole window) or with short (5h), and raises the weekly cap of a
+// member whose reset falls before the schedule ends.
+func TestPoolScheduleBeforeResetLoad(t *testing.T) {
+	l, err := parsePool(t, `"auto": { "agents": ["claude"], "kind": "pool", "pool": {
+      "own": ["alice"], "shared": ["carol"], "timezone": "Europe/Istanbul",
+      "schedules": [
+        { "name": "weekend", "days": ["sat", "sun"], "members": ["shared"], "caps": { "short": 95, "week_before_reset": 95 } },
+        { "name": "only", "days": ["sat"], "members": ["carol"], "caps": { "week_before_reset": 90 } }
+      ] } }`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := l.Config.Logins["auto"].Pool.Rules()
+	if err != nil {
+		t.Fatal(err)
+	}
+	w, only := r.Schedules[0], r.Schedules[1]
+	if w.WeekBeforeReset == nil || *w.WeekBeforeReset != 95 || w.ReleaseBefore != 5*time.Hour || w.Caps.Week != nil {
+		t.Errorf("weekend %+v", w)
+	}
+	if only.WeekBeforeReset == nil || *only.WeekBeforeReset != 90 || only.ReleaseBefore != 0 {
+		t.Errorf("only %+v", only)
+	}
+	// Saturday 13:00 in Istanbul: "only" names carol and ends Sunday
+	// 00:00, so it wins for a reset before then; "weekend" (the group)
+	// covers one up to Sunday 19:00.
+	sat := time.Date(2026, 11, 21, 10, 0, 0, 0, time.UTC)
+	for _, tc := range []struct {
+		in   time.Duration
+		want float64
+		from string
+	}{{5 * time.Hour, 90, "only"}, {20 * time.Hour, 95, "weekend"}, {40 * time.Hour, 0, ""}} {
+		v, src, ok := r.At(sat).WeekBeforeReset("carol", sat.Add(tc.in), sat)
+		if ok != (tc.from != "") || v != tc.want || src.Name != tc.from {
+			t.Errorf("reset in %s: %v %q %v", tc.in, v, src.Name, ok)
+		}
 	}
 }

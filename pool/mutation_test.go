@@ -239,10 +239,37 @@ var mutants = []mutant{
 	{"room at the reset not in the report", "internal/app/pool.go", "RoomAtResetPercent: c.RoomAtReset,", "", appDeadline},
 	{"config deadline keys not shown", "internal/app/pool_info.go", "addDuration(poolKeyDeadline, p.DeadlineWindow, pool.DefaultDeadlineWindow)", "addDuration(poolKeyDeadline, \"\", pool.DefaultDeadlineWindow)", appPreset},
 	{"preset writes no deadline window", "internal/app/pool_preset.go", "DeadlineWindow:   str(configDuration(r.DeadlineWindow)),", "DeadlineWindow:   nil,", appPreset},
+	// A schedule's week_before_reset (schedule.go, rules.go, scoped.go).
+	{"week_before_reset ignored", "pool/rules.go", "ok && v > week {", "false && ok && v > week {", nil},
+	{"week_before_reset lowers a higher cap", "pool/rules.go", "ok && v > week {", "ok {", nil},
+	{"week_before_reset note dropped", "pool/rules.go", "cand.Notes = append(cand.Notes, fmt.Sprintf(noteBeforeReset, num(v), src.Name))", "_ = noteBeforeReset", nil},
+	{"week_before_reset not named as the weekly cap's source", "pool/rules.go", "t.Week = &src", "_ = src", nil},
+	{"week_before_reset source not marked", "pool/schedule.go", "src.BeforeReset = true", "_ = 0", nil},
+	{"reset after the schedule's end covered", "pool/schedule.go", "return !reset.Before(now) && (src.Until == nil || !reset.After(*src.Until))", "return !reset.Before(now)", nil},
+	{"reset at the schedule's end not covered", "pool/schedule.go", "(src.Until == nil || !reset.After(*src.Until))", "(src.Until == nil || reset.Before(*src.Until))", nil},
+	{"passed reset covered", "pool/schedule.go", "return !reset.Before(now) && (src.Until == nil", "return (src.Until == nil", nil},
+	{"never-ending schedule covers nothing", "pool/schedule.go", "(src.Until == nil || !reset.After(*src.Until))", "(src.Until != nil && !reset.After(*src.Until))", nil},
+	{"group level beats member level", "pool/schedule.go", "for _, level := range [][]resetCap{r.byName, r.byGroup} {\n\t\tbest := -1", "for _, level := range [][]resetCap{r.byGroup, r.byName} {\n\t\tbest := -1", nil},
+	{"lowest value wins at one level", "pool/schedule.go", "(best < 0 || f.v > level[best].v)", "(best < 0 || f.v < level[best].v)", nil},
+	{"tie goes to the last schedule", "pool/schedule.go", "(best < 0 || f.v > level[best].v)", "(best < 0 || f.v >= level[best].v)", nil},
+	{"override's weekly cap does not win", "pool/schedule.go", "if ovr[1].v == nil && floors.given() {", "if floors.given() {", nil},
+	{"week_before_reset kept with no schedule naming", "pool/schedule.go", "level, floorLevel := &byGroup, &floors.byGroup", "level, floorLevel := &byGroup, &floors.byName", nil},
+	{"per-model window not raised", "pool/scoped.go", "s.Cap = math.Max(s.Cap, v)", "_ = v", nil},
+	{"pinned weekly cap raised by week_before_reset", "pool/pool.go", "cfg.limitBeforeReset(o.Only, *o.OnlyCaps.Week)", "_ = o.OnlyCaps.Week", nil},
+	{"pinned limit raises instead of lowering", "pool/schedule.go", "level[i].v = math.Min(level[i].v, limit)", "level[i].v = math.Max(level[i].v, limit)", nil},
+	{"week_before_reset range unchecked", "pool/schedule.go", "case s.WeekBeforeReset != nil && !validPercent(*s.WeekBeforeReset):", "case false:", nil},
+	{"schedule with only week_before_reset refused", "pool/schedule.go", "case !s.Caps.given() && s.WeekBeforeReset == nil:", "case !s.Caps.given():", nil},
+	{"config drops week_before_reset", "config/pool.go", "WeekBeforeReset: s.Caps.WeekBeforeReset,", "", nil},
+	{"schema takes a null week_before_reset", "config/schema.go", "{[]string{\"schedules\", schemaItems, \"caps\", \"week_before_reset\"}, SchemaNumber, true},", "", nil},
+	{"--pool-schedule drops week_before_reset", "internal/app/login_pool_timed.go", "schedKeyBeforeReset: &sc.Caps.WeekBeforeReset}[k]", "}[k]", appSchedule},
+	{"--pool-schedule change line without week_before_reset", "internal/app/login_pool_timed.go", "add(schedKeyBeforeReset, optPercent(s.Caps.WeekBeforeReset))", "", appSchedule},
 	// Live sessions (run_liveness.go).
 	{"ended runs counted as sessions", "internal/app/pool.go", "if lives[s.id].liveness == agentio.LivenessEnded {", "if false {", appLiveness},
 	{"one process-table read per run folder", "internal/app/run_liveness.go", "if lives, err := a.d.Host.ProcessesAlive(ctx, refs); err == nil {", "if lives, err := a.d.Host.ProcessesAlive(ctx, refs); false && err == nil {", appLiveness},
 }
+
+// appSchedule runs the internal/app tests of --pool-schedule.
+var appSchedule = []string{"-run", "PoolSchedule", "./internal/app/"}
 
 // appLiveness runs the internal/app tests of live-run liveness.
 var appLiveness = []string{"-run", "PoolLoadSkipsEndedRuns|LiveListOneTableRead", "./internal/app/"}

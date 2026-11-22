@@ -374,11 +374,28 @@ type PoolSchedule struct {
 	// Timezone is its IANA time zone; omitted = the pool's timezone.
 	Timezone string `json:"timezone,omitempty"`
 	// Caps are the caps while it applies: any of short, week,
-	// week_relax_max; one it leaves out stays as it is.
-	Caps PoolCaps `json:"caps"`
+	// week_relax_max, week_before_reset; one it leaves out stays as it
+	// is.
+	Caps PoolScheduleCaps `json:"caps"`
 	// ReleaseBefore stops it this long before its window ends (a Go
 	// duration; omitted = "5h" when it sets short, else "0s").
 	ReleaseBefore string `json:"release_before,omitempty"`
+}
+
+// PoolScheduleCaps are a schedule's caps: the window caps, plus the
+// weekly cap of the members whose weekly reset falls before it ends.
+type PoolScheduleCaps struct {
+	// Short is the 5-hour window cap.
+	Short *float64 `json:"short,omitempty"`
+	// Week is the weekly window cap.
+	Week *float64 `json:"week,omitempty"`
+	// WeekRelaxMax is the weekly cap reached at the weekly reset.
+	WeekRelaxMax *float64 `json:"week_relax_max,omitempty"`
+	// WeekBeforeReset is the weekly cap, at once, of a member whose
+	// weekly reset is at or before the schedule's end (release_before
+	// counted): its room is lost at the reset before the teammate is
+	// back. A higher cap is kept; an override's week wins.
+	WeekBeforeReset *float64 `json:"week_before_reset,omitempty"`
 }
 
 // PoolOverride is accounts.<member>.override: caps until a time, then

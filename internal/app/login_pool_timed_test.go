@@ -277,3 +277,64 @@ func TestTimedSourcesNamed(t *testing.T) {
 		t.Errorf("untimed %+v", pc.CapsSource)
 	}
 }
+
+// TestPoolScheduleBeforeReset: --pool-schedule takes week_before_reset
+// like the other caps (alone or with them), writes it inside caps, shows
+// it in the before/after line and in pool show, refuses a bad value, and
+// a preset leaves it alone.
+func TestPoolScheduleBeforeReset(t *testing.T) {
+	a, home := timedApp(t, timedConfig, timedNow)
+	ch, err := a.LoginEdit(context.Background(), LoginEditOptions{ID: "auto", Pool: PoolSettings{Timed: PoolTimedSettings{
+		Schedules: []string{"weekend days=sat,sun members=shared short=95 week_before_reset=95 release_before=5h", "late days=sun members=bob week_before_reset=90"}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ch.Changes) != 1 || ch.Changes[0].To != "weekend days=sat,sun members=shared short=95 week_before_reset=95 release_before=5h; late days=sun members=bob week_before_reset=90" {
+		t.Errorf("changes %+v", ch.Changes)
+	}
+	got := compact(readConfig(t, home))
+	for _, w := range []string{`"caps":{"short":95,"week_before_reset":95},"release_before":"5h"`, `{"name":"late","days":["sun"],"members":["bob"],"caps":{"week_before_reset":90}}`} {
+		if !strings.Contains(got, w) {
+			t.Errorf("file lacks %s:\n%s", w, got)
+		}
+	}
+	poolStillValid(t, a, "auto")
+	a.Reload()
+	info, err := a.PoolShow(PoolShowOptions{ID: "auto"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(info.Schedules) != 2 || info.Schedules[0].Caps.WeekBeforeReset == nil || *info.Schedules[0].Caps.WeekBeforeReset != 95 ||
+		info.Schedules[1].ReleaseBeforeEffective != "0h" {
+		t.Errorf("pool show schedules %+v", info.Schedules)
+	}
+	// A preset writes rule values only: the schedules stay as they are.
+	before := readConfig(t, home)
+	if _, err := a.PoolPreset(context.Background(), PoolPresetOptions{ID: "auto", Name: "classic"}); err != nil {
+		t.Fatal(err)
+	}
+	if after := compact(readConfig(t, home)); !strings.Contains(after, `"week_before_reset":95`) || !strings.Contains(after, `"week_before_reset":90`) {
+		t.Errorf("preset dropped week_before_reset:\n%s\nwas\n%s", after, before)
+	}
+	for _, tc := range []struct{ spec, want string }{
+		{"w days=sat members=shared week_before_reset=101", "week_before_reset"},
+		{"w days=sat members=shared week_before_reset=-1", "week_before_reset"},
+		{"w days=sat members=shared week_before_reset=lots", "is not a number"},
+		{"w days=sat members=shared week_before_reset=95 week_before_reset=90", "given twice"},
+	} {
+		a, home := timedApp(t, timedConfig, timedNow)
+		_, err := a.LoginEdit(context.Background(), LoginEditOptions{ID: "auto", Pool: PoolSettings{Timed: PoolTimedSettings{Schedules: []string{tc.spec}}}})
+		var ae *apperr.Error
+		if err == nil || !strings.Contains(err.Error(), tc.want) || !errors.As(err, &ae) || readConfig(t, home) != timedConfig {
+			t.Errorf("%s: %v", tc.spec, err)
+		}
+	}
+	// agx config set edits one value, never a list entry: it points to
+	// login edit for the schedules.
+	a, _ = timedApp(t, timedConfig, timedNow)
+	for _, key := range []string{"logins.auto.pool.schedules", "logins.auto.pool.schedules.0.caps.week_before_reset"} {
+		if _, err := a.ConfigSet(context.Background(), key, "95"); err == nil || !strings.Contains(err.Error(), "list") {
+			t.Errorf("config set %s: %v", key, err)
+		}
+	}
+}

@@ -1,0 +1,14 @@
+// Pool simulator scenario (task sim; docs/guides/pool-simulator.md).
+// weekend-mates-schedule plus week_before_reset: compare the three.
+{
+  "about": "weekend-mates-schedule with week_before_reset 95: on Saturday and Sunday (Istanbul time) a teammate's account whose weekly reset comes before the schedule ends (Sunday 19:00) gets a weekly cap of 95 at once; the others keep 70.",
+  "seed": 401,
+  "seeds": 60,
+  "own": { "count": [1, 1], "plans": ["max5"] },
+  "shared": { "count": [3, 5], "plans": ["max5", "max20"], "workdays": ["mon", "tue", "wed", "thu", "fri"] },
+  "sessions": { "count": [3, 6] },
+  "timezone": "Europe/Istanbul",
+  "schedules": [
+    { "name": "weekend", "days": ["sat", "sun"], "members": ["shared"], "caps": { "short": 95, "week_before_reset": 95 }, "release_before": "5h" }
+  ]
+}

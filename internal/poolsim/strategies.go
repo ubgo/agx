@@ -3,6 +3,7 @@ package poolsim
 import (
 	"time"
 
+	"github.com/ubgo/agx/config"
 	"github.com/ubgo/agx/pool"
 )
 
@@ -141,7 +142,7 @@ func Strategies() []Strategy {
 		policy("REC+D", "REC + idle 5h cap", from(rec, idle)),
 		policy("REC+F", "REC + own pacing", from(rec, pace)),
 		policy("REC+W", "REC ranking by room in work (plan size known)", from(rec, func(p *Policy) { p.Weighted = true })),
-		RealToday(), RealRecommended(), RealWeighted(), RealBlind(),
+		RealToday(), RealRecommended(), RealWeighted(), RealBlind(), RealWeekend(false), RealWeekend(true),
 	}
 }
 
@@ -209,4 +210,44 @@ func WeightedConfig(sc Scenario) pool.Config {
 // known plan sizes as capacities, to check it against REC+W.
 func RealWeighted() Strategy {
 	return Strategy{Name: "REC+W-real", About: "pool.Select, the defaults with capacities where plans are known", New: func(sc Scenario) Picker { return NewPoolRules(WeightedConfig(sc)) }}
+}
+
+// Weekend schedule rows: every scenario's pool with the weekend schedule
+// the guide recommends (shared members, Saturday and Sunday in the
+// teammates' zone, 5-hour cap 95, released 5h before Monday), without and
+// with week_before_reset 95, so the two compare on every pool shape,
+// including teammates who also work some Saturdays.
+const (
+	weekendZone        = "Europe/Istanbul"
+	weekendShort       = 95.0
+	weekendBeforeReset = 95.0
+	weekendRelease     = "5h"
+)
+
+// WeekendConfig is RecommendedConfig with the weekend schedule in place
+// of the scenario's own schedules; beforeReset adds week_before_reset.
+// It reads the schedule through config.ScheduleRules, as config.jsonc is.
+func WeekendConfig(sc Scenario, beforeReset bool) pool.Config {
+	c := RecommendedConfig(sc)
+	short, week := weekendShort, weekendBeforeReset
+	ps := config.PoolSchedule{Name: "weekend", Days: []string{"sat", "sun"}, Members: []string{string(pool.GroupShared)},
+		Caps: config.PoolScheduleCaps{Short: &short}, ReleaseBefore: weekendRelease}
+	if beforeReset {
+		ps.Caps.WeekBeforeReset = &week
+	}
+	// Both are constants that load: errors cannot happen here.
+	c.Location, _ = time.LoadLocation(weekendZone)
+	c.Schedules, _ = config.ScheduleRules([]config.PoolSchedule{ps})
+	return c
+}
+
+// RealWeekend runs the real pool.Select with the defaults and the
+// weekend schedule (WeekendConfig): REC+WE-real without
+// week_before_reset, REC+WEB-real with it.
+func RealWeekend(beforeReset bool) Strategy {
+	name, about := "REC+WE-real", "pool.Select, the defaults with the weekend schedule (shared short 95 on Sat and Sun, Istanbul)"
+	if beforeReset {
+		name, about = "REC+WEB-real", "REC+WE-real with week_before_reset 95 (weekly cap 95 for members resetting before the schedule ends)"
+	}
+	return Strategy{Name: name, About: about, New: func(sc Scenario) Picker { return NewPoolRules(WeekendConfig(sc, beforeReset)) }}
 }

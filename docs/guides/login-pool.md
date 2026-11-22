@@ -78,10 +78,10 @@ Every way to use a pool, with the names of the [example](../../examples/acct-log
    agx login edit --id auto --pool-cap-short erin=40 --pool-cap-week erin=60
    ```
 
-8. **Raise caps for a while.** When to use it: teammates do not work on weekends, so their accounts may give more then (a schedule), or carol is away today and her account may be used fully (an override that ends). See [schedules and overrides](pool-rules.md#schedules-and-overrides).
+8. **Raise caps for a while.** When to use it: teammates do not work on weekends, so their accounts may give more then (a schedule: the 5-hour cap of all of them, and with `week_before_reset` the weekly cap of those whose week resets before the weekend is over), or carol is away today and her account may be used fully (an override that ends). See [schedules and overrides](pool-rules.md#schedules-and-overrides).
 
    ```sh
-   agx login edit --id auto --pool-timezone Europe/Istanbul --pool-schedule 'weekend days=sat,sun members=shared short=95'
+   agx login edit --id auto --pool-timezone Europe/Istanbul --pool-schedule 'weekend days=sat,sun members=shared short=95 week_before_reset=95'
    agx login edit --id auto --pool-cap-short carol=95 --pool-cap-week carol=95 --until 'sun 23:59'
    ```
 

@@ -291,6 +291,9 @@ type Config struct {
 	// end of each expired override.
 	timed   map[string]TimedCaps
 	expired map[string]time.Time
+	// beforeReset is set by At: each member's week_before_reset values
+	// of the active schedules (schedule.go).
+	beforeReset map[string]resetCaps
 	// atReset is set by Select when schedules or overrides change caps:
 	// a member's weekly cap and relax max at a later time (finalCap).
 	atReset func(name string, at time.Time) (week, relaxMax float64)
@@ -646,10 +649,12 @@ func Select(cfg Config, readings map[string]Reading, o Options) (Result, error) 
 		return Result{}, ErrCapsWithoutOnly
 	}
 	if o.Only != "" && o.OnlyCaps.Week != nil {
-		// A one-run weekly cap is a hard limit: no relaxing above it.
+		// A one-run weekly cap is a hard limit: no relaxing above it, and
+		// no schedule's week_before_reset either.
 		a := cfg.Accounts[o.Only]
 		a.WeekRelaxMax = o.OnlyCaps.Week
 		cfg.Accounts[o.Only] = a
+		cfg.limitBeforeReset(o.Only, *o.OnlyCaps.Week)
 	}
 	cfg.atReset = base.capsAt(o)
 	res := Result{Now: o.Now, ShortUnavailableAt: cfg.ShortUnavailableAt, BorrowWindow: cfg.BorrowWindow, Order: cfg.order()}

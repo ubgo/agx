@@ -247,6 +247,7 @@ func ScheduleRules(in []PoolSchedule) ([]pool.Schedule, error) {
 		out = append(out, pool.Schedule{
 			Name: s.Name, Days: days, Start: start, End: end, Location: loc, Members: append([]string{}, s.Members...),
 			Caps: pool.ScheduleCaps{Short: s.Caps.Short, Week: s.Caps.Week, WeekRelaxMax: s.Caps.WeekRelaxMax}, ReleaseBefore: release,
+			WeekBeforeReset: s.Caps.WeekBeforeReset,
 		})
 	}
 	return out, nil

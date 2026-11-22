@@ -124,6 +124,7 @@ var poolValueKeys = []struct {
 	{[]string{"schedules", schemaItems, "caps", "short"}, SchemaNumber, true},
 	{[]string{"schedules", schemaItems, "caps", "week"}, SchemaNumber, true},
 	{[]string{"schedules", schemaItems, "caps", "week_relax_max"}, SchemaNumber, true},
+	{[]string{"schedules", schemaItems, "caps", "week_before_reset"}, SchemaNumber, true},
 	{[]string{"accounts", "*", "override", "short"}, SchemaNumber, true},
 	{[]string{"accounts", "*", "override", "week"}, SchemaNumber, true},
 	{[]string{"accounts", "*", "override", "week_relax_max"}, SchemaNumber, true},

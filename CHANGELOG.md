@@ -2,6 +2,14 @@
 
 All notable changes to agx are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and agx uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.21] - 2026-11-22
+
+### Added
+
+- Schedule cap `week_before_reset` (`logins.<pool>.pool.schedules[].caps.week_before_reset`, `--pool-schedule '… week_before_reset=95'`): while a schedule applies, a member it names whose weekly reset comes at or before the schedule's end (`release_before` counted) gets this weekly cap at once, not ramped. Its room is lost at that reset before the teammate the schedule makes room for is back, so it can only help the pool. Members whose reset comes later keep their weekly cap, because their room still has to last their teammate's week. It never lowers a cap (the relax or an own member's 98 is kept), an override that sets `week` wins, a schedule naming the member beats one naming its group, a per-model window (Fable's week) gets it by its own reset, `--pool-only-week` still caps it, and the room and urgency count it while it applies. Example: a teammate's account at week 91% on Saturday, its reset 4h45m away, went from a relaxed cap of about 90 (skipped, so sessions switched to it and away as the cap crept up) to 95 at once: usable with 4% of room, first in the deadline group. `agx pool pick` says why (`weekly cap 95% (schedule weekend: resets before it ends)`), its JSON marks the cap `before_reset: true` in `timed_caps.week`, and `agx pool show` lists the schedule's `week 95 for members resetting before the end`.
+- Simulator: scenario `weekend-mates-before-reset`, and rows `REC+WE-real` and `REC+WEB-real` that add the weekend schedule to every scenario without and with `week_before_reset`. On the weekend scenarios (teammates who work Monday to Friday) it cut the hours sessions waited for an account by about 5% (11.3 to 10.7 a week) and switches by 5%, served 97.5% instead of 97.3%, and left teammates' lockouts the same (0.02 h/week more). Over all 37 scenarios it cost the same (0.922 of the classic rules), switched 5% less and locked teammates out about 1% more (4.61 instead of 4.56 h/week), in large teams with teammates who also work Saturdays; the guide says how to leave such teammates out.
+- Tests: table tests for every branch (resets before, at and after the end, `release_before`, a daylight-saving weekend, unknown and passed resets, levels, overrides, two schedules, per-model windows, pinned runs, sticky and `max_sessions`), invariants over random pools against the same pool without the value (a member resetting before the end is never blocked below the raised cap; one resetting after never gets it), config and flag tests, and 23 new mutants.
+
 ## [0.4.20] - 2026-11-21
 
 ### Changed

@@ -189,7 +189,7 @@ func overrideText(o app.PoolOverrideInfo, st render.Style) string {
 	if !o.Active {
 		state = st.Paint(render.ToneWarn, "(ended; ignored, agx pool prune removes it)")
 	}
-	return fmt.Sprintf("override %s until %s %s", timedCapsText(o.Short, o.Week, o.WeekRelaxMax), o.Until.Local().Format(showTimeLayout), state)
+	return fmt.Sprintf("override %s until %s %s", timedCapsText(o.Short, o.Week, o.WeekRelaxMax, nil), o.Until.Local().Format(showTimeLayout), state)
 }
 
 // scheduleText is one schedule: "- weekend: sat, sun 00:00-24:00
@@ -198,7 +198,7 @@ func overrideText(o app.PoolOverrideInfo, st render.Style) string {
 func scheduleText(sc app.PoolScheduleInfo, st render.Style) string {
 	zone := cmp.Or(sc.Timezone, "pool timezone")
 	line := fmt.Sprintf("- %s: %s %s (%s) for %s: %s, released %s before the end", sc.Name, strings.Join(sc.Days, ", "), cmp.Or(sc.Hours, pool.FullDay), zone,
-		strings.Join(sc.Members, ", "), timedCapsText(sc.Caps.Short, sc.Caps.Week, sc.Caps.WeekRelaxMax), sc.ReleaseBeforeEffective)
+		strings.Join(sc.Members, ", "), timedCapsText(sc.Caps.Short, sc.Caps.Week, sc.Caps.WeekRelaxMax, sc.Caps.WeekBeforeReset), sc.ReleaseBeforeEffective)
 	switch {
 	case sc.Active && sc.Until != nil:
 		return line + "; " + st.Paint(render.ToneGood, "active until "+sc.Until.Local().Format(showTimeLayout))
@@ -209,8 +209,9 @@ func scheduleText(sc app.PoolScheduleInfo, st render.Style) string {
 }
 
 // timedCapsText lists the caps a schedule or an override sets: "short
-// 95, week 80".
-func timedCapsText(short, week, relax *float64) string {
+// 95, week 80", "short 95, week 95 for members resetting before the end"
+// (week_before_reset; an override has none).
+func timedCapsText(short, week, relax, beforeReset *float64) string {
 	var parts []string
 	for _, p := range []struct {
 		label string
@@ -219,6 +220,9 @@ func timedCapsText(short, week, relax *float64) string {
 		if p.v != nil {
 			parts = append(parts, p.label+" "+numText(*p.v))
 		}
+	}
+	if beforeReset != nil {
+		parts = append(parts, "week "+numText(*beforeReset)+" for members resetting before the end")
 	}
 	return strings.Join(parts, ", ")
 }
@@ -442,7 +446,9 @@ func capsText(c app.PoolCandidate, v usageView) string {
 
 // timedText names a timed cap's source in plain words: "schedule
 // weekend until Sun 19:00", "override until Sun 23:59"; src when the cap
-// is not timed.
+// is not timed. A week_before_reset cap reads the same: the member's
+// note says why ("weekly cap 95% (schedule weekend: resets before it
+// ends)").
 func timedText(t *pool.CapSource, src string, v usageView) string {
 	if t == nil {
 		return src

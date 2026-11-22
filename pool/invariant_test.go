@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -309,4 +310,152 @@ func TestInvariantSoonerResetNeverLater(t *testing.T) {
 			t.Errorf("seed %d: p1 (resets in %.1fh) ranks after p2 (%.1fh), room %v each", seed, resets[0], resets[1], room)
 		}
 	}
+}
+
+// TestInvariantWeekBeforeReset adds week_before_reset schedules that
+// apply now (one naming a group, often one naming members) to the random
+// pools, checks every invariant above with them, and against the same
+// pool without the values:
+//   - a member whose weekly reset falls before the schedule's end is
+//     never blocked below the raised cap: its weekly cap is the higher of
+//     its cap without the rule and the value, and no reason blocks it at
+//     a weekly use under the value;
+//   - a member that resets after the end (or at an unknown or passed
+//     reset) never gets the raised weekly cap: its cap is the one it has
+//     without the rule, and no cap names week_before_reset;
+//   - each per-model window follows the same rule by its own reset.
+//
+// The expected value is worked out here from the schedules, apart from
+// the code: the schedules naming the member first, then those naming its
+// group, the highest value of the first level with one that covers the
+// reset; none when an override that applies sets the weekly cap, and at
+// most a pinned run's weekly cap.
+func TestInvariantWeekBeforeReset(t *testing.T) {
+	for _, seed := range propSeeds() {
+		g := newGen(seed)
+		cfg := invConfig(g)
+		readings, o := invReadings(g, cfg), invOptions(g, cfg)
+		h := newGen(seed ^ 0x5bd1e995)
+		members := slices.Concat(cfg.Own, cfg.Shared)
+		today, tomorrow := propNow.Weekday(), (propNow.Weekday()+1)%7
+		add := func(name string, names []string) {
+			var days [7]bool
+			days[today] = true
+			days[tomorrow] = h.chance(0.5)
+			start := h.intn(0, propNow.Hour()) * 60
+			end := h.intn(propNow.Hour()+1, 24) * 60
+			s := pool.Schedule{Name: name, Days: days, Start: start, End: end, Members: names,
+				WeekBeforeReset: f(h.pickF(60, 75, 90, 95, 99, 100)), ReleaseBefore: time.Duration(h.pickF(0, 1, 5) * float64(time.Hour))}
+			if h.chance(0.3) {
+				s.Caps.Week = f(h.pickF(60, 85))
+			}
+			cfg.Schedules = append(cfg.Schedules, s)
+		}
+		add("b-group", []string{h.shuffle([]string{"own", "shared"})[0]})
+		if h.chance(0.5) {
+			add("b-members", h.shuffle(members)[:h.intn(1, len(members))])
+		}
+		if h.chance(0.1) {
+			// A pinned run with a weekly cap of its own, at or below the
+			// member's: the pool's own check refuses a higher one.
+			o.Only = members[h.intn(0, len(members)-1)]
+			o.OnlyCaps = pool.Tighter{Week: f(math.Min(cfg.At(propNow).CapsFor(o.Only).Week, h.pickF(50, 80)))}
+		}
+		if err := cfg.Validate(); err != nil {
+			t.Fatalf("seed %d: %v", seed, err)
+		}
+		label := fmt.Sprintf("seed %d", seed)
+		checkInvariants(t, label, cfg, readings, o)
+
+		without := cfg
+		without.Schedules = slices.Clone(cfg.Schedules)
+		for i := range without.Schedules {
+			without.Schedules[i].WeekBeforeReset = nil
+		}
+		r, err := pool.Select(cfg, readings, o)
+		if err != nil {
+			t.Fatalf("%s: %v", label, err)
+		}
+		r0, err := pool.Select(without, readings, o)
+		if err != nil {
+			t.Fatalf("%s: %v", label, err)
+		}
+		before := map[string]pool.Candidate{}
+		for _, c := range r0.Candidates {
+			before[c.Name] = c
+		}
+		for _, c := range r.Candidates {
+			c0, rd := before[c.Name], readings[c.Name]
+			var reset *time.Time
+			if rd.Week != nil {
+				reset = rd.Week.ResetsAt
+			}
+			want, ok := expectBeforeReset(cfg, c.Name, reset, o)
+			if ok && want > c0.Caps.Week {
+				if math.Abs(c.Caps.Week-want) > 1e-9 {
+					t.Errorf("%s: %s resets before the end: weekly cap %v, want %v (without the rule %v)", label, c.Name, c.Caps.Week, want, c0.Caps.Week)
+				}
+				if readable(rd.Week) && rd.Week.Percent < want && slices.ContainsFunc(c.Reasons, func(s string) bool { return strings.HasPrefix(s, "week is ") }) {
+					t.Errorf("%s: %s blocked at week %v below the raised cap %v: %v", label, c.Name, rd.Week.Percent, want, c.Reasons)
+				}
+			} else if c.Caps.Week != c0.Caps.Week || c.Timed != nil && c.Timed.Week != nil && c.Timed.Week.BeforeReset {
+				t.Errorf("%s: %s does not reset before the end but has weekly cap %v (without the rule %v), timed %+v", label, c.Name, c.Caps.Week, c0.Caps.Week, c.Timed)
+			}
+			for i, s := range c.Scoped {
+				s0 := c0.Scoped[i]
+				w, ok := expectBeforeReset(cfg, c.Name, rd.Scoped[i].ResetsAt, o)
+				switch {
+				case ok && math.Abs(s.Cap-math.Max(s0.Cap, w)) > 1e-9:
+					t.Errorf("%s: %s %s resets before the end: cap %v, want max(%v, %v)", label, c.Name, s.Name, s.Cap, s0.Cap, w)
+				case !ok && s.Cap != s0.Cap:
+					t.Errorf("%s: %s %s does not reset before the end but has cap %v (without the rule %v)", label, c.Name, s.Name, s.Cap, s0.Cap)
+				}
+			}
+		}
+	}
+}
+
+// readable is a window whose use is a number.
+func readable(w *pool.Window) bool {
+	return w != nil && !math.IsNaN(w.Percent) && !math.IsInf(w.Percent, 0)
+}
+
+// expectBeforeReset is the week_before_reset member name should get for
+// a window resetting at reset (TestInvariantWeekBeforeReset's rule).
+func expectBeforeReset(cfg pool.Config, name string, reset *time.Time, o pool.Options) (float64, bool) {
+	now := o.Now
+	if reset == nil || reset.IsZero() || reset.Before(now) {
+		return 0, false
+	}
+	if ov := cfg.Accounts[name].Override; ov != nil && ov.Active(now) && ov.Caps.Week != nil {
+		return 0, false
+	}
+	group := "shared"
+	if slices.Contains(cfg.Own, name) {
+		group = "own"
+	}
+	for _, byName := range []bool{true, false} {
+		best, found := 0.0, false
+		for _, s := range cfg.Schedules {
+			if s.WeekBeforeReset == nil {
+				continue
+			}
+			named := slices.Contains(s.Members, name)
+			if byName != named || !byName && !slices.Contains(s.Members, group) {
+				continue
+			}
+			on, until := s.ActiveUntil(now, cfg.Location)
+			if !on || until != nil && reset.After(*until) {
+				continue
+			}
+			best, found = math.Max(best, *s.WeekBeforeReset), true
+		}
+		if found {
+			if o.Only == name && o.OnlyCaps.Week != nil {
+				best = math.Min(best, *o.OnlyCaps.Week)
+			}
+			return best, true
+		}
+	}
+	return 0, false
 }

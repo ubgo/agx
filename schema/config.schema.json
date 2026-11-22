@@ -1131,7 +1131,30 @@
                           "type": "string"
                         },
                         "caps": {
-                          "$ref": "#/$defs/PoolCaps"
+                          "type": "object",
+                          "properties": {
+                            "short": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 100
+                            },
+                            "week": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 100
+                            },
+                            "week_relax_max": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 100
+                            },
+                            "week_before_reset": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 100
+                            }
+                          },
+                          "additionalProperties": false
                         },
                         "release_before": {
                           "type": "string"

@@ -45,16 +45,17 @@ const (
 	schedKeyShort         = "short"
 	schedKeyWeek          = "week"
 	schedKeyWeekRelaxMax  = "week_relax_max"
+	schedKeyBeforeReset   = "week_before_reset"
 	schedKeyReleaseBefore = "release_before"
 	// schedListSep separates the days and the members.
 	schedListSep = ","
 )
 
 // scheduleKeys are the keys a --pool-schedule value may give.
-var scheduleKeys = []string{schedKeyDays, schedKeyHours, schedKeyMembers, schedKeyTimezone, schedKeyShort, schedKeyWeek, schedKeyWeekRelaxMax, schedKeyReleaseBefore}
+var scheduleKeys = []string{schedKeyDays, schedKeyHours, schedKeyMembers, schedKeyTimezone, schedKeyShort, schedKeyWeek, schedKeyWeekRelaxMax, schedKeyBeforeReset, schedKeyReleaseBefore}
 
 // scheduleHelp is how a --pool-schedule value is written.
-const scheduleHelp = `write it as "NAME days=sat,sun [hours=00:00-24:00] members=shared [timezone=Europe/Istanbul] [short=95] [week=80] [week_relax_max=95] [release_before=5h]"`
+const scheduleHelp = `write it as "NAME days=sat,sun [hours=00:00-24:00] members=shared [timezone=Europe/Istanbul] [short=95] [week=80] [week_relax_max=95] [week_before_reset=95] [release_before=5h]"`
 
 // PoolTimedSettings are the timed-cap flags; nil = not given.
 type PoolTimedSettings struct {
@@ -238,6 +239,7 @@ func scheduleSpec(s config.PoolSchedule) string {
 	add(schedKeyShort, optPercent(s.Caps.Short))
 	add(schedKeyWeek, optPercent(s.Caps.Week))
 	add(schedKeyWeekRelaxMax, optPercent(s.Caps.WeekRelaxMax))
+	add(schedKeyBeforeReset, optPercent(s.Caps.WeekBeforeReset))
 	add(schedKeyReleaseBefore, s.ReleaseBefore)
 	return strings.Join(parts, " ")
 }
@@ -280,7 +282,8 @@ func parseSchedule(spec string, members []string) (config.PoolSchedule, error) {
 			if err != nil {
 				return sc, err
 			}
-			slot := map[string]**float64{schedKeyShort: &sc.Caps.Short, schedKeyWeek: &sc.Caps.Week, schedKeyWeekRelaxMax: &sc.Caps.WeekRelaxMax}[k]
+			slot := map[string]**float64{schedKeyShort: &sc.Caps.Short, schedKeyWeek: &sc.Caps.Week, schedKeyWeekRelaxMax: &sc.Caps.WeekRelaxMax,
+				schedKeyBeforeReset: &sc.Caps.WeekBeforeReset}[k]
 			*slot = &n
 		}
 	}
@@ -289,8 +292,8 @@ func parseSchedule(spec string, members []string) (config.PoolSchedule, error) {
 		return sc, apperr.Usage(fmt.Sprintf("%s: give days=… (%s)", what, strings.Join(pool.DayNames(), schedListSep)))
 	case !seen[schedKeyMembers]:
 		return sc, apperr.Usage(fmt.Sprintf("%s: give members=… (member names, own or shared)", what))
-	case sc.Caps == (config.PoolCaps{}):
-		return sc, apperr.Usage(fmt.Sprintf("%s: give at least one cap: short=, week= or week_relax_max=", what))
+	case sc.Caps == (config.PoolScheduleCaps{}):
+		return sc, apperr.Usage(fmt.Sprintf("%s: give at least one cap: short=, week=, week_relax_max= or week_before_reset=", what))
 	}
 	for _, m := range sc.Members {
 		if m != string(pool.GroupOwn) && m != string(pool.GroupShared) && !slices.Contains(members, m) {

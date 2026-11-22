@@ -244,7 +244,7 @@ func addPoolSettingFlags(cmd *cobra.Command, ps *poolSettingFlags) {
 	f.StringVar(&ps.until, "until", "", "make this command's --pool-cap-short, --pool-cap-week and --pool-cap-week-relax an override that ends then: 6h, 2026-11-23T08:00, 'sun 23:59' or 18:00, in the pool's timezone")
 	f.StringArrayVar(&ps.clearOverride, "pool-clear-override", nil, "end a member's override now (repeat)")
 	f.StringVar(&ps.timezone, "pool-timezone", "", "the IANA time zone of the pool's schedules and --until times, like Europe/Istanbul (empty: this machine's local time)")
-	f.StringArrayVar(&ps.schedule, "pool-schedule", nil, "add or replace a schedule: 'NAME days=sat,sun [hours=00:00-24:00] members=shared [timezone=ZONE] [short=N] [week=N] [week_relax_max=N] [release_before=5h]' (repeat)")
+	f.StringArrayVar(&ps.schedule, "pool-schedule", nil, "add or replace a schedule: 'NAME days=sat,sun [hours=00:00-24:00] members=shared [timezone=ZONE] [short=N] [week=N] [week_relax_max=N] [week_before_reset=N] [release_before=5h]' (repeat)")
 	f.StringArrayVar(&ps.scheduleDrop, "pool-schedule-remove", nil, "remove a schedule by name (repeat)")
 }
 

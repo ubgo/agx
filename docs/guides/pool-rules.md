@@ -46,7 +46,7 @@ Each is a key of `logins.<pool>.pool` in config.jsonc, set with a flag of `agx l
 | `usage_max_age` | `60s` | `--pool-usage-max-age` | how old the shared usage cache may be before members are probed again |
 | `key_ttl` | `60s` | `--pool-key-ttl` | how long Claude keeps a key before asking again |
 | `timezone` | local time | `--pool-timezone` | the zone of schedules and `--until` times ([schedules](#schedules-and-overrides)) |
-| `schedules` | (none) | `--pool-schedule`, `--pool-schedule-remove` | caps that change on set days and hours ([schedules](#schedules-and-overrides)) |
+| `schedules` | (none) | `--pool-schedule`, `--pool-schedule-remove` | caps that change on set days and hours, and `week_before_reset`, the weekly cap of members whose week resets before the schedule ends ([schedules](#schedules-and-overrides)) |
 | `accounts.NAME.override` | (none) | `--pool-cap-… NAME=N --until TIME`, `--pool-clear-override` | one member's caps until a time ([overrides](#use-one-persons-account-fully-for-a-while)) |
 
 A member's cap comes from an override or a schedule that applies now ([which cap wins](#which-cap-wins)), else its own entry (`member`), else its group's block (`group`), else for a shared member the pool's `defaults` (`pool`), else agx's default (`default`). Own members never take `defaults`: without `own_caps` they get 95/98, so your own quota is used almost fully.
@@ -128,20 +128,23 @@ A member's caps can change for a while without touching its normal caps. A **sch
 
 ### Use teammates' accounts more on their days off
 
-Your teammates work Monday to Friday, so on the weekend nobody needs the 5-hour room their accounts' caps keep free for them. A schedule raises the 5-hour cap of every shared member on Saturday and Sunday:
+Your teammates work Monday to Friday, so on the weekend nobody needs the 5-hour room their accounts' caps keep free for them. A schedule raises the 5-hour cap of every shared member on Saturday and Sunday, and the weekly cap of only those whose week resets before the weekend is over:
 
 ```jsonc
 "pool": {
   "own": ["alice"],
-  "shared": ["carol", "derek", "erin"],
+  "shared": ["carol", "derek", "erin", "fiona"],
   "timezone": "Europe/Istanbul",           // the teammates' zone; omitted = this machine's local time
   "schedules": [
     {
       "name": "weekend",
       "days": ["sat", "sun"],              // no "hours": all day, Saturday 00:00 to Monday 00:00
       "members": ["shared"],               // group names (own, shared) and member names
-      "caps": { "short": 95 },             // only the 5-hour cap; the weekly cap stays 70
-      "release_before": "5h"               // the default when short is raised: back to 50 at Sunday 19:00
+      "caps": {
+        "short": 95,                       // the 5-hour cap of every shared member
+        "week_before_reset": 95            // the weekly cap of a member whose week resets before Sunday 19:00; the rest keep 70
+      },
+      "release_before": "5h"               // the default when short is raised: the schedule ends at Sunday 19:00
     }
   ]
 }
@@ -151,38 +154,54 @@ or with flags:
 
 ```sh
 agx login edit --id auto --pool-timezone Europe/Istanbul \
-  --pool-schedule 'weekend days=sat,sun members=shared short=95 release_before=5h'
+  --pool-schedule 'weekend days=sat,sun members=shared short=95 week_before_reset=95 release_before=5h'
 agx pool show --id auto        # lists it, and whether it applies now
 agx pool pick --id auto        # caps 95 (schedule weekend until Sun 19:00)/70 (default)
 ```
 
-On Saturday the [example](../../examples/acct-pool-schedules/README.md) pick uses carol and derek, whose 5-hour use (62%, 55%) is over their normal cap of 50 but under the weekend's 95; erin stays out because her weekly use is over 70, which the schedule leaves alone:
+On Saturday the [example](../../examples/acct-pool-schedules/README.md) pick uses fiona first: her weekly use is 91% and her week resets in 4 hours 45 minutes, before the schedule ends, so her weekly cap is 95 at once (the relax alone would give her about 90 now, and she would be skipped). Then carol and derek, whose 5-hour use (62%, 55%) is over their normal cap of 50 but under the weekend's 95. erin stays out: her weekly use is over 70 and her week resets on Friday, after the weekend, so the schedule leaves her weekly cap alone:
 
 <!-- snippet: examples/acct-pool-schedules/session.txt#pick -->
 ```sh
 $ agx pool pick --id auto
 Pool: auto (claude, order urgency)
-Use: carol (shared)
-most room to lose: 29% left under its weekly cap with 68h to the reset (0.43%/h to use it all)
+Use: fiona (shared)
+resets soonest: 4% left under its weekly cap with 4.8h to the reset (0.84%/h to use it all); its reset is within 24h (deadline_window), so using it first loses nothing
 Source: cache (20s old)
 Probe model: the agent's default (all-models windows only)
 Rules: order urgency (default), deadline_window 24h (default), deadline_min_room 2 (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 70 (default)
 
 Candidates (ready accounts in pick order):
-- carol [shared] #1 READY (5h 62%, week 41%, resets in 2 d 20 hr, room 29%, caps 95 (schedule weekend until Sun 16:00)/70 (default), needs 0.43%/h)
-- derek [shared] #2 READY (5h 55%, week 30%, resets in 4 d 23 hr, room 40%, caps 95 (schedule weekend until Sun 16:00)/70 (default), needs 0.34%/h)
+- fiona [shared] #1 READY (5h 20%, week 91%, resets in 4 hr 45 min, room 4%, caps 95/95 (schedule weekend until Sun 16:00), needs 0.84%/h, resets within deadline_window) (weekly cap 95% (schedule weekend: resets before it ends))
+- carol [shared] #2 READY (5h 62%, week 41%, resets in 2 d 20 hr, room 29%, caps 95 (schedule weekend until Sun 16:00)/70 (default), needs 0.43%/h)
+- derek [shared] #3 READY (5h 55%, week 30%, resets in 4 d 23 hr, room 40%, caps 95 (schedule weekend until Sun 16:00)/70 (default), needs 0.34%/h)
 - alice [own] skip: 5h is 96% (cap 95%) (5h 96%, week 81%, resets in 4 d 0 hr, room 17%, caps 95/98 (default))
 - erin [shared] skip: week is 72% (cap 70%) (5h 12%, week 72%, resets in 5 d 22 hr, room 0%, caps 95 (schedule weekend until Sun 16:00)/70 (default)) (override ended Fri 20 Nov 18:00 +0300 and is ignored; agx pool prune removes it)
 ```
 
-Why only `short`:
+Why these two caps, and no other:
 
 - **Raising the 5-hour cap on a teammate's day off is safe.** A 5-hour window that fills up on Saturday has emptied long before they start work on Monday.
-- **Raising the weekly cap is not.** A teammate's weekly room has to last their whole week, and a week does not restart on Monday: what you use on Saturday is gone on Tuesday. So the example leaves `week` at 70.
-- **The end of each week is already covered.** `week_relax_window` raises the weekly cap toward 95 over the last 24 hours before each member's own weekly reset, whatever the day, because that room would be lost at the reset anyway (rule 4).
-- **`release_before` keeps Monday fresh.** A schedule stops applying this long before its window ends. When a schedule raises `short` and does not say, it is `5h`, one 5-hour window: the last window the pool can fill at 95 starts before Sunday 19:00 and ends before midnight, so a teammate who starts on Monday morning finds their 5-hour window empty. `"release_before": "0s"` turns it off.
+- **Raising the weekly cap of every member is not.** A teammate's weekly room has to last their whole week, and a week does not restart on Monday: what you use on Saturday is gone on Tuesday. So `week` stays at 70.
+- **Except for a member whose week resets before the schedule ends.** Its room is lost at that reset, before its teammate is back, so it cannot help the teammate at all; it can only help you. `week_before_reset` gives such a member its value as its weekly cap at once, instead of the slow rise of the relax: a teammate's account at 91% with its reset 4h45m away has a relaxed cap of about 90 and would sit skipped while the cap creeps up, and sessions would switch to it and away again as it crossed the cap. A member whose reset comes after the schedule ends keeps its normal weekly cap, because its room still has to last its teammate's week. The end counts `release_before` (the schedule's real end, Sunday 19:00 here), and a reset at the very end counts as before it.
+- **It never lowers a cap.** A member whose cap is already higher (your own at 98, or a relax already above the value) keeps it, and an override that sets `week` wins outright. A schedule that names the member beats one that names its group, as for every cap. A per-model window (Fable's week) gets the value when its own reset comes before the end. It counts in the room and the urgency only while the schedule applies, as the relax's rise counts only once it has begun; `--pool-only-week` still caps it for one run.
+- **The end of each week is already covered on working days.** `week_relax_window` raises the weekly cap toward 95 over the last 24 hours before each member's own weekly reset, whatever the day, because that room would be lost at the reset anyway (rule 4).
+- **`release_before` keeps Monday fresh.** A schedule stops applying this long before its window ends. When a schedule raises `short` and does not say, it is `5h`, one 5-hour window: the last window the pool can fill at 95 starts before Sunday 19:00 and ends before midnight, so a teammate who starts on Monday morning finds their 5-hour window empty. `"release_before": "0s"` turns it off. A schedule that sets only `week_before_reset` defaults to `0s`.
 
-What it does in the [simulator](pool-simulator.md) (scenarios `weekend-mates` and `weekend-mates-schedule`: one own account, three to five teammates' accounts whose teammates work Monday to Friday, three to six sessions every day of the week, 60 seeded runs each): with the weekend schedule your sessions waited for an account about 5% less (11.8 instead of 12.5 hours a week) and got slightly more of what they asked for (97.2% instead of 97.1%). Teammates were never locked out of their 5-hour window by it, but they were locked out by their weekly limit somewhat more often (0.68 instead of 0.50 hours a week, over the whole pool): with the 5-hour cap out of the way on the weekend, more of each teammate's 70% gets used, and a teammate who uses more than the other 30% of their week themselves runs out sooner. If your teammates use their own accounts heavily, keep the schedule off or give them a lower weekly cap (`--pool-group-cap-week shared=60`).
+What it does in the [simulator](pool-simulator.md). The scenarios `weekend-mates` (no schedule), `weekend-mates-schedule` (the 5-hour cap only) and `weekend-mates-before-reset` (with `week_before_reset` 95) are one own account and three to five teammates' accounts whose teammates work Monday to Friday, three to six sessions every day of the week, 60 seeded runs each:
+
+| | no schedule | `short` 95 | `short` 95 and `week_before_reset` 95 |
+|---|---|---|---|
+| hours a week your sessions waited for an account | 11.8 | 11.3 | 10.7 |
+| part of your sessions' demand served | 97.2% | 97.3% | 97.5% |
+| weekly room wasted at the resets | 40.4% | 40.4% | 40.3% |
+| teammates locked out of their 5-hour window (h/week, whole pool) | 0.10 | 0.10 | 0.09 |
+| teammates locked out by their weekly limit (h/week, whole pool) | 0.37 | 0.49 | 0.51 |
+| account switches per session per day | 6.21 | 6.13 | 5.84 |
+
+The 5-hour cap does most of it, and `week_before_reset` adds a little on top: about 5% less waiting and 5% fewer switches, with no change to teammates' lockouts worth the name (0.02 hours a week). The weekend schedule itself costs teammates some weekly room: with the 5-hour cap out of the way on the weekend, more of each teammate's 70% gets used, and a teammate who uses more than the other 30% of their week themselves runs out sooner.
+
+Over every scenario the simulator has (37 pool shapes, where by default one teammate in five also works on Saturdays; rows `REC+WE-real` and `REC+WEB-real`), `week_before_reset` cost the same as the schedule without it (0.922 of the classic rules' cost on average, worst case 1.008 instead of 1.013), wasted and served the same, and switched accounts about 5% less, but locked teammates out slightly more (4.61 instead of 4.56 hours a week, nearly all of it weekly). That rise sits in large teams and busy pools (up to half an hour a week more in the 15- and 20-account pools), where the simulator's teammates sometimes work on Saturday; the likely cause is a teammate whose week resets during the weekend while they work: the pool now uses the last 25% of that week before the reset, which they could have used themselves. If some teammates work on the schedule's days, name the others in it instead of `shared`; if your teammates use their own accounts heavily, keep the schedule off or give them a lower weekly cap (`--pool-group-cap-week shared=60`).
 
 ### Use one person's account fully for a while
 
@@ -207,6 +226,8 @@ For each cap (`short`, `week`, `week_relax_max`) on its own, the first of these 
 3. the schedules that apply now and name the member's group (`own`, `shared`);
 4. the normal caps: the member's entry, its group's block, the pool's `defaults`, agx's default.
 
+A schedule's `week_before_reset` then raises the weekly cap of a member whose weekly reset comes before that schedule ends: the weekly cap is the higher of the cap above (with the relax) and the value. It goes through steps 2 and 3 the same way (the schedules naming the member first, then those naming its group; the highest value of the first step with a schedule that ends at or after the reset), and is skipped when the member's override sets `week`.
+
 The urgency (rule 5) counts up to the cap the member will have at its reset: a schedule or override that ends before the reset does not raise the room counted there. A higher weekly cap that applies now counts until it ends: the room above the cap that follows must be used before then, and when that needs the faster rate the pick says so (`29% left under its weekly cap of 99% before its override ends in 1h`).
 
 When several schedules at the same step set the same cap, the highest value wins: each of them is meant to allow that much, so the most permissive one applies (a tie goes to the first in the file). A schedule that sets only `short` leaves the weekly cap to the steps below it. A schedule that names a group replaces the own caps of every member in it too: if one teammate asked for lower caps (`accounts.erin.short: 30`), name the other members in the schedule instead of `shared`. The safety cutoff (`short_unavailable_at_percent`, 99) and the weekly relax still apply on top, and `--pool-only-short` / `--pool-only-week` may lower a timed cap for one run but never raise it.
@@ -216,13 +237,13 @@ When several schedules at the same step set the same cap, the highest value wins
 - `days` are `mon` to `sun`; a window starts on each listed day.
 - `hours` is `HH:MM-HH:MM` (omitted = `00:00-24:00`). An end at or before the start ends on the next day: `"days": ["fri"], "hours": "22:00-06:00"` is Friday 22:00 to Saturday 06:00. Back-to-back windows join into one, so `sat` and `sun` all day end once, on Monday 00:00, and `release_before` counts back from there.
 - Times are wall-clock times in the schedule's `timezone`, else the pool's, else this machine's local time. Across a daylight-saving change a day is 23 or 25 hours long and the window follows the clock; a time the change skips moves forward.
-- Every value is checked when the config loads: known days, well-formed hours, an IANA zone, caps from 0 to 100 (never `null`), members of the pool or a group name, a unique name, at least one cap, no unknown key.
+- Every value is checked when the config loads: known days, well-formed hours, an IANA zone, caps from 0 to 100, `week_before_reset` included (never `null`), members of the pool or a group name, a unique name, at least one cap, no unknown key.
 
 ## For your team
 
 - **Heavy-use teams: a 60% shared weekly cap.** When teammates use their own accounts hard, `--pool-group-cap-week shared=60` (or `defaults.week: 60`) keeps more of their week for them. In the simulator it cut teammates' lockouts and was about 0.6% cheaper overall, at the price of serving about 1.5 points less of your own demand. It is a team agreement, so it is an option, not the default.
 - **Plans of different sizes.** Give each member its `capacity` (`--pool-capacity alice=20 --pool-capacity carol=5`): a Max 20x account's percent then counts four times a Max 5x one's. Without it the defaults still work; with it every group in the simulator did better.
-- **One teammate who wants their whole week.** `--pool-cap-week-relax erin=70` (their weekly cap or lower) turns the weekly relax off for them alone.
+- **One teammate who wants their whole week.** `--pool-cap-week-relax erin=70` (their weekly cap or lower) turns the weekly relax off for them alone. A schedule with `week_before_reset` that names `shared` still raises their weekly cap when their week resets before it ends; name the other members in it instead if they work on those days.
 - **Urgency alone.** `--pool-deadline-window 0s` turns the deadline group off. In the simulator the two came out even (within 0.3% of cost in every group of pools, the same waste); the group makes the order follow the reset that loses room first, and it costs a little more teammate lockout in large teams.
 - **The old behaviour.** `agx pool preset --name classic --id POOL` writes the rules agx used before v0.4.16 (soonest reset first, every session on one pick).
 

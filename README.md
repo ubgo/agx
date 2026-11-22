@@ -64,10 +64,10 @@ Prebuilt binaries (macOS and Linux on amd64 and arm64, Windows on amd64) are on 
 
 ```sh
 # macOS on Apple Silicon: swap darwin_arm64 for darwin_amd64, linux_amd64 or linux_arm64
-curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.20/agx_v0.4.20_darwin_arm64.tar.gz
-curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.20/checksums.txt
+curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.21/agx_v0.4.21_darwin_arm64.tar.gz
+curl -fsSLO https://github.com/ubgo/agx/releases/download/v0.4.21/checksums.txt
 shasum -a 256 -c checksums.txt --ignore-missing
-tar -xzf agx_v0.4.20_darwin_arm64.tar.gz agx && sudo mv agx /usr/local/bin/
+tar -xzf agx_v0.4.21_darwin_arm64.tar.gz agx && sudo mv agx /usr/local/bin/
 agx version
 ```
 
@@ -329,10 +329,10 @@ Yes, with a login pool: a login of kind `pool` lists your own Claude logins and 
 
 ### Can a pool use a teammate's account more on weekends?
 
-Yes, with a schedule: on the days and hours it names, its caps replace the members' caps. If your teammates work Monday to Friday, raise only their 5-hour cap on the weekend; their weekly room still has to last their week, so leave the weekly cap alone. The schedule stops 5 hours before Monday, so their first 5-hour window on Monday is fresh. `agx pool pick --id auto` then shows `caps 95 (schedule weekend until Sun 19:00)`. Why only the 5-hour cap, and what it did in the simulator, is in [schedules and overrides](docs/guides/pool-rules.md#schedules-and-overrides).
+Yes, with a schedule: on the days and hours it names, its caps replace the members' caps. If your teammates work Monday to Friday, raise their 5-hour cap on the weekend but not their weekly cap, whose room still has to last their week. The one exception is an account whose week resets before the weekend is over: its room is lost at that reset before its teammate is back, so `week_before_reset=95` gives that account alone a weekly cap of 95 at once. The schedule stops 5 hours before Monday, so their first 5-hour window on Monday is fresh. `agx pool pick --id auto` then shows `caps 95 (schedule weekend until Sun 19:00)`, and for an account resetting during the weekend `weekly cap 95% (schedule weekend: resets before it ends)`. Why these caps, and what they did in the simulator, is in [schedules and overrides](docs/guides/pool-rules.md#use-teammates-accounts-more-on-their-days-off).
 
 ```sh
-agx login edit --id auto --pool-timezone Europe/Istanbul --pool-schedule 'weekend days=sat,sun members=shared short=95'
+agx login edit --id auto --pool-timezone Europe/Istanbul --pool-schedule 'weekend days=sat,sun members=shared short=95 week_before_reset=95'
 ```
 
 ### Can a pool use one person's account fully today?

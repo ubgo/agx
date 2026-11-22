@@ -538,8 +538,9 @@ type pickerRules struct {
 
 // pickCaps is one member's caps and enabled flag after defaults: the
 // caps of its entry, group or the defaults, with any schedule or override
-// that applies now, before the weekly relax (members[].caps are the caps
-// in effect now, relax included).
+// that applies now, before the weekly relax and a schedule's
+// week_before_reset, which depend on the member's reset (members[].caps
+// are the caps in effect now, both included).
 type pickCaps struct {
 	Short   float64 `json:"short"`
 	Week    float64 `json:"week"`

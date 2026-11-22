@@ -86,7 +86,7 @@ Add a login. Cost W (X with `--login-setup`). Guide: [Adding a login](../logins.
 | `--until` | make this command's `--pool-cap-short`, `--pool-cap-week` and `--pool-cap-week-relax` an override that ends then (`accounts.NAME.override`): a duration (`6h`), a date and time (`2026-11-23T08:00`), `'DAY HH:MM'` (`'sun 23:59'`, the next such moment) or `HH:MM`, in the pool's timezone. An override that still applies keeps its other caps and takes the new end; `NAME=` drops that cap from it. See [schedules and overrides](../guides/pool-rules.md#schedules-and-overrides) |
 | `--pool-clear-override` | end a member's override now (repeat) |
 | `--pool-timezone` | the IANA time zone of the pool's schedules and `--until` times, like `Europe/Istanbul`; empty: this machine's local time |
-| `--pool-schedule` | add or replace a schedule by name: `'NAME days=sat,sun [hours=00:00-24:00] members=shared [timezone=ZONE] [short=N] [week=N] [week_relax_max=N] [release_before=5h]'` (days and members comma-separated; at least one cap) (repeat) |
+| `--pool-schedule` | add or replace a schedule by name: `'NAME days=sat,sun [hours=00:00-24:00] members=shared [timezone=ZONE] [short=N] [week=N] [week_relax_max=N] [week_before_reset=N] [release_before=5h]'` (days and members comma-separated; at least one cap; `week_before_reset` is the weekly cap of members whose weekly reset comes before the schedule ends) (repeat) |
 | `--pool-schedule-remove` | remove a schedule by name (repeat) |
 | `--dry-run` | with `--kind pool`: show the keys it would write; write nothing |
 | `--token-ref` | the token as a reference (`${gopass:…}`, `$(…)`, `${VAR}`) or a plain value, kept in config |
@@ -215,7 +215,7 @@ Rotate or change a login. Every profile, default and binding that uses it keeps 
 | `--until` | make this command's `--pool-cap-short`, `--pool-cap-week` and `--pool-cap-week-relax` an override that ends then (`accounts.NAME.override`): a duration (`6h`), a date and time (`2026-11-23T08:00`), `'DAY HH:MM'` (`'sun 23:59'`, the next such moment) or `HH:MM`, in the pool's timezone. An override that still applies keeps its other caps and takes the new end; `NAME=` drops that cap from it. See [schedules and overrides](../guides/pool-rules.md#schedules-and-overrides) |
 | `--pool-clear-override` | end a member's override now (repeat) |
 | `--pool-timezone` | the IANA time zone of the pool's schedules and `--until` times, like `Europe/Istanbul`; empty: this machine's local time |
-| `--pool-schedule` | add or replace a schedule by name: `'NAME days=sat,sun [hours=00:00-24:00] members=shared [timezone=ZONE] [short=N] [week=N] [week_relax_max=N] [release_before=5h]'` (days and members comma-separated; at least one cap) (repeat) |
+| `--pool-schedule` | add or replace a schedule by name: `'NAME days=sat,sun [hours=00:00-24:00] members=shared [timezone=ZONE] [short=N] [week=N] [week_relax_max=N] [week_before_reset=N] [release_before=5h]'` (days and members comma-separated; at least one cap; `week_before_reset` is the weekly cap of members whose weekly reset comes before the schedule ends) (repeat) |
 | `--pool-schedule-remove` | remove a schedule by name (repeat) |
 | `--dry-run` | on a pool: show the changes; write nothing |
 

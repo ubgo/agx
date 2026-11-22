@@ -55,8 +55,10 @@ type ScopedState struct {
 
 // scopedStates are member name's scoped windows under c at now: each
 // window's cap is the member's configured weekly cap relaxed toward its
-// relax max by the window's own reset. A zero now (a check without a
-// clock) neither relaxes nor marks anything stale.
+// relax max by the window's own reset, or a schedule's week_before_reset
+// when that reset falls before the schedule ends and the value is
+// higher. A zero now (a check without a clock) neither relaxes nor marks
+// anything stale.
 func (c Config) scopedStates(name string, rd Reading, now time.Time) []ScopedState {
 	if len(rd.Scoped) == 0 {
 		return nil
@@ -71,6 +73,11 @@ func (c Config) scopedStates(name string, rd Reading, now time.Time) []ScopedSta
 			s.until = &until
 			s.Stale = until < 0
 			s.Cap = RelaxedWeek(configured, relaxMax, c.WeekRelaxWindow, until)
+			if v, _, ok := c.WeekBeforeReset(name, *w.ResetsAt, now); ok {
+				// This window's room is lost at its own reset, before the
+				// schedule ends (schedule.go).
+				s.Cap = math.Max(s.Cap, v)
+			}
 			s.finalCap = c.finalCap(name, *w.ResetsAt, until)
 		}
 		if math.IsNaN(w.Percent) || math.IsInf(w.Percent, 0) {

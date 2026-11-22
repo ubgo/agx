@@ -3,6 +3,7 @@ package pool
 import (
 	"errors"
 	"fmt"
+	"math"
 	"slices"
 	"strconv"
 	"strings"
@@ -32,6 +33,20 @@ import (
 // Config.At folds them into the member entries for one moment, so every
 // rule (caps, relax, room, --pool-only) reads the timed caps without
 // knowing about them; Select calls it first.
+//
+// One schedule cap depends on the member's reading, so At cannot fold
+// it: week_before_reset (Schedule.WeekBeforeReset) is the weekly cap of
+// a member whose weekly reset falls while the schedule applies, at or
+// before its end (release_before counted). That member's room is lost at
+// its reset, before the teammate the schedule makes room for is back, so
+// it can only help this pool. A member that resets after the end keeps
+// its normal weekly cap: its room still has to last its teammate's week.
+// At records the values per member (beforeReset); the candidate applies
+// the one that covers its reset as max(the cap it has now, relax
+// included, value), right away and not ramped. Levels work as for the
+// other caps: a schedule naming the member beats one naming its group,
+// the highest value wins at one level, and an override that sets week
+// wins outright (none is recorded then). It only ever raises a cap.
 
 // Timed cap sources (CapSource.Kind).
 const (
@@ -96,6 +111,11 @@ type Schedule struct {
 	Caps ScheduleCaps
 	// ReleaseBefore stops it this long before its window ends.
 	ReleaseBefore time.Duration
+	// WeekBeforeReset is the weekly cap of a member it names whose weekly
+	// reset (or a per-model window's own reset) is at or before its end:
+	// never lower than the cap the member has without it; nil = none
+	// (the file comment).
+	WeekBeforeReset *float64
 }
 
 // Override is one member's caps until a time.
@@ -113,6 +133,9 @@ type CapSource struct {
 	// Until is when it stops applying (a schedule's window end less its
 	// release_before); nil when it never ends.
 	Until *time.Time `json:"until"`
+	// BeforeReset is true when the cap is the schedule's
+	// week_before_reset: the member's weekly reset is at or before Until.
+	BeforeReset bool `json:"before_reset,omitempty"`
 }
 
 // TimedCaps are the member's caps that a schedule or an override sets
@@ -296,8 +319,10 @@ func (c Config) validateTimed(members map[string]bool) error {
 			return fmt.Errorf("pool: %s hours are not a window of one day or less", label)
 		case len(s.Members) == 0:
 			return fmt.Errorf("pool: %s names no members (give member names, own or shared)", label)
-		case !s.Caps.given():
-			return fmt.Errorf("pool: %s sets no caps (short, week or week_relax_max)", label)
+		case !s.Caps.given() && s.WeekBeforeReset == nil:
+			return fmt.Errorf("pool: %s sets no caps (short, week, week_relax_max or week_before_reset)", label)
+		case s.WeekBeforeReset != nil && !validPercent(*s.WeekBeforeReset):
+			return fmt.Errorf("pool: %s caps.week_before_reset %v is outside 0..100", label, *s.WeekBeforeReset)
 		case s.ReleaseBefore < 0:
 			return fmt.Errorf("pool: %s release_before is negative", label)
 		}
@@ -390,6 +415,7 @@ func (c Config) At(now time.Time) Config {
 	}
 	out.timed = map[string]TimedCaps{}
 	out.expired = map[string]time.Time{}
+	out.beforeReset = map[string]resetCaps{}
 	type active struct {
 		s     Schedule
 		until *time.Time
@@ -403,19 +429,24 @@ func (c Config) At(now time.Time) Config {
 	add := func(names []string, g Group) {
 		for _, name := range names {
 			var byName, byGroup [3]timedCap
+			var floors resetCaps
 			for _, a := range on {
 				n, gr := a.s.names(name, g)
 				if !n && !gr {
 					continue
 				}
 				src := CapSource{Kind: SourceSchedule, Name: a.s.Name, Until: a.until}
-				level := &byGroup
+				level, floorLevel := &byGroup, &floors.byGroup
 				if n {
-					level = &byName
+					level, floorLevel = &byName, &floors.byName
 				}
 				level[0].pick(a.s.Caps.Short, src)
 				level[1].pick(a.s.Caps.Week, src)
 				level[2].pick(a.s.Caps.WeekRelaxMax, src)
+				if a.s.WeekBeforeReset != nil {
+					src.BeforeReset = true
+					*floorLevel = append(*floorLevel, resetCap{v: *a.s.WeekBeforeReset, src: src})
+				}
 			}
 			var ovr [3]timedCap
 			if o := c.Accounts[name].Override; o != nil {
@@ -427,6 +458,10 @@ func (c Config) At(now time.Time) Config {
 				} else {
 					out.expired[name] = o.Until
 				}
+			}
+			if ovr[1].v == nil && floors.given() {
+				// An override that sets the weekly cap wins outright.
+				out.beforeReset[name] = floors
 			}
 			var final [3]timedCap
 			for i := range final {
@@ -458,6 +493,65 @@ func (c Config) At(now time.Time) Config {
 	add(c.Own, GroupOwn)
 	add(c.Shared, GroupShared)
 	return out
+}
+
+// resetCap is one active schedule's week_before_reset for a member.
+type resetCap struct {
+	v   float64
+	src CapSource
+}
+
+// resetCaps are a member's week_before_reset values after At: from the
+// active schedules that name it (byName) and those that name its group
+// (byGroup), each with the schedule's end.
+type resetCaps struct {
+	byName, byGroup []resetCap
+}
+
+// given reports whether any schedule gives a value.
+func (r resetCaps) given() bool { return len(r.byName)+len(r.byGroup) > 0 }
+
+// covers reports whether a reset at reset falls while the schedule of
+// src applies: at or before its end (a reset at the very end loses its
+// room as the teammate comes back), or any reset when it never ends. A
+// reset before now has passed and covers nothing (its reading is old).
+func covers(src CapSource, reset, now time.Time) bool {
+	return !reset.Before(now) && (src.Until == nil || !reset.After(*src.Until))
+}
+
+// WeekBeforeReset is the week_before_reset member name gets after At
+// for a window that resets at reset: the highest value of the first
+// level (schedules naming the member, then its group) with a schedule
+// that covers the reset, and that schedule as its source; ok false when
+// none does or the reset has passed (an unreadable reset, the zero time,
+// has passed).
+func (c Config) WeekBeforeReset(name string, reset, now time.Time) (float64, CapSource, bool) {
+	r := c.beforeReset[name]
+	for _, level := range [][]resetCap{r.byName, r.byGroup} {
+		best := -1
+		for i, f := range level {
+			if covers(f.src, reset, now) && (best < 0 || f.v > level[best].v) {
+				best = i
+			}
+		}
+		if best >= 0 {
+			return level[best].v, level[best].src, true
+		}
+	}
+	return 0, CapSource{}, false
+}
+
+// limitBeforeReset lowers member name's week_before_reset values to
+// limit: a pinned run's weekly cap is a hard limit. Only Select calls it,
+// on the config it has just folded with At, whose map and lists are its
+// own, so it changes them in place.
+func (c Config) limitBeforeReset(name string, limit float64) {
+	r := c.beforeReset[name]
+	for _, level := range [][]resetCap{r.byName, r.byGroup} {
+		for i := range level {
+			level[i].v = math.Min(level[i].v, limit)
+		}
+	}
 }
 
 // hasOverrides reports whether any member has an override.

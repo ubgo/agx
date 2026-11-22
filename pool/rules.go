@@ -243,7 +243,10 @@ func FinalWeek(capWeek, relaxMax float64, window, until time.Duration) float64 {
 // finalCap is the weekly cap the urgency counts up to for a reset at
 // time at, until away: FinalWeek of the caps that apply then (a schedule
 // or an override that ends before the reset does not count; Select sets
-// atReset), else of the caps that apply now.
+// atReset), else of the caps that apply now. A schedule's
+// week_before_reset is not in it: it counts through the cap now
+// (setUrgency counts up to the higher of the two), so only while the
+// schedule applies, as the relax's rise counts only once it has begun.
 func (c Config) finalCap(name string, at time.Time, until time.Duration) float64 {
 	week, relaxMax := c.CapsFor(name).Week, c.RelaxMaxFor(name)
 	if c.atReset != nil {
@@ -252,7 +255,11 @@ func (c Config) finalCap(name string, at time.Time, until time.Duration) float64
 	return FinalWeek(week, relaxMax, c.WeekRelaxWindow, until)
 }
 
-// relax raises c's weekly cap for its reading's reset and notes it.
+// relax raises c's weekly cap for its reading's reset and notes it: the
+// weekly relax, or a schedule's week_before_reset when its reset falls
+// before the schedule ends and the value is higher (schedule.go). The
+// latter applies whole at once: the room is lost at the reset either
+// way, so there is no reason to hand it out in steps.
 func (c Config) relax(cand *Candidate, rd Reading, now time.Time) {
 	if rd.Week == nil || rd.Week.ResetsAt == nil || rd.Week.ResetsAt.IsZero() {
 		return
@@ -260,6 +267,18 @@ func (c Config) relax(cand *Candidate, rd Reading, now time.Time) {
 	configured := cand.Caps.Week
 	relaxMax := c.RelaxMaxFor(cand.Name)
 	week := RelaxedWeek(configured, relaxMax, c.WeekRelaxWindow, rd.Week.ResetsAt.Sub(now))
+	if v, src, ok := c.WeekBeforeReset(cand.Name, *rd.Week.ResetsAt, now); ok && v > week {
+		cand.Caps.Week = v
+		cand.WeekCapConfigured = ptr(configured)
+		t := TimedCaps{}
+		if cand.Timed != nil {
+			t = *cand.Timed
+		}
+		t.Week = &src
+		cand.Timed = &t
+		cand.Notes = append(cand.Notes, fmt.Sprintf(noteBeforeReset, num(v), src.Name))
+		return
+	}
 	if week == configured {
 		return
 	}
@@ -268,6 +287,10 @@ func (c Config) relax(cand *Candidate, rd Reading, now time.Time) {
 	cand.Notes = append(cand.Notes, fmt.Sprintf("weekly cap %s%% rises to %s%% over the last %s before the reset: %s%% now",
 		num(configured), num(relaxMax), Hours(c.WeekRelaxWindow), num(week)))
 }
+
+// noteBeforeReset explains a weekly cap raised by a schedule's
+// week_before_reset.
+const noteBeforeReset = "weekly cap %s%% (schedule %s: resets before it ends)"
 
 // setUrgency sets the candidate's room and urgency. The room (Room) is
 // the room under the weekly cap now, or less when a per-model window
