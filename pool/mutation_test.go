@@ -126,7 +126,7 @@ var mutants = []mutant{
 	{"most loaded when all are full", "pool/rules.go", "if c.Load < least.Load {", "if c.Load > least.Load {", nil},
 	{"one-run weekly cap relaxed", "pool/pool.go", "a.WeekRelaxMax = o.OnlyCaps.Week", "a.WeekRelaxMax = nil", nil},
 	{"sticky never leaves", "pool/rules.go", "if !outranked(cfg, ready[j], ready[i]) {", "if true {", nil},
-	{"sticky leave ratio ignored", "pool/rules.go", "return best.urgency >= cfg.StickyLeaveRatio*curUrgency", "return true", nil},
+	{"sticky leave ratio ignored", "pool/rules.go", "return best.urgency >= cfg.StickyLeaveRatio*curUrgency", "_ = curUrgency; return true", nil},
 	{"negative leave ratio allowed", "pool/rules.go", "if c.StickyLeaveRatio < 0 || math.IsNaN(c.StickyLeaveRatio) || math.IsInf(c.StickyLeaveRatio, 0) {", "if false {", nil},
 	{"config leave ratio ignored", "config/pool.go", "c.StickyLeaveRatio = *p.StickyLeaveRatio", "_ = p.StickyLeaveRatio", nil},
 	{"default leave ratio changed", "pool/pool.go", "DefaultStickyLeaveRatio = 3.0", "DefaultStickyLeaveRatio = 0.0", nil},
@@ -147,22 +147,22 @@ var mutants = []mutant{
 	{"default max_sessions changed", "pool/pool.go", "DefaultMaxSessions = 4", "DefaultMaxSessions = 3", nil},
 	{"default sticky changed", "pool/pool.go", "DefaultSticky = true", "DefaultSticky = false", nil},
 	{"config order ignored", "config/pool.go", "c.Order = pool.Order(p.Order)", "_ = p.Order", nil},
-	{"empty probe model allowed", "config/pool.go", "if strings.TrimSpace(m) == \"\" {", "if false {", nil},
+	{"empty probe model allowed", "config/pool.go", "if strings.TrimSpace(m) == \"\" {", "if _ = m; false {", appModels},
 	// Per-model windows (pool/scoped.go) and their wiring.
 	{"scoped window ignored", "pool/pool.go", "c.Reasons = append(c.Reasons, scopedReasons(c.Scoped)...)", "_ = scopedReasons", nil},
 	{"scoped cap exclusive", "pool/scoped.go", "case *s.Percent >= s.Cap:", "case *s.Percent > s.Cap:", nil},
 	{"rejected scoped window usable", "pool/scoped.go", "case s.Rejected:", "case false && s.Rejected:", nil},
 	{"stale scoped window blocks", "pool/scoped.go", "s.Stale = until < 0", "s.Stale = false", nil},
-	{"scoped window not relaxed", "pool/scoped.go", "s.Cap = RelaxedWeek(configured, relaxMax, c.WeekRelaxWindow, until)", "s.Cap = configured", nil},
+	{"scoped window not relaxed", "pool/scoped.go", "s.Cap = RelaxedWeek(configured, relaxMax, c.WeekRelaxWindow, until)", "s.Cap = configured; _ = relaxMax", nil},
 	{"unreadable scoped window usable", "pool/scoped.go", "out = append(out, fmt.Sprintf(unreadableFmt, s.Name))", "_ = s.Name", nil},
 	{"scoped room ignored", "pool/rules.go", "if r := math.Max(0, w.upTo-*s.Percent); r < ahead {", "if r := math.Max(0, w.upTo-*s.Percent); false && r < ahead {", nil},
 	{"scoped room left out of the room now", "pool/rules.go", "room = math.Min(room, s.Room)", "_ = s.Room", nil},
-	{"probe model ignored", "internal/app/pool_models.go", "u, err := mp.TokenUsageModel(ctx, cred, model)", "u, err := pr.TokenUsage(ctx, cred)", appModels},
+	{"probe model ignored", "internal/app/pool_models.go", "u, err := mp.TokenUsageModel(ctx, cred, model)", "_ = mp; u, err := pr.TokenUsage(ctx, cred)", appModels},
 	{"run model not read", "internal/app/pool.go", "o.Model = st.Model", "_ = st.Model", appModels},
 	{"probe_models ignored", "internal/app/pool_models.go", "return slices.Clone(p.ProbeModels), modelSrcPool", "return nil, modelSrcPool", appModels},
 	{"default profile model ignored", "internal/app/pool_models.go", "return p.Model, modelSrcProfile + names[0]", "return \"\", \"\"", appModels},
 	{"scoped windows not handed to the rules", "internal/app/pool_models.go", "r.Scoped = append(r.Scoped,", "_ = append(r.Scoped,", appModels},
-	{"refused model blocks the pool", "internal/app/pool_models.go", "if errors.Is(err, agentio.ErrModelRefused) {", "if false {", appModels},
+	{"refused model blocks the pool", "internal/app/pool_models.go", "if errors.Is(err, agentio.ErrModelRefused) {", "if _ = errors.Is; false {", appModels},
 	{"full scoped window limits every model", "internal/app/usage_read.go", "full = full || (w.Scope == \"\" && w.Percent >= percentFull)", "full = full || w.Percent >= percentFull", appModels},
 	{"cache drops other models' windows", "login/usagecache.go", "for k, v := range old.Models {", "for k, v := range map[string]ModelWindows{} {", appModels},
 	{"launch model not recorded", "internal/app/live.go", "p.Live.Model, p.liveModelSrc = runModel(o, res)", "_, p.liveModelSrc = runModel(o, res)", appModels},
@@ -177,9 +177,9 @@ var mutants = []mutant{
 	{"group source reported as pool", "internal/app/pool_info.go", "{group.Short, SourceGroup, groupKey + \".short\"}", "{group.Short, SourcePool, groupKey + \".short\"}", appPreset},
 	{"own members show the pool defaults", "internal/app/pool_info.go", "\t\t\tdef = pool.DefaultOwnShortCap\n\t\t} else {", "\t\t\tdef = pool.DefaultOwnShortCap\n\t\t}\n\t\t{", appPreset},
 	{"config max_sessions ignored", "config/pool.go", "c.MaxSessions = *p.MaxSessions", "_ = p.MaxSessions", nil},
-	{"config group caps ignored", "config/pool.go", "c.Groups[g] = pool.GroupCaps{Short: gc.Short, Week: gc.Week, WeekRelaxMax: gc.WeekRelaxMax}", "_ = gc", nil},
+	{"config group caps ignored", "config/pool.go", "c.Groups[g] = pool.GroupCaps{Short: gc.Short, Week: gc.Week, WeekRelaxMax: gc.WeekRelaxMax}", "_, _ = gc, g", nil},
 	{"live runs not counted", "internal/app/pool.go", "sel.Load, sel.Current, sel.CurrentAhead = a.poolLoad(ctx, name, lg, o.RunID, now, rep.warn)", "_, _, _ = a.poolLoad(ctx, name, lg, o.RunID, now, rep.warn)", appRules},
-	{"idle runs counted", "internal/app/pool.go", "if now.Sub(st.InUseAt) <= activeRunTTLs*ttl {", "if true {", appRules},
+	{"idle runs counted", "internal/app/pool.go", "if now.Sub(st.InUseAt) <= activeRunTTLs*ttl {", "if _ = ttl; true {", appRules},
 	{"credential run not passed", "internal/app/livecmd.go", "poolModeCredential, st.PoolForce, only, f.ID)", "poolModeCredential, st.PoolForce, only, \"\")", appRules},
 	// The simulator's regression: the defaults must keep their gains.
 	{"spread off in the simulated pool", "pool/rules.go", "full := func(c *Candidate) bool { return limit > 0 && c.Load >= limit }", "full := func(c *Candidate) bool { return false }", simRegression},
@@ -208,7 +208,7 @@ var mutants = []mutant{
 	{"rise counted before the relax window opens", "pool/rules.go", "if window <= 0 || until < 0 || until > window || relaxMax <= capWeek {", "if window <= 0 || until < 0 || relaxMax <= capWeek {", nil},
 	{"relax window's end exclusive for the count", "pool/rules.go", "if window <= 0 || until < 0 || until > window || relaxMax <= capWeek {", "if window <= 0 || until < 0 || until >= window || relaxMax <= capWeek {", nil},
 	{"scoped window counted to its cap now", "pool/scoped.go", "s.finalCap = c.finalCap(name, *w.ResetsAt, until)", "s.finalCap = s.Cap", nil},
-	{"timed caps at the reset ignored", "pool/pool.go", "cfg.atReset = base.capsAt(o)", "cfg.atReset = nil", nil},
+	{"timed caps at the reset ignored", "pool/pool.go", "cfg.atReset = base.capsAt(o)", "cfg.atReset = nil; _ = base", nil},
 	{"pinned weekly cap lifted at the reset", "pool/pool.go", "week, relaxMax = math.Min(week, *limit), math.Min(relaxMax, *limit)", "_ = limit", nil},
 	{"deadline group ignored", "pool/rules.go", "cand.Deadline = cand.Eligible && c.order() == OrderUrgency", "cand.Deadline = false && cand.Eligible && c.order() == OrderUrgency", nil},
 	{"blocked member in the deadline group", "pool/rules.go", "cand.Deadline = cand.Eligible && c.order() == OrderUrgency", "cand.Deadline = c.order() == OrderUrgency", nil},
@@ -231,7 +231,7 @@ var mutants = []mutant{
 	{"real room shown as 0%/h", "pool/rules.go", "if v > 0 && r < minShownRate {", "if false {", nil},
 	{"sticky leaves for a full leader", "pool/rules.go", "j := slices.IndexFunc(ready, func(c *Candidate) bool { return c == ready[i] || !full(c) })", "j := 0", nil},
 	{"scoped window without a reset left out", "pool/rules.go", "if s.Stale || s.unreadable {\n\t\t\t// It has reset", "if s.Stale || s.unreadable || s.until == nil {\n\t\t\t// It has reset", nil},
-	{"picker warnings without the relax", "pool/pool.go", "return candidate(at, name, at.groupOf(name), 0, rd, found, now).Reasons", "return blockReasons(rd, found, c.Enabled(name), c.CapsFor(name), c.ShortUnavailableAt)", nil},
+	{"picker warnings without the relax", "pool/pool.go", "return candidate(at, name, at.groupOf(name), 0, rd, found, now).Reasons", "_ = at; return blockReasons(rd, found, c.Enabled(name), c.CapsFor(name), c.ShortUnavailableAt)", nil},
 	{"unknown reset after a full member says none has one", "pool/rules.go", "case c.Urgency == nil && first:", "case c.Urgency == nil:", nil},
 	{"folded config refolds its timed caps", "pool/schedule.go", "if c.normal != nil {\n\t\tc = *c.normal", "if false {\n\t\tc = *c.normal", nil},
 	{"higher cap ending before the reset ignored", "pool/rules.go", "if end, src, ok := cand.timedWeekEnd(); ok && capNow > final {", "if end, src, ok := cand.timedWeekEnd(); false && ok && capNow > final {", nil},
@@ -261,15 +261,41 @@ var mutants = []mutant{
 	{"schedule with only week_before_reset refused", "pool/schedule.go", "case !s.Caps.given() && s.WeekBeforeReset == nil:", "case !s.Caps.given():", nil},
 	{"config drops week_before_reset", "config/pool.go", "WeekBeforeReset: s.Caps.WeekBeforeReset,", "", nil},
 	{"schema takes a null week_before_reset", "config/schema.go", "{[]string{\"schedules\", schemaItems, \"caps\", \"week_before_reset\"}, SchemaNumber, true},", "", nil},
-	{"--pool-schedule drops week_before_reset", "internal/app/login_pool_timed.go", "schedKeyBeforeReset: &sc.Caps.WeekBeforeReset}[k]", "}[k]", appSchedule},
-	{"--pool-schedule change line without week_before_reset", "internal/app/login_pool_timed.go", "add(schedKeyBeforeReset, optPercent(s.Caps.WeekBeforeReset))", "", appSchedule},
+	{"--pool-schedule drops week_before_reset", "internal/app/login_pool_timed.go", "capField(schedKeyBeforeReset, func(s *config.PoolSchedule) **float64 { return &s.Caps.WeekBeforeReset }),", "", appSchedule},
+	{"--pool-schedule change line without the caps", "internal/app/login_pool_timed.go", "text: func(s *config.PoolSchedule) string { return optPercent(*slot(s)) },", "text: func(*config.PoolSchedule) string { return \"\" },", appSchedule},
+	// --pool-schedule merges into the schedule of that name (v0.4.22).
+	{"--pool-schedule replaces instead of merging", "internal/app/login_pool_timed.go", "\t\t\tbase = next[i]", "\t\t\t_ = next[i]", appSchedule},
+	{"--pool-schedule-replace merges", "internal/app/login_pool_timed.go", "if i >= 0 && e.flag == flagPoolSchedule {", "if i >= 0 {", appSchedule},
+	{"cap= keeps the cap", "internal/app/login_pool_timed.go", "\t\t\tif v == \"\" {\n\t\t\t\t*slot(s) = nil\n\t\t\t\treturn nil", "\t\t\tif v == \"\" {\n\t\t\t\treturn nil", appSchedule},
+	{"list key= keeps the list", "internal/app/login_pool_timed.go", "\t\t\t*slot(s) = nil\n\t\t\tif v != \"\" {", "\t\t\tif v != \"\" {", appSchedule},
+	{"merged schedule not checked", "internal/app/login_pool_timed.go", "if err := e.checkSchedule(sc, members); err != nil {", "if err := e.checkSchedule(sc, members); false && err != nil {", appSchedule},
+	{"removal not named in the error", "internal/app/login_pool_timed.go", "if e.removes(key) {", "if false {", appSchedule},
+	{"cap removal not named in the error", "internal/app/login_pool_timed.go", "if e.removes(k) {", "if false {", appSchedule},
+	{"schedule named twice allowed", "internal/app/login_pool_timed.go", "if first, ok := seen[name]; ok {", "if first, ok := seen[name]; false && ok {", appSchedule},
+	{"removed schedule has no change lines", "internal/app/login_pool_timed.go", "range [][]config.PoolSchedule{before, after} {", "range [][]config.PoolSchedule{after} {", appSchedule},
+	{"merged schedules not written", "internal/app/login_pool_timed.go", "p.edits = append(p.edits, setValue(p.at(keyPoolSchedules), next))", "_ = next", appSchedule},
+	{"--pool-schedule-remove keeps the schedule", "internal/app/login_pool_timed.go", "\t\tnext = slices.Delete(next, i, i+1)", "\t\t_ = i", appTimed},
+	{"--pool-schedule-remove of an unknown name allowed", "internal/app/login_pool_timed.go", "\t\tif i < 0 {\n\t\t\treturn apperr.Usage(fmt.Sprintf(\"%s %s: pool %s has no schedule", "\t\tif false {\n\t\t\treturn apperr.Usage(fmt.Sprintf(\"%s %s: pool %s has no schedule", appTimed},
+	// Overrides that end, --pool-clear-override and agx pool prune.
+	{"--pool-clear-override keeps the override", "internal/app/login_pool_settings.go", "a := touch(n)\n\t\ta.Override = nil", "a := touch(n)\n\t\t_ = a.Override", appTimed},
+	{"prune removes overrides that still apply", "internal/app/pool_prune.go", "err == nil && !r.Active(now) {", "err == nil && (true || !r.Active(now)) {", appTimed},
+	{"prune keeps ended overrides", "internal/app/pool_prune.go", "ended = append(ended, m)", "_ = m", appTimed},
+	{"active override starts over on --until", "internal/app/login_pool_timed.go", "r.Active(p.now) {\n\t\t\to = *a.Override", "r.Active(p.now) {\n\t\t\t_ = *a.Override", appTimed},
+	// The pool log line (pool.log).
+	{"pool log drops the picked usage", "internal/app/pool.go", "line += \" usage=\" + quote(usage)", "_ = usage", appModels},
+	{"pool show leaves probe_models at its default", "internal/app/pool_info.go", "if len(p.ProbeModels) > 0 {\n\t\tprobe, probeSrc", "if false {\n\t\tprobe, probeSrc", appPreset},
+	{"pool log drops the probe models", "internal/app/pool.go", "line += \" models=\" + quote(strings.Join(rep.ProbeModels, \",\"))", "_ = rep.ProbeModels", appModels},
 	// Live sessions (run_liveness.go).
-	{"ended runs counted as sessions", "internal/app/pool.go", "if lives[s.id].liveness == agentio.LivenessEnded {", "if false {", appLiveness},
+	{"ended runs counted as sessions", "internal/app/pool.go", "if lives[s.id].liveness == agentio.LivenessEnded {", "if _ = lives; false {", appLiveness},
 	{"one process-table read per run folder", "internal/app/run_liveness.go", "if lives, err := a.d.Host.ProcessesAlive(ctx, refs); err == nil {", "if lives, err := a.d.Host.ProcessesAlive(ctx, refs); false && err == nil {", appLiveness},
 }
 
 // appSchedule runs the internal/app tests of --pool-schedule.
 var appSchedule = []string{"-run", "PoolSchedule", "./internal/app/"}
+
+// appTimed runs the internal/app tests of schedules, overrides and
+// agx pool prune.
+var appTimed = []string{"-run", "PoolSchedule|PoolTimed|PoolUntil|PoolPrune", "./internal/app/"}
 
 // appLiveness runs the internal/app tests of live-run liveness.
 var appLiveness = []string{"-run", "PoolLoadSkipsEndedRuns|LiveListOneTableRead", "./internal/app/"}
@@ -303,7 +329,7 @@ func TestMutation(t *testing.T) {
 		t.Fatal(err)
 	}
 	caught, missing := 0, []string{}
-	var survived []string
+	var survived, broken []string
 	for _, m := range mutants {
 		path := filepath.Join(work, filepath.FromSlash(m.file))
 		orig, err := os.ReadFile(path)
@@ -333,12 +359,16 @@ func TestMutation(t *testing.T) {
 			t.Logf("SURVIVED  %s", m.name)
 			continue
 		}
-		caught++
-		why := "test failed"
-		if strings.Contains(string(out), "[build failed]") {
-			why = "does not compile"
+		// A break that does not compile tests nothing: the replacement
+		// must keep the package building (use "_ = x" for a variable it
+		// leaves unused), so that the tests, not the compiler, catch it.
+		if strings.Contains(string(out), "[build failed]") || strings.Contains(string(out), "[setup failed]") {
+			broken = append(broken, m.name)
+			t.Logf("BROKEN    %s (does not compile)", m.name)
+			continue
 		}
-		t.Logf("caught    %s (%s)", m.name, why)
+		caught++
+		t.Logf("caught    %s (test failed)", m.name)
 	}
 	t.Logf("%d/%d breaks caught by the tests", caught, len(mutants)-len(missing))
 	if len(missing) > 0 {
@@ -346,6 +376,9 @@ func TestMutation(t *testing.T) {
 	}
 	if len(survived) > 0 {
 		t.Errorf("not caught: %s", strings.Join(survived, "; "))
+	}
+	if len(broken) > 0 {
+		t.Errorf("does not compile, so no test ran (keep the replacement building): %s", strings.Join(broken, "; "))
 	}
 }
 

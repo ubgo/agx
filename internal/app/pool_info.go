@@ -2,6 +2,7 @@ package app
 
 import (
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/ubgo/agx/config"
@@ -49,6 +50,7 @@ const (
 	poolKeyPickerTime   = "picker.timeout"
 	poolKeyLog          = "log"
 	poolKeyTimezone     = "timezone"
+	poolKeyProbeModels  = "probe_models"
 )
 
 // poolRuleKeys are the settings that decide the pick (agx pool pick and a
@@ -61,6 +63,9 @@ const (
 	poolOffForce  = "off"
 	poolOffPicker = "built-in rules"
 	poolOffLog    = "none"
+	// poolOffProbe is probe_models unset: a pick probes with the
+	// session's own model, else the agent's default.
+	poolOffProbe = "none"
 	// poolLocalZone is the timezone of a pool that sets none.
 	poolLocalZone = "local"
 )
@@ -300,6 +305,11 @@ func poolSettings(p config.Pool) []PoolSetting {
 	add(poolKeyOwnWeek, percentText(ownWeek), ownWeekSrc)
 	addPercent(poolKeyDefaultShort, p.Defaults.Short, pool.DefaultShortCap)
 	addPercent(poolKeyDefaultWeek, p.Defaults.Week, pool.DefaultWeekCap)
+	probe, probeSrc := poolOffProbe, SourceDefault
+	if len(p.ProbeModels) > 0 {
+		probe, probeSrc = strings.Join(p.ProbeModels, ","), SourcePool
+	}
+	add(poolKeyProbeModels, probe, probeSrc)
 	addDuration(poolKeyMaxAge, p.UsageMaxAge, config.DefaultUsageMaxAge)
 	addDuration(poolKeyKeyTTL, p.KeyTTL, config.DefaultKeyTTL)
 	picker, pickerSrc, timeout, timeoutSrc := poolOffPicker, SourceDefault, durationText(config.DefaultPickerTimeout), SourceDefault

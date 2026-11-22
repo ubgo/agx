@@ -33,6 +33,7 @@ own_caps.short                95 (default)
 own_caps.week                 98 (default)
 defaults.short                50 (default)
 defaults.week                 70 (default)
+probe_models                  none (default)
 usage_max_age                 60s (default)
 key_ttl                       60s (default)
 picker.command                built-in rules (default)
@@ -115,17 +116,41 @@ changed login auto (pool, pool 1 own, 4 shared)
 
 #endregion
 #region schedule-flags
+$ agx login edit --id auto --pool-schedule 'weekend week_before_reset=90' --dry-run
+would change login auto (--dry-run)
+  pool.schedules.weekend.caps.week_before_reset  95  ->  90
+
+$ agx login edit --id auto --pool-schedule 'weekend hours=06:00-24:00 release_before=' --dry-run
+would change login auto (--dry-run)
+  pool.schedules.weekend.hours           —   ->  06:00-24:00
+  pool.schedules.weekend.release_before  5h  ->  —
+
+$ agx login edit --id auto --pool-schedule-replace 'weekend days=sat,sun members=shared short=95' --dry-run
+would change login auto (--dry-run)
+  pool.schedules.weekend.caps.week_before_reset  95  ->  —
+  pool.schedules.weekend.release_before          5h  ->  —
+
 $ agx login edit --id auto --pool-schedule 'nights days=mon,tue,wed,thu,fri hours=22:00-07:00 members=erin short=80' --dry-run
 would change login auto (--dry-run)
-  pool.schedules  weekend days=sat,sun members=shared short=95 week_before_reset=95 release_before=5h  ->  weekend days=sat,sun members=shared short=95 week_before_reset=95 release_before=5h; nights days=mon,tue,wed,thu,fri hours=22:00-07:00 members=erin short=80
+  pool.schedules.nights.days        —  ->  mon,tue,wed,thu,fri
+  pool.schedules.nights.hours       —  ->  22:00-07:00
+  pool.schedules.nights.members     —  ->  erin
+  pool.schedules.nights.caps.short  —  ->  80
 
 $ agx login edit --id auto --pool-schedule 'holiday days=thu,fri members=shared short=95 week_before_reset=95' --dry-run
 would change login auto (--dry-run)
-  pool.schedules  weekend days=sat,sun members=shared short=95 week_before_reset=95 release_before=5h  ->  weekend days=sat,sun members=shared short=95 week_before_reset=95 release_before=5h; holiday days=thu,fri members=shared short=95 week_before_reset=95
+  pool.schedules.holiday.days                    —  ->  thu,fri
+  pool.schedules.holiday.members                 —  ->  shared
+  pool.schedules.holiday.caps.short              —  ->  95
+  pool.schedules.holiday.caps.week_before_reset  —  ->  95
 
 $ agx login edit --id auto --pool-schedule-remove weekend --dry-run
 would change login auto (--dry-run)
-  pool.schedules  weekend days=sat,sun members=shared short=95 week_before_reset=95 release_before=5h  ->  —
+  pool.schedules.weekend.days                    sat,sun  ->  —
+  pool.schedules.weekend.members                 shared   ->  —
+  pool.schedules.weekend.caps.short              95       ->  —
+  pool.schedules.weekend.caps.week_before_reset  95       ->  —
+  pool.schedules.weekend.release_before          5h       ->  —
 
 #endregion
 #region prune
@@ -169,6 +194,22 @@ agx: --pool-schedule late short: 190 is not a number from 0 to 100
 
 $ agx login edit --id auto --pool-schedule 'late days=fri members=shared week_before_reset=101'
 agx: --pool-schedule late week_before_reset: 101 is not a number from 0 to 100
+[exit 2]
+
+$ agx login edit --id auto --pool-schedule 'weekend days='
+agx: --pool-schedule weekend: days= removes the schedule's days, but a schedule needs them: give days=… instead, or remove the schedule with --pool-schedule-remove weekend
+[exit 2]
+
+$ agx login edit --id auto --pool-schedule 'weekend short= week_before_reset='
+agx: --pool-schedule weekend: short= week_before_reset= leaves the schedule no cap, but a schedule needs one: give a cap a number instead, or remove the schedule with --pool-schedule-remove weekend
+[exit 2]
+
+$ agx login edit --id auto --pool-schedule 'holiday days=fri members=shared'
+agx: --pool-schedule holiday: give at least one cap: short=, week=, week_relax_max= or week_before_reset=
+[exit 2]
+
+$ agx login edit --id auto --pool-schedule 'weekend short=90' --pool-schedule-remove weekend
+agx: --pool-schedule-remove weekend and --pool-schedule weekend both change schedule weekend; give each schedule once (every key in one value)
 [exit 2]
 
 $ agx login edit --id auto --pool-timezone Mars/Olympus

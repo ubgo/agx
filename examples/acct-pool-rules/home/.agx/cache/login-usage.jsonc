@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "logins": {
+    "alice": {
+      "agent": "claude",
+      "account": "alice@example.com",
+      "probed_at": "2026-11-18T09:59:40Z",
+      "status": "ok",
+      "windows": [
+        { "class": "short", "percent": 30, "resets_at": "2026-11-18T12:00:00Z", "id": "5h", "status": "allowed" },
+        { "class": "week", "percent": 60, "resets_at": "2026-11-22T10:00:00Z", "id": "7d", "status": "allowed" }
+      ],
+      "models": {
+        "": { "probed_at": "2026-11-18T09:59:40Z", "windows": [] },
+        "fable": {
+          "probed_at": "2026-11-18T09:58:10Z",
+          "windows": [
+            { "class": "week", "scope": "oi", "percent": 40, "resets_at": "2026-11-21T10:00:00Z", "id": "7d_oi", "status": "allowed" }
+          ]
+        },
+        "claude-fable-5-2": {
+          "probed_at": "2026-11-18T09:58:10Z",
+          "windows": [
+            { "class": "week", "scope": "oi", "percent": 40, "resets_at": "2026-11-21T10:00:00Z", "id": "7d_oi", "status": "allowed" }
+          ]
+        },
+        "opus": { "probed_at": "2026-11-18T09:58:10Z", "windows": [] }
+      }
+    },
+    "carol": {
+      "agent": "claude",
+      "account": "carol@example.com",
+      "probed_at": "2026-11-18T09:59:40Z",
+      "status": "ok",
+      "windows": [
+        { "class": "short", "percent": 10, "resets_at": "2026-11-18T13:00:00Z", "id": "5h", "status": "allowed" },
+        { "class": "week", "percent": 40, "resets_at": "2026-11-21T10:00:00Z", "id": "7d", "status": "allowed" }
+      ]
+    },
+    "derek": {
+      "agent": "claude",
+      "account": "derek@example.com",
+      "probed_at": "2026-11-18T09:59:40Z",
+      "status": "ok",
+      "windows": [
+        { "class": "short", "percent": 20, "resets_at": "2026-11-18T14:00:00Z", "id": "5h", "status": "allowed" },
+        { "class": "week", "percent": 66, "resets_at": "2026-11-19T16:00:00Z", "id": "7d", "status": "allowed" }
+      ],
+      "models": {
+        "": { "probed_at": "2026-11-18T09:59:40Z", "windows": [] },
+        "fable": {
+          "probed_at": "2026-11-18T09:58:10Z",
+          "windows": [
+            { "class": "week", "scope": "oi", "percent": 96, "resets_at": "2026-11-19T16:00:00Z", "id": "7d_oi", "status": "allowed" }
+          ]
+        },
+        "claude-fable-5-2": {
+          "probed_at": "2026-11-18T09:58:10Z",
+          "windows": [
+            { "class": "week", "scope": "oi", "percent": 96, "resets_at": "2026-11-19T16:00:00Z", "id": "7d_oi", "status": "allowed" }
+          ]
+        },
+        "opus": { "probed_at": "2026-11-18T09:58:10Z", "windows": [] }
+      }
+    },
+    "erin": {
+      "agent": "claude",
+      "account": "erin@example.com",
+      "probed_at": "2026-11-18T09:59:40Z",
+      "status": "ok",
+      "windows": [
+        { "class": "short", "percent": 5, "resets_at": "2026-11-18T15:00:00Z", "id": "5h", "status": "allowed" },
+        { "class": "week", "percent": 50, "resets_at": "2026-11-24T08:00:00Z", "id": "7d", "status": "allowed" }
+      ]
+    }
+  }
+}

@@ -1,0 +1,200 @@
+#: Wednesday 18 November 2026, 10:00 UTC. The login-usage cache in home/.agx/cache was probed 20 s before; every pick passes --cached, so no command probes an account.
+#options env=AGX_TEST_NOW=2026-11-18T10:00:00Z env=ALICE_TOKEN=fake-token-alice env=CAROL_TOKEN=fake-token-carol env=DEREK_TOKEN=fake-token-derek env=ERIN_TOKEN=fake-token-erin
+#region pick-urgency
+#: Every rule at its default: order urgency. alice (own) has the most room to lose per hour; derek (shared) is in the pool only because his week resets within shared_borrow_window.
+$ agx pool pick --id auto --cached
+Pool: auto (claude, order urgency)
+Use: alice (own)
+most room to lose: 38% left under its weekly cap with 96h to the reset (0.4%/h to use it all)
+Source: cache (20s old)
+Probe model: the agent's default (all-models windows only)
+Rules: order urgency (default), deadline_window 24h (default), deadline_min_room 2 (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 70 (default)
+
+Candidates (ready accounts in pick order):
+- alice [own] #1 READY (5h 30%, week 60%, resets in 4 d 0 hr, room 38%, caps 95/98 (default), needs 0.4%/h)
+- derek [shared] #2 READY (5h 20%, week 66%, resets in 1 d 6 hr, room 4%, caps 50/70 (default), needs 0.13%/h)
+- carol [shared] WAIT (5h 10%, week 40%, resets in 3 d 0 hr, room 30%, caps 50/70 (default), needs 0.42%/h) (shared reset not within 48h while an own account is usable)
+- erin [shared] WAIT (5h 5%, week 50%, resets in 5 d 22 hr, room 20%, caps 50/70 (default), needs 0.14%/h) (shared reset not within 48h while an own account is usable)
+
+#endregion
+#region edit
+#: Each group of rule flags as a dry run, then one real write with all of them but --pool-probe-model (the model region writes that one).
+$ agx login edit --id auto --pool-order deadline --pool-deadline-window 12h --pool-deadline-min-room 3 --dry-run
+would change login auto (--dry-run)
+  pool.order              —  ->  deadline
+  pool.deadline_min_room  —  ->  3
+  pool.deadline_window    —  ->  12h
+
+$ agx login edit --id auto --pool-week-relax-window 36h --pool-cap-week-relax erin=70 --pool-group-cap-week-relax shared=90 --dry-run
+would change login auto (--dry-run)
+  pool.accounts.erin.week_relax_max  —  ->  70
+  pool.shared_caps.week_relax_max    —  ->  90
+  pool.week_relax_window             —  ->  36h
+
+$ agx login edit --id auto --pool-max-sessions 2 --pool-sticky false --pool-sticky-leave-ratio 4 --dry-run
+would change login auto (--dry-run)
+  pool.max_sessions        —  ->  2
+  pool.sticky              —  ->  false
+  pool.sticky_leave_ratio  —  ->  4
+
+$ agx login edit --id auto --pool-capacity alice=20 --pool-capacity carol=5 --dry-run
+would change login auto (--dry-run)
+  pool.accounts.alice.capacity  —  ->  20
+  pool.accounts.carol.capacity  —  ->  5
+
+$ agx login edit --id auto --pool-probe-model claude-fable-5-2 --dry-run
+would change login auto (--dry-run)
+  pool.probe_models  —  ->  claude-fable-5-2
+
+$ agx login edit --id auto --pool-order deadline --pool-deadline-window 12h --pool-deadline-min-room 3 --pool-week-relax-window 36h --pool-max-sessions 2 --pool-sticky false --pool-sticky-leave-ratio 4 --pool-capacity alice=20 --pool-capacity carol=5 --pool-cap-week-relax erin=70 --pool-group-cap-week-relax shared=90
+changed login auto (pool, pool 1 own, 3 shared)
+  pool.accounts.erin.week_relax_max  —  ->  70
+  pool.accounts.alice.capacity       —  ->  20
+  pool.accounts.carol.capacity       —  ->  5
+  pool.order                         —  ->  deadline
+  pool.max_sessions                  —  ->  2
+  pool.sticky                        —  ->  false
+  pool.sticky_leave_ratio            —  ->  4
+  pool.deadline_min_room             —  ->  3
+  pool.shared_caps.week_relax_max    —  ->  90
+  pool.week_relax_window             —  ->  36h
+  pool.deadline_window               —  ->  12h
+
+#endregion
+#region show
+$ agx pool show --id auto
+name    auto
+agents  claude
+own     alice
+shared  carol, derek, erin
+
+Members (caps in percent):
+- alice [own] enabled (default), short 95 (default), week 98 (default), week relax max 95 (default), capacity 20 (member)
+- carol [shared] enabled (default), short 50 (default), week 70 (default), week relax max 90 (group), capacity 5 (member)
+- derek [shared] enabled (default), short 50 (default), week 70 (default), week relax max 90 (group), capacity 1 (default)
+- erin [shared] enabled (default), short 50 (default), week 70 (default), week relax max 70 (member), capacity 1 (default)
+
+Schedules (caps that change on set days and hours):
+—
+
+Settings:
+force                         off (default)
+order                         deadline (pool)
+deadline_window               12h (pool)
+deadline_min_room             3 (pool)
+week_relax_window             36h (pool)
+defaults.week_relax_max       95 (default)
+max_sessions                  2 (pool)
+sticky                        false (pool)
+sticky_leave_ratio            4 (pool)
+shared_borrow_window          48h (default)
+short_unavailable_at_percent  99 (default)
+own_caps.short                95 (default)
+own_caps.week                 98 (default)
+defaults.short                50 (default)
+defaults.week                 70 (default)
+probe_models                  none (default)
+usage_max_age                 60s (default)
+key_ttl                       60s (default)
+picker.command                built-in rules (default)
+picker.timeout                10s (default)
+timezone                      local (default)
+log                           none (default)
+
+#endregion
+#region pick-deadline
+#: order deadline: the soonest weekly reset first, whatever the room per hour, so derek goes before alice even with alice's capacity 20.
+$ agx pool pick --id auto --cached
+Pool: auto (claude, order deadline)
+Use: derek (shared)
+shared account resets within 48h, before any usable own account; using its room before it is lost
+Source: cache (20s old)
+Probe model: the agent's default (all-models windows only)
+Rules: order deadline (pool), deadline_window 12h (pool), deadline_min_room 3 (pool), week_relax_window 36h (pool), defaults.week_relax_max 95 (default), max_sessions 2 (pool), sticky false (pool), sticky_leave_ratio 4 (pool), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 70 (default)
+
+Candidates (ready accounts in pick order):
+- derek [shared] #1 READY (5h 20%, week 66%, resets in 1 d 6 hr, room 7.3% (24% by the reset), caps 50/73.3 (default), needs 0.8%/h) (weekly cap 70% rises to 90% over the last 36h before the reset: 73.3% now)
+- alice [own] #2 READY (5h 30%, week 60%, resets in 4 d 0 hr, room 38%, caps 95/98 (default), needs 0.4%/h)
+- carol [shared] WAIT (5h 10%, week 40%, resets in 3 d 0 hr, room 30%, caps 50/70 (default), needs 0.42%/h) (shared reset not within 48h while an own account is usable)
+- erin [shared] WAIT (5h 5%, week 50%, resets in 5 d 22 hr, room 20%, caps 50/70 (default), needs 0.14%/h) (shared reset not within 48h while an own account is usable)
+
+#endregion
+#region model
+#: derek's Fable week (7d_oi) is at 96%: a Fable session skips him, any other model still picks him.
+$ agx pool pick --id auto --cached --model fable
+Pool: auto (claude, order deadline)
+Use: alice (own)
+soonest weekly reset among usable accounts
+Source: cache (20s old)
+Probe model: fable (--model)
+Rules: order deadline (pool), deadline_window 12h (pool), deadline_min_room 3 (pool), week_relax_window 36h (pool), defaults.week_relax_max 95 (default), max_sessions 2 (pool), sticky false (pool), sticky_leave_ratio 4 (pool), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 70 (default)
+
+Candidates (ready accounts in pick order):
+- alice [own] #1 READY (5h 30%, week 60%, fable week 40%, resets in 4 d 0 hr, room 38%, caps 95/98 (default), needs 0.4%/h)
+- carol [shared] WAIT (5h 10%, week 40%, resets in 3 d 0 hr, room 30%, caps 50/70 (default), needs 0.42%/h) (shared reset not within 48h while an own account is usable)
+- erin [shared] WAIT (5h 5%, week 50%, resets in 5 d 22 hr, room 20%, caps 50/70 (default), needs 0.14%/h) (shared reset not within 48h while an own account is usable)
+- derek [shared] skip: fable week is 96% (cap 73.3%) (5h 20%, week 66%, fable week 96%, resets in 1 d 6 hr, room 0%, caps 50/73.3 (default)) (weekly cap 70% rises to 90% over the last 36h before the reset: 73.3% now)
+
+$ agx pool pick --id auto --cached --json --field data.candidates.3.scoped --model fable
+[{"name":"fable week","percent":96,"cap":73.33333333333333,"room":0,"resets_at":"2026-11-19T16:00:00Z"}]
+
+#: probe_models applies when the session's own model is unknown (a plain pick); --model still wins over it.
+$ agx login edit --id auto --pool-probe-model claude-fable-5-2
+changed login auto (pool, pool 1 own, 3 shared)
+  pool.probe_models  —  ->  claude-fable-5-2
+
+$ agx pool pick --id auto --cached
+Pool: auto (claude, order deadline)
+Use: alice (own)
+soonest weekly reset among usable accounts
+Source: cache (20s old)
+Probe model: claude-fable-5-2 (pool probe_models)
+Rules: order deadline (pool), deadline_window 12h (pool), deadline_min_room 3 (pool), week_relax_window 36h (pool), defaults.week_relax_max 95 (default), max_sessions 2 (pool), sticky false (pool), sticky_leave_ratio 4 (pool), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 70 (default)
+
+Candidates (ready accounts in pick order):
+- alice [own] #1 READY (5h 30%, week 60%, fable week 40%, resets in 4 d 0 hr, room 38%, caps 95/98 (default), needs 0.4%/h)
+- carol [shared] WAIT (5h 10%, week 40%, resets in 3 d 0 hr, room 30%, caps 50/70 (default), needs 0.42%/h) (shared reset not within 48h while an own account is usable)
+- erin [shared] WAIT (5h 5%, week 50%, resets in 5 d 22 hr, room 20%, caps 50/70 (default), needs 0.14%/h) (shared reset not within 48h while an own account is usable)
+- derek [shared] skip: fable week is 96% (cap 73.3%) (5h 20%, week 66%, fable week 96%, resets in 1 d 6 hr, room 0%, caps 50/73.3 (default)) (weekly cap 70% rises to 90% over the last 36h before the reset: 73.3% now)
+
+$ agx pool pick --id auto --cached --model opus
+Pool: auto (claude, order deadline)
+Use: derek (shared)
+shared account resets within 48h, before any usable own account; using its room before it is lost
+Source: cache (20s old)
+Probe model: opus (--model)
+Rules: order deadline (pool), deadline_window 12h (pool), deadline_min_room 3 (pool), week_relax_window 36h (pool), defaults.week_relax_max 95 (default), max_sessions 2 (pool), sticky false (pool), sticky_leave_ratio 4 (pool), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 70 (default)
+
+Candidates (ready accounts in pick order):
+- derek [shared] #1 READY (5h 20%, week 66%, resets in 1 d 6 hr, room 7.3% (24% by the reset), caps 50/73.3 (default), needs 0.8%/h) (weekly cap 70% rises to 90% over the last 36h before the reset: 73.3% now)
+- alice [own] #2 READY (5h 30%, week 60%, resets in 4 d 0 hr, room 38%, caps 95/98 (default), needs 0.4%/h)
+- carol [shared] WAIT (5h 10%, week 40%, resets in 3 d 0 hr, room 30%, caps 50/70 (default), needs 0.42%/h) (shared reset not within 48h while an own account is usable)
+- erin [shared] WAIT (5h 5%, week 50%, resets in 5 d 22 hr, room 20%, caps 50/70 (default), needs 0.14%/h) (shared reset not within 48h while an own account is usable)
+
+#endregion
+#region refusals
+$ agx login edit --id auto --pool-order soonest
+agx: --pool-order "soonest": use urgency or deadline
+[exit 2]
+
+$ agx login edit --id auto --pool-sticky maybe
+agx: --pool-sticky "maybe": use true or false
+[exit 2]
+
+$ agx login edit --id auto --pool-capacity alice=0
+agx: --pool-capacity alice=0: 0 is not a number above 0
+[exit 2]
+
+$ agx login edit --id auto --pool-cap-week-relax frank=90
+agx: --pool-cap-week-relax frank=90: frank is not a member of pool auto (members: alice, carol, derek, erin)
+[exit 2]
+
+$ agx login edit --id auto --pool-group-cap-week-relax team=90
+agx: --pool-group-cap-week-relax "team=90": use own=N or shared=N (a number from 0 to 100; GROUP= removes the group's cap)
+[exit 2]
+
+$ agx login edit --id auto --pool-deadline-window soon
+agx: --pool-deadline-window "soon" is not a duration (write it like "48h", "60s")
+[exit 2]
+
+#endregion

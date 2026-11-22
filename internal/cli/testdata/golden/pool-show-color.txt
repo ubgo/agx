@@ -27,6 +27,7 @@ own_caps.short                95 [2m(default)[0m
 own_caps.week                 98 [2m(default)[0m
 defaults.short                40 [2m(pool)[0m
 defaults.week                 60 [2m(pool)[0m
+probe_models                  none [2m(default)[0m
 usage_max_age                 2m [2m(pool)[0m
 key_ttl                       30s [2m(pool)[0m
 picker.command                my-picker [2m(pool)[0m

@@ -168,7 +168,7 @@ func (p *poolPlan) planSettings(cur config.Pool, members []string, s PoolSetting
 			return err
 		}
 	}
-	if s.Timed.Schedules != nil || s.Timed.ScheduleRemove != nil {
+	if s.Timed.Schedules != nil || s.Timed.ScheduleReplace != nil || s.Timed.ScheduleRemove != nil {
 		if err := p.planSchedules(cur, members, s.Timed); err != nil {
 			return err
 		}

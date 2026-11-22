@@ -31,7 +31,9 @@ Each is a key of `logins.<pool>.pool` in config.jsonc, set with a flag of `agx l
 | `deadline_window` | `24h` | `--pool-deadline-window` | under `urgency`, members whose weekly reset is within this go first, soonest reset first; `0s` = never (urgency alone) |
 | `deadline_min_room` | 2 | `--pool-deadline-min-room` | the least room (percent, up to the cap reached at the reset) a member inside `deadline_window` needs to go first |
 | `week_relax_window` | `24h` | `--pool-week-relax-window` | how long before the weekly reset the weekly cap starts rising; `0s` = never |
-| `defaults.week_relax_max` | 95 | `--pool-default-week-relax` | the weekly cap reached at the reset; also per group (`own_caps.week_relax_max`, `shared_caps.week_relax_max`) and per member (`accounts.NAME.week_relax_max`) |
+| `defaults.week_relax_max` | 95 | `--pool-default-week-relax` | the weekly cap reached at the reset |
+| `own_caps.week_relax_max`, `shared_caps.week_relax_max` | (`defaults`) | `--pool-group-cap-week-relax own=N`, `--pool-group-cap-week-relax shared=N` | the weekly cap a group's members reach at the reset |
+| `accounts.NAME.week_relax_max` | (group) | `--pool-cap-week-relax NAME=N` | one member's weekly cap at the reset; its weekly cap or lower turns the relax off for it |
 | `max_sessions` | 4 | `--pool-max-sessions` | sessions one member takes before the next is used; `0` = no limit |
 | `sticky` | `true` | `--pool-sticky` | a session stays on its member while it is still in the pool (keeps its prompt cache) |
 | `sticky_leave_ratio` | 3 | `--pool-sticky-leave-ratio` | a sticky session leaves for a member this many times as urgent; `0` = never |
@@ -41,15 +43,63 @@ Each is a key of `logins.<pool>.pool` in config.jsonc, set with a flag of `agx l
 | `defaults.short`, `defaults.week` | 50, 70 | `--pool-default-short`, `--pool-default-week` | caps of shared members without a `shared_caps` or member entry |
 | `shared_caps.short`, `shared_caps.week` | (`defaults`) | `--pool-group-cap-short shared=N`, `--pool-group-cap-week shared=N` | caps of every shared member at once |
 | `accounts.NAME.short`, `.week` | (group) | `--pool-cap-short NAME=N`, `--pool-cap-week NAME=N` | one member's caps |
+| `accounts.NAME.enabled` | `true` | `--pool-disable NAME`, `--pool-enable NAME` | `false` leaves the member out of every pick |
 | `accounts.NAME.capacity` | 1 | `--pool-capacity NAME=N` | the member's plan size relative to the others (Pro 1, Max 5x 5, Max 20x 20); its room is weighed by it |
 | `probe_models` | (none) | `--pool-probe-model` | the models to probe with when a session's own model is unknown ([per-model windows](#per-model-weekly-windows)) |
 | `usage_max_age` | `60s` | `--pool-usage-max-age` | how old the shared usage cache may be before members are probed again |
 | `key_ttl` | `60s` | `--pool-key-ttl` | how long Claude keeps a key before asking again |
 | `timezone` | local time | `--pool-timezone` | the zone of schedules and `--until` times ([schedules](#schedules-and-overrides)) |
-| `schedules` | (none) | `--pool-schedule`, `--pool-schedule-remove` | caps that change on set days and hours, and `week_before_reset`, the weekly cap of members whose week resets before the schedule ends ([schedules](#schedules-and-overrides)) |
+| `schedules` | (none) | `--pool-schedule` (change the keys given, or create), `--pool-schedule-replace`, `--pool-schedule-remove` | caps that change on set days and hours, and `week_before_reset`, the weekly cap of members whose week resets before the schedule ends ([schedules](#schedules-and-overrides), [change one value](#change-one-value-of-a-schedule)) |
+| `force` | `null` | `--pool-force NAME` (`''` clears it) | always pick this member, ignoring every rule and cap |
+| `picker.command`, `picker.timeout` | (none), `10s` | `--pool-picker` (`''` removes the picker) | a command of yours that picks the member instead of the built-in rules ([your own picker](login-pool.md#your-own-picker)) |
+| `log` | (none) | `agx config set` | a file that gets one line per key request (the pick, its source, the member's usage; never a token) |
 | `accounts.NAME.override` | (none) | `--pool-cap-… NAME=N --until TIME`, `--pool-clear-override` | one member's caps until a time ([overrides](#use-one-persons-account-fully-for-a-while)) |
 
 A member's cap comes from an override or a schedule that applies now ([which cap wins](#which-cap-wins)), else its own entry (`member`), else its group's block (`group`), else for a shared member the pool's `defaults` (`pool`), else agx's default (`default`). Own members never take `defaults`: without `own_caps` they get 95/98, so your own quota is used almost fully.
+
+The [example](../../examples/acct-pool-rules/README.md) sets every rule value with its flag in one command, then `agx pool show` lists each with its source:
+
+<!-- snippet: examples/acct-pool-rules/session.txt#show -->
+```sh
+$ agx pool show --id auto
+name    auto
+agents  claude
+own     alice
+shared  carol, derek, erin
+
+Members (caps in percent):
+- alice [own] enabled (default), short 95 (default), week 98 (default), week relax max 95 (default), capacity 20 (member)
+- carol [shared] enabled (default), short 50 (default), week 70 (default), week relax max 90 (group), capacity 5 (member)
+- derek [shared] enabled (default), short 50 (default), week 70 (default), week relax max 90 (group), capacity 1 (default)
+- erin [shared] enabled (default), short 50 (default), week 70 (default), week relax max 70 (member), capacity 1 (default)
+
+Schedules (caps that change on set days and hours):
+—
+
+Settings:
+force                         off (default)
+order                         deadline (pool)
+deadline_window               12h (pool)
+deadline_min_room             3 (pool)
+week_relax_window             36h (pool)
+defaults.week_relax_max       95 (default)
+max_sessions                  2 (pool)
+sticky                        false (pool)
+sticky_leave_ratio            4 (pool)
+shared_borrow_window          48h (default)
+short_unavailable_at_percent  99 (default)
+own_caps.short                95 (default)
+own_caps.week                 98 (default)
+defaults.short                50 (default)
+defaults.week                 70 (default)
+probe_models                  none (default)
+usage_max_age                 60s (default)
+key_ttl                       60s (default)
+picker.command                built-in rules (default)
+picker.timeout                10s (default)
+timezone                      local (default)
+log                           none (default)
+```
 
 ## Presets
 
@@ -91,7 +141,7 @@ changed login auto (pool, pool 2 own, 3 shared)
   pool.deadline_window          —  ->  24h
 
 $ agx pool show --id auto --json --field data.settings
-[{"key":"force","value":"off","source":"default"},{"key":"order","value":"urgency","source":"pool"},{"key":"deadline_window","value":"24h","source":"pool"},{"key":"deadline_min_room","value":"2","source":"pool"},{"key":"week_relax_window","value":"24h","source":"pool"},{"key":"defaults.week_relax_max","value":"95","source":"pool"},{"key":"max_sessions","value":"4","source":"pool"},{"key":"sticky","value":"true","source":"pool"},{"key":"sticky_leave_ratio","value":"3","source":"pool"},{"key":"shared_borrow_window","value":"48h","source":"pool"},{"key":"short_unavailable_at_percent","value":"99","source":"pool"},{"key":"own_caps.short","value":"95","source":"default"},{"key":"own_caps.week","value":"98","source":"default"},{"key":"defaults.short","value":"50","source":"pool"},{"key":"defaults.week","value":"70","source":"pool"},{"key":"usage_max_age","value":"60s","source":"pool"},{"key":"key_ttl","value":"60s","source":"pool"},{"key":"picker.command","value":"built-in rules","source":"default"},{"key":"picker.timeout","value":"10s","source":"default"},{"key":"timezone","value":"local","source":"default"},{"key":"log","value":"none","source":"default"}]
+[{"key":"force","value":"off","source":"default"},{"key":"order","value":"urgency","source":"pool"},{"key":"deadline_window","value":"24h","source":"pool"},{"key":"deadline_min_room","value":"2","source":"pool"},{"key":"week_relax_window","value":"24h","source":"pool"},{"key":"defaults.week_relax_max","value":"95","source":"pool"},{"key":"max_sessions","value":"4","source":"pool"},{"key":"sticky","value":"true","source":"pool"},{"key":"sticky_leave_ratio","value":"3","source":"pool"},{"key":"shared_borrow_window","value":"48h","source":"pool"},{"key":"short_unavailable_at_percent","value":"99","source":"pool"},{"key":"own_caps.short","value":"95","source":"default"},{"key":"own_caps.week","value":"98","source":"default"},{"key":"defaults.short","value":"50","source":"pool"},{"key":"defaults.week","value":"70","source":"pool"},{"key":"probe_models","value":"none","source":"default"},{"key":"usage_max_age","value":"60s","source":"pool"},{"key":"key_ttl","value":"60s","source":"pool"},{"key":"picker.command","value":"built-in rules","source":"default"},{"key":"picker.timeout","value":"10s","source":"default"},{"key":"timezone","value":"local","source":"default"},{"key":"log","value":"none","source":"default"}]
 ```
 
 ## Per-model weekly windows
@@ -109,18 +159,67 @@ A user who runs Fable (by flag, profile or `/model`) therefore sees Fable's wind
 
 Each per-model window applies only to the sessions of its model, as an extra weekly cap: the member's weekly cap and relax rules, measured to that window's own reset. The member is skipped for that model when the window is at or over the cap (`fable week is 99% (cap 98%)`) or the vendor refuses it until its reset (`fable week is refused by the vendor until its reset`), and its room is the least room over its windows. An Opus session still picks the same member. A full per-model window never marks the member `limit-reached` for other models.
 
-`agx pool pick` names the probe model and shows each window:
+`agx pool pick` names the probe model and shows each window. In the [example](../../examples/acct-pool-rules/README.md) derek's Fable week is 96%: a Fable session skips him, the pool's `probe_models` applies to a pick that names no model, and `--model opus` still picks him:
 
-```text
+<!-- snippet: examples/acct-pool-rules/session.txt#model -->
+```sh
+#: derek's Fable week (7d_oi) is at 96%: a Fable session skips him, any other model still picks him.
+$ agx pool pick --id auto --cached --model fable
+Pool: auto (claude, order deadline)
+Use: alice (own)
+soonest weekly reset among usable accounts
+Source: cache (20s old)
 Probe model: fable (--model)
-- alice [own] skip: fable week is 99% (cap 98%) (5h 5%, week 20%, fable week 99%, resets in 2 d 18 hr, room 0%, caps 95/98 (default))
+Rules: order deadline (pool), deadline_window 12h (pool), deadline_min_room 3 (pool), week_relax_window 36h (pool), defaults.week_relax_max 95 (default), max_sessions 2 (pool), sticky false (pool), sticky_leave_ratio 4 (pool), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 70 (default)
+
+Candidates (ready accounts in pick order):
+- alice [own] #1 READY (5h 30%, week 60%, fable week 40%, resets in 4 d 0 hr, room 38%, caps 95/98 (default), needs 0.4%/h)
+- carol [shared] WAIT (5h 10%, week 40%, resets in 3 d 0 hr, room 30%, caps 50/70 (default), needs 0.42%/h) (shared reset not within 48h while an own account is usable)
+- erin [shared] WAIT (5h 5%, week 50%, resets in 5 d 22 hr, room 20%, caps 50/70 (default), needs 0.14%/h) (shared reset not within 48h while an own account is usable)
+- derek [shared] skip: fable week is 96% (cap 73.3%) (5h 20%, week 66%, fable week 96%, resets in 1 d 6 hr, room 0%, caps 50/73.3 (default)) (weekly cap 70% rises to 90% over the last 36h before the reset: 73.3% now)
+
+$ agx pool pick --id auto --cached --json --field data.candidates.3.scoped --model fable
+[{"name":"fable week","percent":96,"cap":73.33333333333333,"room":0,"resets_at":"2026-11-19T16:00:00Z"}]
+
+#: probe_models applies when the session's own model is unknown (a plain pick); --model still wins over it.
+$ agx login edit --id auto --pool-probe-model claude-fable-5-2
+changed login auto (pool, pool 1 own, 3 shared)
+  pool.probe_models  —  ->  claude-fable-5-2
+
+$ agx pool pick --id auto --cached
+Pool: auto (claude, order deadline)
+Use: alice (own)
+soonest weekly reset among usable accounts
+Source: cache (20s old)
+Probe model: claude-fable-5-2 (pool probe_models)
+Rules: order deadline (pool), deadline_window 12h (pool), deadline_min_room 3 (pool), week_relax_window 36h (pool), defaults.week_relax_max 95 (default), max_sessions 2 (pool), sticky false (pool), sticky_leave_ratio 4 (pool), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 70 (default)
+
+Candidates (ready accounts in pick order):
+- alice [own] #1 READY (5h 30%, week 60%, fable week 40%, resets in 4 d 0 hr, room 38%, caps 95/98 (default), needs 0.4%/h)
+- carol [shared] WAIT (5h 10%, week 40%, resets in 3 d 0 hr, room 30%, caps 50/70 (default), needs 0.42%/h) (shared reset not within 48h while an own account is usable)
+- erin [shared] WAIT (5h 5%, week 50%, resets in 5 d 22 hr, room 20%, caps 50/70 (default), needs 0.14%/h) (shared reset not within 48h while an own account is usable)
+- derek [shared] skip: fable week is 96% (cap 73.3%) (5h 20%, week 66%, fable week 96%, resets in 1 d 6 hr, room 0%, caps 50/73.3 (default)) (weekly cap 70% rises to 90% over the last 36h before the reset: 73.3% now)
+
+$ agx pool pick --id auto --cached --model opus
+Pool: auto (claude, order deadline)
+Use: derek (shared)
+shared account resets within 48h, before any usable own account; using its room before it is lost
+Source: cache (20s old)
+Probe model: opus (--model)
+Rules: order deadline (pool), deadline_window 12h (pool), deadline_min_room 3 (pool), week_relax_window 36h (pool), defaults.week_relax_max 95 (default), max_sessions 2 (pool), sticky false (pool), sticky_leave_ratio 4 (pool), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 70 (default)
+
+Candidates (ready accounts in pick order):
+- derek [shared] #1 READY (5h 20%, week 66%, resets in 1 d 6 hr, room 7.3% (24% by the reset), caps 50/73.3 (default), needs 0.8%/h) (weekly cap 70% rises to 90% over the last 36h before the reset: 73.3% now)
+- alice [own] #2 READY (5h 30%, week 60%, resets in 4 d 0 hr, room 38%, caps 95/98 (default), needs 0.4%/h)
+- carol [shared] WAIT (5h 10%, week 40%, resets in 3 d 0 hr, room 30%, caps 50/70 (default), needs 0.42%/h) (shared reset not within 48h while an own account is usable)
+- erin [shared] WAIT (5h 5%, week 50%, resets in 5 d 22 hr, room 20%, caps 50/70 (default), needs 0.14%/h) (shared reset not within 48h while an own account is usable)
 ```
 
 The usage cache keeps each model's windows separately, so sessions on different models share it: each model is probed about once per `usage_max_age` per member.
 
 ## Usage history
 
-Every answered probe also adds a point to `~/.agx/cache/login-usage-history.jsonc`: per member the time, the probe model and every window's percent and reset. It costs no API call (it records what the probes already returned) and is bounded: a point at most every 10 minutes (or when a reset changes), 8 days and 1200 points per member. The pool log line (`log`) carries the picked member's percentages too (`usage="5h=12 week=40 fable_week=61" models="fable"`). Both feed calibration of the pool's assumptions later; nothing reads them to pick.
+Every answered probe also adds a point to `~/.agx/cache/login-usage-history.jsonc`: per member the time, the probe model and every window's percent and reset. It costs no API call (it records what the probes already returned) and is bounded: a point at most every 10 minutes (or when a reset changes), 8 days and 1200 points per member. The pool log line (`log`) carries the picked member's percentages too (`usage="5h=12 week=40 fable_week=61" models="fable"`). Both feed calibration of the pool's assumptions later; nothing reads them to pick, and no agx command prints the history yet (read the file itself; it holds no token). Deleting it loses only the history.
 
 ## Schedules and overrides
 
@@ -130,24 +229,32 @@ A member's caps can change for a while without touching its normal caps. A **sch
 
 Your teammates work Monday to Friday, so on the weekend nobody needs the 5-hour room their accounts' caps keep free for them. A schedule raises the 5-hour cap of every shared member on Saturday and Sunday, and the weekly cap of only those whose week resets before the weekend is over:
 
+<!-- snippet: examples/acct-pool-schedules/config.jsonc#pool -->
 ```jsonc
-"pool": {
-  "own": ["alice"],
-  "shared": ["carol", "derek", "erin", "fiona"],
-  "timezone": "Europe/Istanbul",           // the teammates' zone; omitted = this machine's local time
-  "schedules": [
-    {
-      "name": "weekend",
-      "days": ["sat", "sun"],              // no "hours": all day, Saturday 00:00 to Monday 00:00
-      "members": ["shared"],               // group names (own, shared) and member names
-      "caps": {
-        "short": 95,                       // the 5-hour cap of every shared member
-        "week_before_reset": 95            // the weekly cap of a member whose week resets before Sunday 19:00; the rest keep 70
-      },
-      "release_before": "5h"               // the default when short is raised: the schedule ends at Sunday 19:00
+    "auto": {
+      "agents": ["claude"],
+      "kind": "pool",
+      "pool": {
+        "own": ["alice"],
+        "shared": ["carol", "derek", "erin", "fiona"], // teammates' accounts: caps 50/70 on their working days
+        "timezone": "Europe/Istanbul",         // the teammates' zone: schedules and --until read times in it
+        "schedules": [
+          {
+            "name": "weekend",
+            "days": ["sat", "sun"],            // all day (no "hours"): Saturday 00:00 to Monday 00:00
+            "members": ["shared"],
+            // short: the 5-hour cap. week_before_reset: the weekly cap of a member whose weekly reset
+            // comes before the schedule ends (its room is lost then anyway); the others keep 70.
+            "caps": { "short": 95, "week_before_reset": 95 },
+            "release_before": "5h"             // ends at Sunday 19:00, so Monday starts with a fresh 5-hour window
+          }
+        ],
+        "accounts": {
+          // An override that ended on Friday: ignored, listed by pool show, removed by pool prune.
+          "erin": { "override": { "short": 90, "until": "2026-11-20T18:00:00+03:00" } }
+        }
+      }
     }
-  ]
-}
 ```
 
 or with flags:
@@ -203,6 +310,54 @@ The 5-hour cap does most of it, and `week_before_reset` adds a little on top: ab
 
 Over every scenario the simulator has (37 pool shapes, where by default one teammate in five also works on Saturdays; rows `REC+WE-real` and `REC+WEB-real`), `week_before_reset` cost the same as the schedule without it (0.922 of the classic rules' cost on average, worst case 1.008 instead of 1.013), wasted and served the same, and switched accounts about 5% less, but locked teammates out slightly more (4.61 instead of 4.56 hours a week, nearly all of it weekly). That rise sits in large teams and busy pools (up to half an hour a week more in the 15- and 20-account pools), where the simulator's teammates sometimes work on Saturday; the likely cause is a teammate whose week resets during the weekend while they work: the pool now uses the last 25% of that week before the reset, which they could have used themselves. If some teammates work on the schedule's days, name the others in it instead of `shared`; if your teammates use their own accounts heavily, keep the schedule off or give them a lower weekly cap (`--pool-group-cap-week shared=60`).
 
+### Change one value of a schedule
+
+`--pool-schedule` on a name that exists changes only the keys it gives; every other key of that schedule stays as it is. `key=` (empty) removes a key. `--pool-schedule-replace` writes the whole schedule and drops what it does not give, and `--pool-schedule-remove` removes it. Each changed key prints its own before/after line, so a value that goes away shows as `->  —`, in the dry run too:
+
+<!-- snippet: examples/acct-pool-schedules/session.txt#schedule-flags -->
+```sh
+$ agx login edit --id auto --pool-schedule 'weekend week_before_reset=90' --dry-run
+would change login auto (--dry-run)
+  pool.schedules.weekend.caps.week_before_reset  95  ->  90
+
+$ agx login edit --id auto --pool-schedule 'weekend hours=06:00-24:00 release_before=' --dry-run
+would change login auto (--dry-run)
+  pool.schedules.weekend.hours           —   ->  06:00-24:00
+  pool.schedules.weekend.release_before  5h  ->  —
+
+$ agx login edit --id auto --pool-schedule-replace 'weekend days=sat,sun members=shared short=95' --dry-run
+would change login auto (--dry-run)
+  pool.schedules.weekend.caps.week_before_reset  95  ->  —
+  pool.schedules.weekend.release_before          5h  ->  —
+
+$ agx login edit --id auto --pool-schedule 'nights days=mon,tue,wed,thu,fri hours=22:00-07:00 members=erin short=80' --dry-run
+would change login auto (--dry-run)
+  pool.schedules.nights.days        —  ->  mon,tue,wed,thu,fri
+  pool.schedules.nights.hours       —  ->  22:00-07:00
+  pool.schedules.nights.members     —  ->  erin
+  pool.schedules.nights.caps.short  —  ->  80
+
+$ agx login edit --id auto --pool-schedule 'holiday days=thu,fri members=shared short=95 week_before_reset=95' --dry-run
+would change login auto (--dry-run)
+  pool.schedules.holiday.days                    —  ->  thu,fri
+  pool.schedules.holiday.members                 —  ->  shared
+  pool.schedules.holiday.caps.short              —  ->  95
+  pool.schedules.holiday.caps.week_before_reset  —  ->  95
+
+$ agx login edit --id auto --pool-schedule-remove weekend --dry-run
+would change login auto (--dry-run)
+  pool.schedules.weekend.days                    sat,sun  ->  —
+  pool.schedules.weekend.members                 shared   ->  —
+  pool.schedules.weekend.caps.short              95       ->  —
+  pool.schedules.weekend.caps.week_before_reset  95       ->  —
+  pool.schedules.weekend.release_before          5h       ->  —
+```
+
+- Raise one cap: `--pool-schedule 'weekend week_before_reset=90'`. The days, hours, members, zone, the other caps and `release_before` stay.
+- Remove a key: `'weekend timezone='` (the pool's zone applies again), `'weekend week='` (the members' own weekly cap applies again), `'weekend release_before='` (the default again).
+- A new name creates a schedule; it needs `days`, `members` and a cap. A change that leaves a schedule without one of them is refused and names the key (`days= removes the schedule's days, but a schedule needs them`); remove the schedule with `--pool-schedule-remove` instead.
+- Name a schedule once per command, across the three flags (`--pool-schedule-remove weekend and --pool-schedule weekend both change schedule weekend`, exit 2); several schedules in one command are fine.
+
 ### Use one person's account fully for a while
 
 An override sets one member's caps until a time, then it is ignored:
@@ -215,7 +370,37 @@ agx login edit --id auto --pool-clear-override carol      # end it now
 agx pool prune --id auto                                  # remove the ones that have ended
 ```
 
-`--until` takes a duration (`6h`, `90m`), a date and time (`2026-11-23T08:00`, or RFC 3339 with a zone), a date alone (the end of that day), `'DAY HH:MM'` (the next such moment: `'sun 23:59'`) or `HH:MM` (today, or tomorrow when that time has passed), read in the pool's `timezone`. It must be in the future. It changes this command's `--pool-cap-short`, `--pool-cap-week` and `--pool-cap-week-relax` only, and is written as `accounts.NAME.override` (`{"short": 95, "until": "2026-11-22T23:59:00+03:00"}`) next to the member's normal caps, which stay as they are. Giving `--until` again while the override applies keeps its other caps and moves its end; `NAME=` drops one cap from it. Once its end has passed the pick ignores it and says so (`override ended Fri 20 Nov 18:00 +03 and is ignored; agx pool prune removes it`), `agx pool show` lists it as ended, and `agx pool prune` removes it.
+`--until` takes a duration (`6h`, `90m`), a date and time (`2026-11-23T08:00`, or RFC 3339 with a zone), a date alone (the end of that day), `'DAY HH:MM'` (the next such moment: `'sun 23:59'`) or `HH:MM` (today, or tomorrow when that time has passed), read in the pool's `timezone`. It must be in the future. It changes this command's `--pool-cap-short`, `--pool-cap-week` and `--pool-cap-week-relax` only, and is written as `accounts.NAME.override` (`{"short": 95, "until": "2026-11-22T23:59:00+03:00"}`) next to the member's normal caps, which stay as they are. Giving `--until` again while the override applies keeps its other caps and moves its end; `NAME=` drops one cap from it. Once its end has passed the pick ignores it and says so (`override ended Fri 20 Nov 18:00 +0300 and is ignored; agx pool prune removes it`), `agx pool show` lists it as ended, and `agx pool prune` removes it. In the [example](../../examples/acct-pool-schedules/README.md), on Saturday:
+
+<!-- snippet: examples/acct-pool-schedules/session.txt#override -->
+```sh
+$ agx login edit --id auto --pool-cap-short derek=95 --pool-cap-week derek=90 --until 'sun 23:59' --dry-run
+would change login auto (--dry-run)
+  pool.accounts.derek.override  —  ->  short 95, week 90 until 2026-11-22T23:59:00+03:00
+
+$ agx login edit --id auto --pool-cap-short derek=95 --pool-cap-week derek=90 --until 'sun 23:59'
+changed login auto (pool, pool 1 own, 4 shared)
+  pool.accounts.derek.override  —  ->  short 95, week 90 until 2026-11-22T23:59:00+03:00
+
+$ agx pool pick --id auto
+Pool: auto (claude, order urgency)
+Use: fiona (shared)
+resets soonest: 4% left under its weekly cap with 4.8h to the reset (0.84%/h to use it all); its reset is within 24h (deadline_window), so using it first loses nothing
+Source: cache (20s old)
+Probe model: the agent's default (all-models windows only)
+Rules: order urgency (default), deadline_window 24h (default), deadline_min_room 2 (default), week_relax_window 24h (default), defaults.week_relax_max 95 (default), max_sessions 4 (default), sticky true (default), sticky_leave_ratio 3 (default), shared_borrow_window 48h (default), short_unavailable_at_percent 99 (default), own_caps.short 95 (default), own_caps.week 98 (default), defaults.short 50 (default), defaults.week 70 (default)
+
+Candidates (ready accounts in pick order):
+- fiona [shared] #1 READY (5h 20%, week 91%, resets in 4 hr 45 min, room 4%, caps 95/95 (schedule weekend until Sun 16:00), needs 0.84%/h, resets within deadline_window) (weekly cap 95% (schedule weekend: resets before it ends))
+- derek [shared] #2 READY (5h 55%, week 30%, resets in 4 d 23 hr, room 60%, caps 95/90 (override until Sun 20:59), needs 0.57%/h)
+- carol [shared] #3 READY (5h 62%, week 41%, resets in 2 d 20 hr, room 29%, caps 95 (schedule weekend until Sun 16:00)/70 (default), needs 0.43%/h)
+- alice [own] skip: 5h is 96% (cap 95%) (5h 96%, week 81%, resets in 4 d 0 hr, room 17%, caps 95/98 (default))
+- erin [shared] skip: week is 72% (cap 70%) (5h 12%, week 72%, resets in 5 d 22 hr, room 0%, caps 95 (schedule weekend until Sun 16:00)/70 (default)) (override ended Fri 20 Nov 18:00 +0300 and is ignored; agx pool prune removes it)
+
+$ agx login edit --id auto --pool-clear-override derek
+changed login auto (pool, pool 1 own, 4 shared)
+  pool.accounts.derek.override  short 95, week 90 until 2026-11-22T23:59:00+03:00  ->  —
+```
 
 ### Which cap wins
 
@@ -237,6 +422,7 @@ When several schedules at the same step set the same cap, the highest value wins
 - `days` are `mon` to `sun`; a window starts on each listed day.
 - `hours` is `HH:MM-HH:MM` (omitted = `00:00-24:00`). An end at or before the start ends on the next day: `"days": ["fri"], "hours": "22:00-06:00"` is Friday 22:00 to Saturday 06:00. Back-to-back windows join into one, so `sat` and `sun` all day end once, on Monday 00:00, and `release_before` counts back from there.
 - Times are wall-clock times in the schedule's `timezone`, else the pool's, else this machine's local time. Across a daylight-saving change a day is 23 or 25 hours long and the window follows the clock; a time the change skips moves forward.
+- `agx pool pick` and `agx pool show` print when a schedule or override ends in this machine's time zone (`--tz` on `agx pool pick` picks another), not the schedule's: the example runs in UTC, so the weekend schedule that ends at Sunday 19:00 in Istanbul shows `until Sun 16:00` there. The note on an override that has ended keeps the zone it was written with (`+0300`).
 - Every value is checked when the config loads: known days, well-formed hours, an IANA zone, caps from 0 to 100, `week_before_reset` included (never `null`), members of the pool or a group name, a unique name, at least one cap, no unknown key.
 
 ## For your team

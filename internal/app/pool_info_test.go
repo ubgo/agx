@@ -1,6 +1,7 @@
 package app
 
 import (
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -29,7 +30,8 @@ func TestPoolListAndShow(t *testing.T) {
 	for _, s := range info.Settings {
 		got[s.Key] = s.Value + " " + s.Source
 	}
-	if got[poolKeyKeyTTL] != "30s pool" || got[poolKeyLog] != "~/pool.log pool" || got[poolKeyMaxAge] != "60s default" || got[poolKeyBorrow] != "48h default" {
+	if got[poolKeyKeyTTL] != "30s pool" || got[poolKeyLog] != "~/pool.log pool" || got[poolKeyMaxAge] != "60s default" || got[poolKeyBorrow] != "48h default" ||
+		got[poolKeyProbeModels] != "none default" {
 		t.Errorf("settings: %v", got)
 	}
 	if mb := info.Members[0]; mb.Short != 95 || mb.ShortSource != SourceMember || mb.EnabledSource != SourceDefault {
@@ -79,8 +81,12 @@ func TestPoolInfoEverySet(t *testing.T) {
 		OwnCaps: config.PoolCaps{Week: f(97)}, SharedCaps: config.PoolCaps{Short: f(30)},
 		Accounts:    map[string]config.PoolAccount{"bob": {Enabled: &off, Week: f(65), Capacity: f(5)}},
 		UsageMaxAge: "2m", KeyTTL: "30s", Log: "~/p.log", Picker: &config.PoolPicker{Command: "pk"}, Timezone: "UTC",
+		ProbeModels: []string{"claude-fable-5-2", "opus"},
 	}}
 	info := poolInfo("team", lg)
+	if !slices.Contains(info.Settings, PoolSetting{Key: poolKeyProbeModels, Value: "claude-fable-5-2,opus", Source: SourcePool}) {
+		t.Errorf("probe_models: %+v", info.Settings)
+	}
 	if info.Force != "bob" || info.Picker != "pk" || strings.Join(info.Agents, ",") != "claude" {
 		t.Errorf("summary: %+v", info.PoolSummary)
 	}

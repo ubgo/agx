@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "default_agent": "claude",
+  "profiles": {
+    "personal": { "agent": "claude", "home": "~/.claude", "default": true }
+  },
+  "logins": {
+    "alice": { "agents": ["claude"], "kind": "oauth-token", "token": "${ALICE_TOKEN}", "account": "alice@example.com" },
+    "carol": { "agents": ["claude"], "kind": "oauth-token", "token": "${CAROL_TOKEN}", "account": "carol@example.com" },
+    "derek": { "agents": ["claude"], "kind": "oauth-token", "token": "${DEREK_TOKEN}", "account": "derek@example.com" },
+    "erin": { "agents": ["claude"], "kind": "oauth-token", "token": "${ERIN_TOKEN}", "account": "erin@example.com" },
+    // #region pool
+    "auto": {
+      "agents": ["claude"],
+      "kind": "pool",
+      // No rule key yet: every rule value is agx's default (order urgency) until
+      // the session's agx login edit writes them.
+      "pool": {
+        "own": ["alice"],
+        "shared": ["carol", "derek", "erin"] // teammates' accounts: caps 50/70 by default
+      }
+    }
+    // #endregion pool
+  }
+}

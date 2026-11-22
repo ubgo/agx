@@ -2,6 +2,27 @@
 
 All notable changes to agx are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and agx uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.22] - 2026-11-22
+
+### Changed
+
+- `agx login edit --pool-schedule 'NAME key=value …'` on a schedule that exists changes only the keys it gives and keeps every other key. It used to replace the whole schedule, so `--pool-schedule 'weekend days=sat,sun members=shared short=95 week_before_reset=95'` silently dropped the schedule's `timezone`, `hours`, `release_before` and other caps. `--pool-schedule 'weekend week_before_reset=90'` now changes that cap alone. A new name still creates a schedule, which needs `days`, `members` and a cap.
+- The change lines of a schedule edit name each changed key (`pool.schedules.weekend.caps.week_before_reset  95  ->  90`, `pool.schedules.weekend.timezone  Asia/Tokyo  ->  —`), in the dry run too, instead of one line with the whole list before and after, so a removed value is visible.
+- A schedule may be named once per command across `--pool-schedule`, `--pool-schedule-replace` and `--pool-schedule-remove` (exit 2), so the result never depends on the order of the flags.
+
+### Added
+
+- `key=` (empty) in a `--pool-schedule` value removes that key: `'weekend timezone='` (the pool's zone applies again), `'weekend week='`, `'weekend release_before='`. A change that leaves a schedule without its days, members or every cap is refused and names the key that removed it.
+- `--pool-schedule-replace 'NAME …'` on `agx login add` and `agx login edit` writes the whole schedule and drops the keys it does not give (the old behaviour, now explicit).
+- `agx pool show` lists `probe_models` with its source (`none (default)` when unset).
+- Example `acct-pool-rules`: every rule flag as a dry run and one write, `agx pool show` with sources, the pick under `urgency` and `deadline`, and `agx pool pick --model fable` skipping a member whose Fable week is full. CLI tests for `agx pool pick --model`.
+- Tests: the owner's case (an edit without `timezone` keeps it), `key=` removal, replace, create, checks after the merge, repeated flags and the dry run; 19 new mutants (schedule merge and replace, `--pool-schedule-remove`, `--pool-clear-override`, `agx pool prune`, the pool log's `usage=`/`models=`, `probe_models` in pool show).
+- `task mutation` fails on a break that does not compile, since no test ran for it. Eleven breaks only "passed" that way; each now builds and is caught by the tests, and one (an empty `probe_models` name allowed) pointed at tests that never covered it. Its timeout is 90 minutes.
+
+### Fixed
+
+- Docs: the config reference lists the schedule and override flags, the usage history file and the cap order with overrides and schedules; `agx pool show` and `agx pool pick --json` field lists name `override`, `schedules`, `room_at_reset_percent`, `needs_percent_per_hour` and `deadline`; the guide's "every value" table names every flag (relax caps per group and member, `enabled`, `force`, `picker`, `log`); the pool summaries name `preset` and `prune`; the README FAQ covers schedule edits, `capacity` and the usage history; examples use `--pool-force`.
+
 ## [0.4.21] - 2026-11-22
 
 ### Added

@@ -137,6 +137,11 @@
         "source": "pool"
       },
       {
+        "key": "probe_models",
+        "value": "none",
+        "source": "default"
+      },
+      {
         "key": "usage_max_age",
         "value": "2m",
         "source": "pool"

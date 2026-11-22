@@ -52,7 +52,7 @@ var (
 // applies to pools only, so it lives here rather than under agx login,
 // whose subcommands treat a login as a noun.
 func (c *cliCtx) poolCmd() *cobra.Command {
-	return group("pool", "Login pools: list them, show their settings, see which member they pick",
+	return group("pool", "Login pools: list them, show their settings, see which member they pick, write a preset, prune ended overrides",
 		c.poolListCmd(), c.poolShowCmd(), c.poolPickCmd(), c.poolPresetCmd(), c.poolPruneCmd(),
 	)
 }

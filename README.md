@@ -218,7 +218,7 @@ Every command takes named flags only; a bare `agx`, or a bare group such as `agx
 | [`agx live`](docs/commands/live.md) | Running live and pool sessions: list, show, switch the login, pin a pool member with `--pool-only` |
 | [`agx profile`](docs/commands/profile.md) | Profiles, a name for one home plus launch defaults: list, show, add, import, edit, remove, use |
 | [`agx login`](docs/commands/login.md) | Logins, what a launch authenticates with: list, show, add, edit, remove, use, check, token |
-| [`agx pool`](docs/commands/pool.md) | Login pools: list, show their settings, pick (which member a pool uses now, and why; `--pool-only NAME` for one pinned member) |
+| [`agx pool`](docs/commands/pool.md) | Login pools: list, show their settings, pick (which member a pool uses now, and why; `--pool-only NAME` for one pinned member), preset (a named set of rule values), prune (remove overrides that have ended) |
 | [`agx project`](docs/commands/project.md) | Folder bindings per agent: list, show, use, remove |
 | [`agx agent`](docs/commands/setup.md#agx-agent-list) | Known agents and their capabilities: list, show |
 | [`agx doctor`](docs/commands/setup.md#agx-doctor) | Local checks: config, references, binaries, homes, run folders |
@@ -329,10 +329,21 @@ Yes, with a login pool: a login of kind `pool` lists your own Claude logins and 
 
 ### Can a pool use a teammate's account more on weekends?
 
-Yes, with a schedule: on the days and hours it names, its caps replace the members' caps. If your teammates work Monday to Friday, raise their 5-hour cap on the weekend but not their weekly cap, whose room still has to last their week. The one exception is an account whose week resets before the weekend is over: its room is lost at that reset before its teammate is back, so `week_before_reset=95` gives that account alone a weekly cap of 95 at once. The schedule stops 5 hours before Monday, so their first 5-hour window on Monday is fresh. `agx pool pick --id auto` then shows `caps 95 (schedule weekend until Sun 19:00)`, and for an account resetting during the weekend `weekly cap 95% (schedule weekend: resets before it ends)`. Why these caps, and what they did in the simulator, is in [schedules and overrides](docs/guides/pool-rules.md#use-teammates-accounts-more-on-their-days-off).
+Yes, with a schedule: on the days and hours it names, its caps replace the members' caps. If your teammates work Monday to Friday, raise their 5-hour cap on the weekend but not their weekly cap, whose room still has to last their week. The one exception is an account whose week resets before the weekend is over: its room is lost at that reset before its teammate is back, so `week_before_reset=95` gives that account alone a weekly cap of 95 at once. The schedule stops 5 hours before Monday (`release_before`, default `5h` when it raises `short`), so their first 5-hour window on Monday is fresh. `agx pool pick --id auto` then shows `caps 95 (schedule weekend until Sun 19:00)`, and for an account resetting during the weekend `weekly cap 95% (schedule weekend: resets before it ends)`. Why these caps, and what they did in the simulator, is in [schedules and overrides](docs/guides/pool-rules.md#use-teammates-accounts-more-on-their-days-off).
 
 ```sh
 agx login edit --id auto --pool-timezone Europe/Istanbul --pool-schedule 'weekend days=sat,sun members=shared short=95 week_before_reset=95'
+```
+
+### How do I change one value of a schedule?
+
+Give the schedule's name and only that key: `--pool-schedule` changes the keys it names and keeps every other one (days, hours, members, `timezone`, the other caps, `release_before`). `key=` with nothing after it removes that key, and `--pool-schedule-replace` writes the whole schedule when you mean to drop the rest. Each changed key prints its own before/after line, so try it with `--dry-run` first. See [change one value of a schedule](docs/guides/pool-rules.md#change-one-value-of-a-schedule).
+
+```sh
+agx login edit --id auto --pool-schedule 'weekend week_before_reset=90' --dry-run
+#   pool.schedules.weekend.caps.week_before_reset  95  ->  90
+agx login edit --id auto --pool-schedule 'weekend timezone='     # the pool's zone applies again
+agx login edit --id auto --pool-schedule-replace 'weekend days=sat,sun members=shared short=95'
 ```
 
 ### Can a pool use one person's account fully today?
@@ -346,7 +357,19 @@ agx login edit --id auto --pool-clear-override carol    # end it early
 
 ### How does a pool decide, and can I change it?
 
-Every rule is a config value with a default, printed with its source by `agx pool show --id POOL`: `order` (`urgency`: the most room to lose per hour first; or `deadline`), `week_relax_window` and `week_relax_max` (a member's weekly cap rises to 95 over the last 24 hours before its reset), `max_sessions` (4 sessions per member before the next), `sticky` and `sticky_leave_ratio`, the borrow window and the caps (own members 95/98, shared 50/70). There is no strategy switch: `agx pool preset --name classic --id POOL` writes the rules agx used before v0.4.16 as ordinary keys, and `--name recommended` writes the defaults. Heavy-use teams can lower teammates' weekly cap to 60 (`agx login edit --id POOL --pool-group-cap-week shared=60`). See [How the pool chooses](docs/guides/pool-rules.md).
+Every rule is a config value with a default, printed with its source by `agx pool show --id POOL`: `order` (`urgency`: the most room to lose per hour first, after the members within `deadline_window` (24h) of their weekly reset with at least `deadline_min_room` (2%) of room, soonest reset first; or `deadline`: the soonest reset first), `week_relax_window` and `week_relax_max` (a member's weekly cap rises to 95 over the last 24 hours before its reset), `max_sessions` (4 sessions per member before the next), `sticky` (a session stays on its member, keeping its prompt cache) and `sticky_leave_ratio` (it leaves only for a member 3 times as urgent), the borrow window and the caps (own members 95/98, shared 50/70). There is no strategy switch: `agx pool preset --name classic --id POOL` writes the rules agx used before v0.4.16 as ordinary keys, and `--name recommended` writes the defaults. Heavy-use teams can lower teammates' weekly cap to 60 (`agx login edit --id POOL --pool-group-cap-week shared=60`). See [How the pool chooses](docs/guides/pool-rules.md).
+
+### My accounts are on different plans. Can the pool weigh them?
+
+Yes: give each member its `capacity`, its plan size relative to the others (only ratios matter: Pro 1, Max 5x 5, Max 20x 20). A Max 20x account's percent then counts four times a Max 5x one's, so its room weighs more in the order. Without it every member counts the same. See [every value](docs/guides/pool-rules.md#every-value-and-its-default) and the [example](examples/acct-pool-rules/README.md).
+
+```sh
+agx login edit --id auto --pool-capacity alice=20 --pool-capacity carol=5
+```
+
+### Does agx keep a history of the accounts' usage?
+
+Yes, at no extra cost: every answered probe adds a point per member (time, probe model, each window's percent and reset) to `~/.agx/cache/login-usage-history.jsonc`, at most one every 10 minutes, 8 days kept, never a token. A pool's `log` line carries the picked member's usage too. Nothing reads the history to pick and no agx command prints it yet; it is there to check the pool's assumptions later. See [usage history](docs/guides/pool-rules.md#usage-history).
 
 ### Does a pool see per-model limits such as Fable's own week?
 

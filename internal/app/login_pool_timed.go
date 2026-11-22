@@ -16,17 +16,22 @@ import (
 // "Schedules and overrides"): --until turns the per-member cap flags
 // into an override that ends, --pool-clear-override ends one early,
 // --pool-timezone sets the pool's zone, and --pool-schedule /
-// --pool-schedule-remove add, replace and remove schedules.
+// --pool-schedule changes the named keys of a schedule (or creates it),
+// --pool-schedule-replace writes a whole one and --pool-schedule-remove
+// removes one.
 const (
 	flagPoolUntil          = "--until"
 	flagPoolClearOverride  = "--pool-clear-override"
 	flagPoolTimezone       = "--pool-timezone"
 	flagPoolSchedule       = "--pool-schedule"
 	flagPoolScheduleRemove = "--pool-schedule-remove"
+	// flagPoolScheduleReplace writes the whole schedule: the keys it does
+	// not give are dropped (--pool-schedule keeps them).
+	flagPoolScheduleReplace = "--pool-schedule-replace"
 )
 
 // poolTimedFlagsText names the timed-cap flags in "nothing to change".
-const poolTimedFlagsText = flagPoolUntil + ", " + flagPoolClearOverride + ", " + flagPoolTimezone + ", " + flagPoolSchedule + ", " + flagPoolScheduleRemove
+const poolTimedFlagsText = flagPoolUntil + ", " + flagPoolClearOverride + ", " + flagPoolTimezone + ", " + flagPoolSchedule + ", " + flagPoolScheduleReplace + ", " + flagPoolScheduleRemove
 
 // Keys the timed-cap flags write inside logins.<name>.pool.
 const (
@@ -51,11 +56,8 @@ const (
 	schedListSep = ","
 )
 
-// scheduleKeys are the keys a --pool-schedule value may give.
-var scheduleKeys = []string{schedKeyDays, schedKeyHours, schedKeyMembers, schedKeyTimezone, schedKeyShort, schedKeyWeek, schedKeyWeekRelaxMax, schedKeyBeforeReset, schedKeyReleaseBefore}
-
 // scheduleHelp is how a --pool-schedule value is written.
-const scheduleHelp = `write it as "NAME days=sat,sun [hours=00:00-24:00] members=shared [timezone=Europe/Istanbul] [short=95] [week=80] [week_relax_max=95] [week_before_reset=95] [release_before=5h]"`
+const scheduleHelp = `write it as "NAME key=value …" with keys days=sat,sun, hours=00:00-24:00, members=shared, timezone=Europe/Istanbul, short=95, week=80, week_relax_max=95, week_before_reset=95, release_before=5h; a new schedule needs days, members and a cap, and key= removes a key`
 
 // PoolTimedSettings are the timed-cap flags; nil = not given.
 type PoolTimedSettings struct {
@@ -68,15 +70,19 @@ type PoolTimedSettings struct {
 	ClearOverride []string
 	// Timezone is the pool's IANA zone ("" removes it: local time).
 	Timezone *string
-	// Schedules add or replace schedules by name ("NAME key=value …").
+	// Schedules change the given keys of schedules by name, or create
+	// them ("NAME key=value …"; key= removes a key).
 	Schedules []string
+	// ScheduleReplace writes whole schedules by name: keys not given are
+	// dropped.
+	ScheduleReplace []string
 	// ScheduleRemove removes schedules by name.
 	ScheduleRemove []string
 }
 
 // given reports any timed-cap flag.
 func (s PoolTimedSettings) given() bool {
-	return s.Until != nil || s.ClearOverride != nil || s.Timezone != nil || s.Schedules != nil || s.ScheduleRemove != nil
+	return s.Until != nil || s.ClearOverride != nil || s.Timezone != nil || s.Schedules != nil || s.ScheduleReplace != nil || s.ScheduleRemove != nil
 }
 
 // setValue plans setting keys to an override or the schedule list
@@ -171,10 +177,215 @@ func (p *poolPlan) planTimezone(cur config.Pool, v string) error {
 	return nil
 }
 
-// planSchedules plans --pool-schedule (add or replace by name) and
-// --pool-schedule-remove; the list is written whole, and removed when
-// left empty. Each schedule is checked as config would load it.
+// scheduleField is one key of a --pool-schedule value: how it shows in a
+// before/after line and how it is set or removed on a schedule.
+type scheduleField struct {
+	// key is the --pool-schedule key ("short"); label is its path inside
+	// the schedule's config entry ("caps.short").
+	key, label string
+	// text shows the field's value ("" = absent).
+	text func(*config.PoolSchedule) string
+	// set writes v ("" removes the field); what names the flag and key in
+	// an error.
+	set func(s *config.PoolSchedule, what, v string) error
+}
+
+// stringField is a string key of a schedule (hours, timezone,
+// release_before): checked with the whole schedule, by config's rules.
+func stringField(key string, slot func(*config.PoolSchedule) *string) scheduleField {
+	return scheduleField{key: key, label: key,
+		text: func(s *config.PoolSchedule) string { return *slot(s) },
+		set:  func(s *config.PoolSchedule, _, v string) error { *slot(s) = v; return nil }}
+}
+
+// listField is a comma-separated key (days, members); norm cleans each
+// value (days are case-free).
+func listField(key string, slot func(*config.PoolSchedule) *[]string, norm func(string) string) scheduleField {
+	return scheduleField{key: key, label: key,
+		text: func(s *config.PoolSchedule) string { return strings.Join(*slot(s), schedListSep) },
+		set: func(s *config.PoolSchedule, _, v string) error {
+			*slot(s) = nil
+			if v != "" {
+				*slot(s) = strings.Split(norm(v), schedListSep)
+			}
+			return nil
+		}}
+}
+
+// capField is a cap inside the schedule's caps block: a percent.
+func capField(key string, slot func(*config.PoolSchedule) **float64) scheduleField {
+	return scheduleField{key: key, label: keyPoolCaps + keySep + key,
+		text: func(s *config.PoolSchedule) string { return optPercent(*slot(s)) },
+		set: func(s *config.PoolSchedule, what, v string) error {
+			if v == "" {
+				*slot(s) = nil
+				return nil
+			}
+			n, err := parsePercent(what, v)
+			if err != nil {
+				return err
+			}
+			*slot(s) = &n
+			return nil
+		}}
+}
+
+// keyPoolCaps is a schedule's caps block.
+const keyPoolCaps = "caps"
+
+// noNorm keeps a list value as given (member names are case-sensitive).
+func noNorm(v string) string { return v }
+
+// scheduleFields are the keys of a --pool-schedule value, in the order a
+// before/after listing shows them.
+var scheduleFields = []scheduleField{
+	listField(schedKeyDays, func(s *config.PoolSchedule) *[]string { return &s.Days }, strings.ToLower),
+	stringField(schedKeyHours, func(s *config.PoolSchedule) *string { return &s.Hours }),
+	listField(schedKeyMembers, func(s *config.PoolSchedule) *[]string { return &s.Members }, noNorm),
+	stringField(schedKeyTimezone, func(s *config.PoolSchedule) *string { return &s.Timezone }),
+	capField(schedKeyShort, func(s *config.PoolSchedule) **float64 { return &s.Caps.Short }),
+	capField(schedKeyWeek, func(s *config.PoolSchedule) **float64 { return &s.Caps.Week }),
+	capField(schedKeyWeekRelaxMax, func(s *config.PoolSchedule) **float64 { return &s.Caps.WeekRelaxMax }),
+	capField(schedKeyBeforeReset, func(s *config.PoolSchedule) **float64 { return &s.Caps.WeekBeforeReset }),
+	stringField(schedKeyReleaseBefore, func(s *config.PoolSchedule) *string { return &s.ReleaseBefore }),
+}
+
+// scheduleKeys are the keys a --pool-schedule value may give.
+func scheduleKeys() []string {
+	out := make([]string, 0, len(scheduleFields))
+	for _, f := range scheduleFields {
+		out = append(out, f.key)
+	}
+	return out
+}
+
+// findScheduleField finds a field by its key.
+func findScheduleField(key string) (scheduleField, bool) {
+	i := slices.IndexFunc(scheduleFields, func(f scheduleField) bool { return f.key == key })
+	if i < 0 {
+		return scheduleField{}, false
+	}
+	return scheduleFields[i], true
+}
+
+// scheduleEdit is one --pool-schedule or --pool-schedule-replace value:
+// the schedule's name and its key=value pairs in the order given ("" =
+// remove the key).
+type scheduleEdit struct {
+	flag, name string
+	keys, vals []string
+}
+
+// what names the flag and schedule in a message.
+func (e scheduleEdit) what() string { return e.flag + " " + e.name }
+
+// removes reports a key=, which removes that key.
+func (e scheduleEdit) removes(key string) bool {
+	i := slices.Index(e.keys, key)
+	return i >= 0 && e.vals[i] == ""
+}
+
+// parseScheduleEdit reads one value: the name first, then key=value pairs
+// of known keys, each once; key= (empty) removes the key.
+func parseScheduleEdit(flag, spec string) (scheduleEdit, error) {
+	fields := strings.Fields(spec)
+	if len(fields) == 0 || strings.Contains(fields[0], "=") {
+		return scheduleEdit{}, apperr.Usage(fmt.Sprintf("%s %q: the schedule's name comes first; %s", flag, spec, scheduleHelp))
+	}
+	e := scheduleEdit{flag: flag, name: fields[0]}
+	for _, f := range fields[1:] {
+		k, v, ok := strings.Cut(f, "=")
+		_, known := findScheduleField(k)
+		switch {
+		case !ok:
+			return e, apperr.Usage(fmt.Sprintf("%s: %q is not key=value; %s", e.what(), f, scheduleHelp))
+		case !known:
+			return e, apperr.Usage(fmt.Sprintf("%s: unknown key %q (keys: %s)", e.what(), k, strings.Join(scheduleKeys(), ", ")))
+		case slices.Contains(e.keys, k):
+			return e, apperr.Usage(fmt.Sprintf("%s: %s is given twice", e.what(), k))
+		}
+		e.keys, e.vals = append(e.keys, k), append(e.vals, v)
+	}
+	return e, nil
+}
+
+// apply writes the edit's keys onto sc (a copy of the schedule as it is,
+// or a new one): the keys it does not give stay as they are.
+func (e scheduleEdit) apply(sc config.PoolSchedule) (config.PoolSchedule, error) {
+	sc.Name = e.name
+	for i, k := range e.keys {
+		f, _ := findScheduleField(k) // every key was checked by parseScheduleEdit
+		if err := f.set(&sc, e.what()+" "+k, e.vals[i]); err != nil {
+			return sc, err
+		}
+	}
+	return sc, nil
+}
+
+// checkSchedule checks a schedule as this command leaves it, as config
+// would load it: days, members and a cap present (a key= that removed one
+// is named), members of the pool or a group, and config's own checks of
+// days, hours, zone and duration.
+func (e scheduleEdit) checkSchedule(sc config.PoolSchedule, members []string) error {
+	what := e.what()
+	removed := func(key, need string) error {
+		if e.removes(key) {
+			return apperr.Usage(fmt.Sprintf("%s: %s= removes the schedule's %s, but a schedule needs them: give %s=… instead, or remove the schedule with %s %s", what, key, key, key, flagPoolScheduleRemove, e.name))
+		}
+		return apperr.Usage(fmt.Sprintf("%s: give %s=… (%s)", what, key, need))
+	}
+	switch {
+	case len(sc.Days) == 0:
+		return removed(schedKeyDays, strings.Join(pool.DayNames(), schedListSep))
+	case len(sc.Members) == 0:
+		return removed(schedKeyMembers, "member names, own or shared")
+	case sc.Caps == (config.PoolScheduleCaps{}):
+		var gone []string
+		for _, k := range []string{schedKeyShort, schedKeyWeek, schedKeyWeekRelaxMax, schedKeyBeforeReset} {
+			if e.removes(k) {
+				gone = append(gone, k+"=")
+			}
+		}
+		if len(gone) > 0 {
+			return apperr.Usage(fmt.Sprintf("%s: %s leaves the schedule no cap, but a schedule needs one: give a cap a number instead, or remove the schedule with %s %s", what, strings.Join(gone, " "), flagPoolScheduleRemove, e.name))
+		}
+		return apperr.Usage(fmt.Sprintf("%s: give at least one cap: short=, week=, week_relax_max= or week_before_reset=", what))
+	}
+	for _, m := range sc.Members {
+		if m != string(pool.GroupOwn) && m != string(pool.GroupShared) && !slices.Contains(members, m) {
+			return apperr.Usage(fmt.Sprintf("%s: %s is neither a member of the pool (%s) nor a group (own, shared)", what, m, strings.Join(members, ", ")))
+		}
+	}
+	if _, err := config.ScheduleRules([]config.PoolSchedule{sc}); err != nil {
+		msg := strings.TrimPrefix(strings.TrimPrefix(err.Error(), "pool: "), "schedule "+sc.Name+": ")
+		return apperr.Usage(what + ": " + strings.TrimPrefix(msg, "schedule "+sc.Name+" "))
+	}
+	return nil
+}
+
+// planSchedules plans --pool-schedule (change the named keys of a
+// schedule, or create it), --pool-schedule-replace (the whole schedule)
+// and --pool-schedule-remove. A name may come once per command, so no
+// value depends on the order of the flags. The list is written whole,
+// and removed when left empty; the before/after lines name each changed
+// key of each schedule, so a removed value shows.
 func (p *poolPlan) planSchedules(cur config.Pool, members []string, s PoolTimedSettings) error {
+	var edits []scheduleEdit
+	for _, f := range []struct {
+		flag  string
+		specs []string
+	}{{flagPoolSchedule, s.Schedules}, {flagPoolScheduleReplace, s.ScheduleReplace}} {
+		for _, spec := range f.specs {
+			e, err := parseScheduleEdit(f.flag, spec)
+			if err != nil {
+				return err
+			}
+			edits = append(edits, e)
+		}
+	}
+	if err := scheduleNamesOnce(edits, s.ScheduleRemove); err != nil {
+		return err
+	}
 	next := slices.Clone(cur.Schedules)
 	for _, name := range s.ScheduleRemove {
 		i := slices.IndexFunc(next, func(x config.PoolSchedule) bool { return x.Name == name })
@@ -183,24 +394,87 @@ func (p *poolPlan) planSchedules(cur config.Pool, members []string, s PoolTimedS
 		}
 		next = slices.Delete(next, i, i+1)
 	}
-	for _, spec := range s.Schedules {
-		sc, err := parseSchedule(spec, members)
+	for _, e := range edits {
+		i := slices.IndexFunc(next, func(x config.PoolSchedule) bool { return x.Name == e.name })
+		var base config.PoolSchedule
+		if i >= 0 && e.flag == flagPoolSchedule {
+			base = next[i]
+		}
+		sc, err := e.apply(base)
 		if err != nil {
 			return err
 		}
-		if i := slices.IndexFunc(next, func(x config.PoolSchedule) bool { return x.Name == sc.Name }); i >= 0 {
+		if err := e.checkSchedule(sc, members); err != nil {
+			return err
+		}
+		if i >= 0 {
 			next[i] = sc
 		} else {
 			next = append(next, sc)
 		}
 	}
-	before, after := scheduleList(cur.Schedules), scheduleList(next)
-	e := setValue(p.at(keyPoolSchedules), next)
-	if len(next) == 0 {
-		e = deleteIf(p.at(keyPoolSchedules), len(cur.Schedules) > 0)
+	changed := p.scheduleChanges(cur.Schedules, next)
+	switch {
+	case !changed:
+	case len(next) == 0:
+		p.edits = append(p.edits, deleteIf(p.at(keyPoolSchedules), true))
+	default:
+		p.edits = append(p.edits, setValue(p.at(keyPoolSchedules), next))
 	}
-	p.change(keyPoolSchedules, before, after, e)
 	return nil
+}
+
+// scheduleNamesOnce refuses a schedule named twice in one command (in
+// any of --pool-schedule, --pool-schedule-replace and
+// --pool-schedule-remove): the result would depend on the flags' order.
+func scheduleNamesOnce(edits []scheduleEdit, removes []string) error {
+	seen := map[string]string{}
+	check := func(flag, name string) error {
+		if first, ok := seen[name]; ok {
+			return apperr.Conflict(fmt.Sprintf("%s %s and %s %s both change schedule %s; give each schedule once (every key in one value)", first, name, flag, name, name))
+		}
+		seen[name] = flag
+		return nil
+	}
+	for _, n := range removes {
+		if err := check(flagPoolScheduleRemove, n); err != nil {
+			return err
+		}
+	}
+	for _, e := range edits {
+		if err := check(e.flag, e.name); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// scheduleChanges records a before/after line for each changed key of
+// each schedule (pool.schedules.NAME.KEY), the old schedules first in
+// file order, then new ones; it reports whether anything changed.
+func (p *poolPlan) scheduleChanges(before, after []config.PoolSchedule) bool {
+	var names []string
+	for _, list := range [][]config.PoolSchedule{before, after} {
+		for _, sc := range list {
+			if !slices.Contains(names, sc.Name) {
+				names = append(names, sc.Name)
+			}
+		}
+	}
+	find := func(list []config.PoolSchedule, name string) *config.PoolSchedule {
+		if i := slices.IndexFunc(list, func(x config.PoolSchedule) bool { return x.Name == name }); i >= 0 {
+			return &list[i]
+		}
+		return &config.PoolSchedule{}
+	}
+	n := len(p.changes)
+	for _, name := range names {
+		old, cur := find(before, name), find(after, name)
+		for _, f := range scheduleFields {
+			p.change(keyPoolSchedules+keySep+name+keySep+f.label, f.text(old), f.text(cur))
+		}
+	}
+	return len(p.changes) > n
 }
 
 // scheduleNames lists schedule names for a message.
@@ -213,98 +487,6 @@ func scheduleNames(in []config.PoolSchedule) string {
 		names = append(names, s.Name)
 	}
 	return strings.Join(names, ", ")
-}
-
-// scheduleList is the schedules as one before/after value: each as its
-// --pool-schedule value, "; " between them.
-func scheduleList(in []config.PoolSchedule) string {
-	parts := make([]string, 0, len(in))
-	for _, s := range in {
-		parts = append(parts, scheduleSpec(s))
-	}
-	return strings.Join(parts, "; ")
-}
-
-// scheduleSpec writes a schedule as a --pool-schedule value.
-func scheduleSpec(s config.PoolSchedule) string {
-	parts := []string{s.Name, schedKeyDays + "=" + strings.Join(s.Days, schedListSep)}
-	add := func(k, v string) {
-		if v != "" {
-			parts = append(parts, k+"="+v)
-		}
-	}
-	add(schedKeyHours, s.Hours)
-	add(schedKeyMembers, strings.Join(s.Members, schedListSep))
-	add(schedKeyTimezone, s.Timezone)
-	add(schedKeyShort, optPercent(s.Caps.Short))
-	add(schedKeyWeek, optPercent(s.Caps.Week))
-	add(schedKeyWeekRelaxMax, optPercent(s.Caps.WeekRelaxMax))
-	add(schedKeyBeforeReset, optPercent(s.Caps.WeekBeforeReset))
-	add(schedKeyReleaseBefore, s.ReleaseBefore)
-	return strings.Join(parts, " ")
-}
-
-// parseSchedule reads one --pool-schedule value and checks it: known
-// keys, days, hours, zone and duration, caps from 0 to 100, members of
-// the pool or a group name.
-func parseSchedule(spec string, members []string) (config.PoolSchedule, error) {
-	fields := strings.Fields(spec)
-	if len(fields) == 0 || strings.Contains(fields[0], "=") {
-		return config.PoolSchedule{}, apperr.Usage(fmt.Sprintf("%s %q: the schedule's name comes first; %s", flagPoolSchedule, spec, scheduleHelp))
-	}
-	sc := config.PoolSchedule{Name: fields[0]}
-	what := flagPoolSchedule + " " + sc.Name
-	seen := map[string]bool{}
-	for _, f := range fields[1:] {
-		k, v, ok := strings.Cut(f, "=")
-		switch {
-		case !ok || v == "":
-			return sc, apperr.Usage(fmt.Sprintf("%s: %q is not key=value; %s", what, f, scheduleHelp))
-		case !slices.Contains(scheduleKeys, k):
-			return sc, apperr.Usage(fmt.Sprintf("%s: unknown key %q (keys: %s)", what, k, strings.Join(scheduleKeys, ", ")))
-		case seen[k]:
-			return sc, apperr.Usage(fmt.Sprintf("%s: %s is given twice", what, k))
-		}
-		seen[k] = true
-		switch k {
-		case schedKeyDays:
-			sc.Days = strings.Split(strings.ToLower(v), schedListSep)
-		case schedKeyHours:
-			sc.Hours = v
-		case schedKeyMembers:
-			sc.Members = strings.Split(v, schedListSep)
-		case schedKeyTimezone:
-			sc.Timezone = v
-		case schedKeyReleaseBefore:
-			sc.ReleaseBefore = v
-		default:
-			n, err := parsePercent(what+" "+k, v)
-			if err != nil {
-				return sc, err
-			}
-			slot := map[string]**float64{schedKeyShort: &sc.Caps.Short, schedKeyWeek: &sc.Caps.Week, schedKeyWeekRelaxMax: &sc.Caps.WeekRelaxMax,
-				schedKeyBeforeReset: &sc.Caps.WeekBeforeReset}[k]
-			*slot = &n
-		}
-	}
-	switch {
-	case !seen[schedKeyDays]:
-		return sc, apperr.Usage(fmt.Sprintf("%s: give days=… (%s)", what, strings.Join(pool.DayNames(), schedListSep)))
-	case !seen[schedKeyMembers]:
-		return sc, apperr.Usage(fmt.Sprintf("%s: give members=… (member names, own or shared)", what))
-	case sc.Caps == (config.PoolScheduleCaps{}):
-		return sc, apperr.Usage(fmt.Sprintf("%s: give at least one cap: short=, week=, week_relax_max= or week_before_reset=", what))
-	}
-	for _, m := range sc.Members {
-		if m != string(pool.GroupOwn) && m != string(pool.GroupShared) && !slices.Contains(members, m) {
-			return sc, apperr.Usage(fmt.Sprintf("%s: %s is neither a member of the pool (%s) nor a group (own, shared)", what, m, strings.Join(members, ", ")))
-		}
-	}
-	if _, err := config.ScheduleRules([]config.PoolSchedule{sc}); err != nil {
-		msg := strings.TrimPrefix(strings.TrimPrefix(err.Error(), "pool: "), "schedule "+sc.Name+": ")
-		return sc, apperr.Usage(what + ": " + strings.TrimPrefix(msg, "schedule "+sc.Name+" "))
-	}
-	return sc, nil
 }
 
 // planOverrides puts the cap flags of a command with --until into each

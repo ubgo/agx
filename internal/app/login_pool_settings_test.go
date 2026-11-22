@@ -412,7 +412,7 @@ func TestDryRunIsForPools(t *testing.T) {
 		t.Errorf("pool flag on a token login: %v", err)
 	}
 	_, err = a.LoginEdit(ctx, LoginEditOptions{ID: "auto"})
-	if e := apperr.As(err); e == nil || !strings.HasPrefix(e.Message, "nothing to change: give --pool-own, --pool-shared, --pool-force, --pool-cap-short, --pool-cap-week, --pool-disable, --pool-enable, --pool-default-short, --pool-default-week, --pool-short-cutoff, --pool-borrow-window, --pool-usage-max-age, --pool-key-ttl, --pool-picker, --pool-order, --pool-deadline-window, --pool-deadline-min-room, --pool-week-relax-window, --pool-max-sessions, --pool-sticky, --pool-sticky-leave-ratio, --pool-default-week-relax, --pool-cap-week-relax, --pool-capacity, --pool-group-cap-short, --pool-group-cap-week, --pool-group-cap-week-relax, --pool-probe-model, --until, --pool-clear-override, --pool-timezone, --pool-schedule, --pool-schedule-remove or --account") {
+	if e := apperr.As(err); e == nil || !strings.HasPrefix(e.Message, "nothing to change: give --pool-own, --pool-shared, --pool-force, --pool-cap-short, --pool-cap-week, --pool-disable, --pool-enable, --pool-default-short, --pool-default-week, --pool-short-cutoff, --pool-borrow-window, --pool-usage-max-age, --pool-key-ttl, --pool-picker, --pool-order, --pool-deadline-window, --pool-deadline-min-room, --pool-week-relax-window, --pool-max-sessions, --pool-sticky, --pool-sticky-leave-ratio, --pool-default-week-relax, --pool-cap-week-relax, --pool-capacity, --pool-group-cap-short, --pool-group-cap-week, --pool-group-cap-week-relax, --pool-probe-model, --until, --pool-clear-override, --pool-timezone, --pool-schedule, --pool-schedule-replace, --pool-schedule-remove or --account") {
 		t.Errorf("nothing: %v", err)
 	}
 	if readConfig(t, home) != flagConfig {

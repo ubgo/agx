@@ -67,7 +67,7 @@ tasks:
   mutation:
     desc: Mutation check (opt-in, not in check) - break the pool rules on purpose; the tests must catch every break
     cmds:
-      - go test -tags mutation -count=1 -timeout 30m -run TestMutation -v ./pool/
+      - go test -tags mutation -count=1 -timeout 90m -run TestMutation -v ./pool/
 
   sim:
     desc: Run the login-pool simulator over pool/testdata/sim (every scenario, every strategy, the knob sweeps) and write pool/testdata/sim/RESULTS.md; a few minutes. Flags after -- (task sim -- -scenario small-mixed) print to stdout instead

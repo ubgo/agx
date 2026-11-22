@@ -86,7 +86,8 @@ Add a login. Cost W (X with `--login-setup`). Guide: [Adding a login](../logins.
 | `--until` | make this command's `--pool-cap-short`, `--pool-cap-week` and `--pool-cap-week-relax` an override that ends then (`accounts.NAME.override`): a duration (`6h`), a date and time (`2026-11-23T08:00`), `'DAY HH:MM'` (`'sun 23:59'`, the next such moment) or `HH:MM`, in the pool's timezone. An override that still applies keeps its other caps and takes the new end; `NAME=` drops that cap from it. See [schedules and overrides](../guides/pool-rules.md#schedules-and-overrides) |
 | `--pool-clear-override` | end a member's override now (repeat) |
 | `--pool-timezone` | the IANA time zone of the pool's schedules and `--until` times, like `Europe/Istanbul`; empty: this machine's local time |
-| `--pool-schedule` | add or replace a schedule by name: `'NAME days=sat,sun [hours=00:00-24:00] members=shared [timezone=ZONE] [short=N] [week=N] [week_relax_max=N] [week_before_reset=N] [release_before=5h]'` (days and members comma-separated; at least one cap; `week_before_reset` is the weekly cap of members whose weekly reset comes before the schedule ends) (repeat) |
+| `--pool-schedule` | change the keys it gives of the schedule with that name and keep the rest, or create it: `'NAME [days=sat,sun] [hours=00:00-24:00] [members=shared] [timezone=ZONE] [short=N] [week=N] [week_relax_max=N] [week_before_reset=N] [release_before=5h]'` (days and members comma-separated; `week_before_reset` is the weekly cap of members whose weekly reset comes before the schedule ends). `key=` (empty) removes that key: `'weekend timezone='`, `'weekend week='`. A new schedule needs `days`, `members` and a cap; a change that leaves a schedule without one is refused. `'weekend week_before_reset=90'` changes that cap alone. Each changed key prints its own before/after line (`pool.schedules.weekend.caps.week_before_reset 95 -> 90`). A schedule may be named once per command across `--pool-schedule`, `--pool-schedule-replace` and `--pool-schedule-remove` (exit 2 otherwise) (repeat) |
+| `--pool-schedule-replace` | write the whole schedule with that name, dropping every key it does not give, or create it: `'NAME days=sat,sun members=shared short=95 …'` (same keys and checks as `--pool-schedule`) (repeat) |
 | `--pool-schedule-remove` | remove a schedule by name (repeat) |
 | `--dry-run` | with `--kind pool`: show the keys it would write; write nothing |
 | `--token-ref` | the token as a reference (`${gopass:…}`, `$(…)`, `${VAR}`) or a plain value, kept in config |
@@ -215,7 +216,8 @@ Rotate or change a login. Every profile, default and binding that uses it keeps 
 | `--until` | make this command's `--pool-cap-short`, `--pool-cap-week` and `--pool-cap-week-relax` an override that ends then (`accounts.NAME.override`): a duration (`6h`), a date and time (`2026-11-23T08:00`), `'DAY HH:MM'` (`'sun 23:59'`, the next such moment) or `HH:MM`, in the pool's timezone. An override that still applies keeps its other caps and takes the new end; `NAME=` drops that cap from it. See [schedules and overrides](../guides/pool-rules.md#schedules-and-overrides) |
 | `--pool-clear-override` | end a member's override now (repeat) |
 | `--pool-timezone` | the IANA time zone of the pool's schedules and `--until` times, like `Europe/Istanbul`; empty: this machine's local time |
-| `--pool-schedule` | add or replace a schedule by name: `'NAME days=sat,sun [hours=00:00-24:00] members=shared [timezone=ZONE] [short=N] [week=N] [week_relax_max=N] [week_before_reset=N] [release_before=5h]'` (days and members comma-separated; at least one cap; `week_before_reset` is the weekly cap of members whose weekly reset comes before the schedule ends) (repeat) |
+| `--pool-schedule` | change the keys it gives of the schedule with that name and keep the rest, or create it: `'NAME [days=sat,sun] [hours=00:00-24:00] [members=shared] [timezone=ZONE] [short=N] [week=N] [week_relax_max=N] [week_before_reset=N] [release_before=5h]'` (days and members comma-separated; `week_before_reset` is the weekly cap of members whose weekly reset comes before the schedule ends). `key=` (empty) removes that key: `'weekend timezone='`, `'weekend week='`. A new schedule needs `days`, `members` and a cap; a change that leaves a schedule without one is refused. `'weekend week_before_reset=90'` changes that cap alone. Each changed key prints its own before/after line (`pool.schedules.weekend.caps.week_before_reset 95 -> 90`). A schedule may be named once per command across `--pool-schedule`, `--pool-schedule-replace` and `--pool-schedule-remove` (exit 2 otherwise) (repeat) |
+| `--pool-schedule-replace` | write the whole schedule with that name, dropping every key it does not give, or create it: `'NAME days=sat,sun members=shared short=95 …'` (same keys and checks as `--pool-schedule`) (repeat) |
 | `--pool-schedule-remove` | remove a schedule by name (repeat) |
 | `--dry-run` | on a pool: show the changes; write nothing |
 
@@ -282,6 +284,104 @@ agx: --key logins.team.pool.accounts.erin.week takes a number from 0 to 100, not
 $ agx config set --key logins.team.pool.accounts.erin.week --value high
 agx: --key logins.team.pool.accounts.erin.week takes a number from 0 to 100, not "high"
 [exit 2]
+```
+
+The rule and timed-cap flags are refused the same way: an unknown `--pool-order`, a `--pool-sticky` that is not `true` or `false`, a `--pool-capacity` of 0 or less, an unknown group in `--pool-group-cap-*` ([acct-pool-rules](../../examples/acct-pool-rules/README.md)); `--until` without a cap flag, in the past or unreadable, a `--pool-schedule` with an unknown day, bad hours, an unknown member, a cap over 100, a `key=` that leaves a schedule without its days, members or every cap, a schedule named twice in one command, and an unknown `--pool-timezone`:
+
+<!-- snippet: examples/acct-pool-schedules/session.txt#refusals -->
+```sh
+$ agx login edit --id auto --until 6h
+agx: --until ends the caps of this command's --pool-cap-short, --pool-cap-week or --pool-cap-week-relax NAME=N; give one
+[exit 2]
+
+$ agx login edit --id auto --pool-cap-short carol=95 --until 'someday 10:00'
+agx: --until "someday 10:00": "someday" is not a day (mon, tue, wed, thu, fri, sat, sun); use a duration ("6h"), a date and time ("2026-11-23T08:00"), "DAY HH:MM" ("sun 23:59") or "HH:MM"
+[exit 2]
+
+$ agx login edit --id auto --pool-cap-short carol=95 --until 2026-11-01T08:00
+agx: --until "2026-11-01T08:00" is not in the future
+[exit 2]
+
+$ agx login edit --id auto --pool-schedule 'late days=fri,sat2 members=shared short=90'
+agx: --pool-schedule late: day "sat2" is not one of mon, tue, wed, thu, fri, sat, sun
+[exit 2]
+
+$ agx login edit --id auto --pool-schedule 'late days=fri hours=25:00-02:00 members=shared short=90'
+agx: --pool-schedule late: hours "25:00-02:00": "25:00" is past 23:59 (24:00 only ends a window)
+[exit 2]
+
+$ agx login edit --id auto --pool-schedule 'late days=fri members=frank short=90'
+agx: --pool-schedule late: frank is neither a member of the pool (alice, carol, derek, erin, fiona) nor a group (own, shared)
+[exit 2]
+
+$ agx login edit --id auto --pool-schedule 'late days=fri members=shared short=190'
+agx: --pool-schedule late short: 190 is not a number from 0 to 100
+[exit 2]
+
+$ agx login edit --id auto --pool-schedule 'late days=fri members=shared week_before_reset=101'
+agx: --pool-schedule late week_before_reset: 101 is not a number from 0 to 100
+[exit 2]
+
+$ agx login edit --id auto --pool-schedule 'weekend days='
+agx: --pool-schedule weekend: days= removes the schedule's days, but a schedule needs them: give days=… instead, or remove the schedule with --pool-schedule-remove weekend
+[exit 2]
+
+$ agx login edit --id auto --pool-schedule 'weekend short= week_before_reset='
+agx: --pool-schedule weekend: short= week_before_reset= leaves the schedule no cap, but a schedule needs one: give a cap a number instead, or remove the schedule with --pool-schedule-remove weekend
+[exit 2]
+
+$ agx login edit --id auto --pool-schedule 'holiday days=fri members=shared'
+agx: --pool-schedule holiday: give at least one cap: short=, week=, week_relax_max= or week_before_reset=
+[exit 2]
+
+$ agx login edit --id auto --pool-schedule 'weekend short=90' --pool-schedule-remove weekend
+agx: --pool-schedule-remove weekend and --pool-schedule weekend both change schedule weekend; give each schedule once (every key in one value)
+[exit 2]
+
+$ agx login edit --id auto --pool-timezone Mars/Olympus
+agx: --pool-timezone: timezone "Mars/Olympus" is not an IANA time zone (like "Europe/Istanbul", "America/New_York", "UTC")
+[exit 2]
+```
+
+Change one key of a schedule and keep the rest, remove one with `key=`, or replace the whole schedule ([change one value of a schedule](../guides/pool-rules.md#change-one-value-of-a-schedule)):
+
+<!-- snippet: examples/acct-pool-schedules/session.txt#schedule-flags -->
+```sh
+$ agx login edit --id auto --pool-schedule 'weekend week_before_reset=90' --dry-run
+would change login auto (--dry-run)
+  pool.schedules.weekend.caps.week_before_reset  95  ->  90
+
+$ agx login edit --id auto --pool-schedule 'weekend hours=06:00-24:00 release_before=' --dry-run
+would change login auto (--dry-run)
+  pool.schedules.weekend.hours           —   ->  06:00-24:00
+  pool.schedules.weekend.release_before  5h  ->  —
+
+$ agx login edit --id auto --pool-schedule-replace 'weekend days=sat,sun members=shared short=95' --dry-run
+would change login auto (--dry-run)
+  pool.schedules.weekend.caps.week_before_reset  95  ->  —
+  pool.schedules.weekend.release_before          5h  ->  —
+
+$ agx login edit --id auto --pool-schedule 'nights days=mon,tue,wed,thu,fri hours=22:00-07:00 members=erin short=80' --dry-run
+would change login auto (--dry-run)
+  pool.schedules.nights.days        —  ->  mon,tue,wed,thu,fri
+  pool.schedules.nights.hours       —  ->  22:00-07:00
+  pool.schedules.nights.members     —  ->  erin
+  pool.schedules.nights.caps.short  —  ->  80
+
+$ agx login edit --id auto --pool-schedule 'holiday days=thu,fri members=shared short=95 week_before_reset=95' --dry-run
+would change login auto (--dry-run)
+  pool.schedules.holiday.days                    —  ->  thu,fri
+  pool.schedules.holiday.members                 —  ->  shared
+  pool.schedules.holiday.caps.short              —  ->  95
+  pool.schedules.holiday.caps.week_before_reset  —  ->  95
+
+$ agx login edit --id auto --pool-schedule-remove weekend --dry-run
+would change login auto (--dry-run)
+  pool.schedules.weekend.days                    sat,sun  ->  —
+  pool.schedules.weekend.members                 shared   ->  —
+  pool.schedules.weekend.caps.short              95       ->  —
+  pool.schedules.weekend.caps.week_before_reset  95       ->  —
+  pool.schedules.weekend.release_before          5h       ->  —
 ```
 
 Try it:
