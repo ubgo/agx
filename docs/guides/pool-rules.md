@@ -431,6 +431,7 @@ When several schedules at the same step set the same cap, the highest value wins
 - **Plans of different sizes.** Give each member its `capacity` (`--pool-capacity alice=20 --pool-capacity carol=5`): a Max 20x account's percent then counts four times a Max 5x one's. Without it the defaults still work; with it every group in the simulator did better.
 - **One teammate who wants their whole week.** `--pool-cap-week-relax erin=70` (their weekly cap or lower) turns the weekly relax off for them alone. A schedule with `week_before_reset` that names `shared` still raises their weekly cap when their week resets before it ends; name the other members in it instead if they work on those days.
 - **Urgency alone.** `--pool-deadline-window 0s` turns the deadline group off. In the simulator the two came out even (within 0.3% of cost in every group of pools, the same waste); the group makes the order follow the reset that loses room first, and it costs a little more teammate lockout in large teams.
+- **One account to its full limit, outside the pool.** Caps only apply to the pool's own picks. `agx run --login carol` runs one session on carol up to the vendor's limit and leaves the pool alone; it stops there instead of switching. The pool counts carol's usage and skips her once she is over her caps.
 - **The old behaviour.** `agx pool preset --name classic --id POOL` writes the rules agx used before v0.4.16 (soonest reset first, every session on one pick).
 
 ## Related

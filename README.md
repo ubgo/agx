@@ -273,6 +273,10 @@ agx never refreshes an OAuth token and prints one only when you ask: `agx login 
 
 `agx login list` says, in its DETECTED column: agx reads the token's public prefix (only the kind word is shown) and reports `oauth-token` for a setup-token billed to a plan, `api-key` for an Anthropic API key billed per use, or `unknown`. A gopass or `$(…)` reference is resolved for this only with `agx login list --verify`. An API key filed under `kind: oauth-token` is marked `(mismatch)`, refused at launch and by the live-login key helper, and never picked by a pool, unless you allow it with `--allow-api-key` for one run or `allow_api_key: true` on the login. See [Is a login billed per use?](docs/logins.md#is-a-login-billed-per-use).
 
+### Can I run one session on one account up to its full limit, outside the pool?
+
+Yes: `agx run --login carol` (or `agx new --login carol --name NAME`). The pool's caps (`short`, `week`, schedules, overrides) only decide which member a `--login auto` run gets; a run started on a login directly uses that account until the vendor's own limit and changes nothing in the pool. It does not move to another account when carol is used up; use `--login auto` for that. The pool still sees carol's usage, so it stops picking her for its own runs once she is over her caps. To raise carol's caps for the pool instead, use an override that ends: `agx login edit --id auto --pool-cap-short carol=99 --pool-cap-week carol=99 --until 'sun 23:59'`. See [Schedules and overrides](docs/guides/pool-rules.md#schedules-and-overrides).
+
 ### Does agx change my agent's settings or homes?
 
 No settings file is edited: `--setting`, `--option`, `--env` and the rest apply to one launch only, through a file in that launch's run folder or the agent's own flags. agx writes into an agent home only when you ask for it, for example `agx conversation move`, or `agx profile add` linking the default home's shared files into a new home (`--bare` skips that).
