@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -104,7 +105,9 @@ func (a *App) Prepare(ctx context.Context, o LaunchOptions) (*LaunchPlan, error)
 	p.Record = run.Record{
 		ID: p.RunID, Agent: string(p.Agent), Binary: p.BinaryPath, Profile: p.Profile,
 		Home: p.Home, Login: p.Login, Folder: p.Folder, LiveLogin: p.Live != nil,
+		Env: a.recordEnv(cfg.Config.Live.RecordEnv),
 	}
+	a.runLabel(o, p)
 	if o.DryRun {
 		return p, a.build(res.Agent, t, req, p, true)
 	}
@@ -259,7 +262,7 @@ func (a *App) request(ctx context.Context, o LaunchOptions, res resolve.Result, 
 	if err != nil {
 		return req, t, err
 	}
-	t.ExtraEnv = append(env, runEnv(p)...)
+	t.ExtraEnv = append(env, a.runEnv(p)...)
 	return req, t, nil
 }
 
@@ -389,15 +392,57 @@ func (a *App) annotateLogin(p *LaunchPlan, note string) {
 	}
 }
 
-// runEnv are the AGX_RUN_* outputs every launch sets (spec 11).
-func runEnv(p *LaunchPlan) []agentio.EnvChange {
-	return []agentio.EnvChange{
+// runEnv are the AGX_RUN_* outputs every launch sets (spec 11), and the
+// removal of the AGX_RUN_LABEL input when it is set: the run recorded it,
+// and an agx started inside the agent must not take it.
+func (a *App) runEnv(p *LaunchPlan) []agentio.EnvChange {
+	out := []agentio.EnvChange{
 		agentio.EnvSet(run.EnvRunID, p.RunID),
 		agentio.EnvSet(run.EnvRunAgent, string(p.Agent)),
 		agentio.EnvSet(run.EnvRunProfile, p.Profile),
 		agentio.EnvSet(run.EnvRunLogin, p.Login),
 		agentio.EnvSet(run.EnvRunHome, p.Home),
 	}
+	if _, ok := a.d.Lookup(run.EnvRunLabel); ok {
+		out = append(out, agentio.EnvUnset(run.EnvRunLabel))
+	}
+	return out
+}
+
+// decLabel is the decision name of a run's label.
+const decLabel = "label"
+
+// runLabel sets the run's label: --label, else AGX_RUN_LABEL, else none;
+// a decision line names its source.
+func (a *App) runLabel(o LaunchOptions, p *LaunchPlan) {
+	label, src := o.Label, "--label"
+	if label == "" {
+		label, _ = a.d.Lookup(run.EnvRunLabel)
+		src = "env " + run.EnvRunLabel
+	}
+	label = strings.TrimSpace(messageBreaks.Replace(label))
+	if label == "" {
+		return
+	}
+	p.Record.Label = label
+	p.Decisions = append(p.Decisions, report.Decision{Name: decLabel, Value: label, Source: src})
+}
+
+// recordEnv are the values of the variables live.record_env names that
+// are set at launch; nil when none is.
+func (a *App) recordEnv(names []string) map[string]string {
+	var out map[string]string
+	for _, n := range names {
+		v, ok := a.d.Lookup(n)
+		if !ok {
+			continue
+		}
+		if out == nil {
+			out = map[string]string{}
+		}
+		out[n] = v
+	}
+	return out
 }
 
 // build runs the agent's launch builder. For a dry run the run folder is
@@ -551,7 +596,7 @@ func (a *App) Commit(ctx context.Context, p *LaunchPlan) error {
 		return err
 	}
 	p.Record.PID = os.Getpid()
-	p.Record.StartedAt = a.ownStart(ctx)
+	p.Record.StartedAt, p.Record.TTY, p.Record.Parent = a.ownProcess(ctx)
 	if err := run.WriteRecord(p.RunDir, p.Record); err != nil {
 		return apperr.Wrap(err, apperr.CodeIO, apperr.ClassFailure, "write run.jsonc: "+err.Error())
 	}
@@ -568,18 +613,48 @@ func (a *App) Commit(ctx context.Context, p *LaunchPlan) error {
 	return ctxErr(ctx)
 }
 
-// ownStart is this process's start time from the process table (the clock
-// agx clean compares, agentio.Host.ProcessAlive), else the host clock.
-func (a *App) ownStart(ctx context.Context) time.Time {
-	if a.d.Host.Processes != nil {
-		if procs, err := a.d.Host.Processes.Processes(ctx); err == nil {
-			pid := os.Getpid()
-			for _, pr := range procs {
-				if pr.PID == pid && !pr.Start.IsZero() {
-					return pr.Start
-				}
-			}
+// ownProcess is this process's start time from the process table (the
+// clock agx clean compares, agentio.Host.ProcessAlive), else the host
+// clock, with its controlling terminal and its parent's name ("" when
+// unknown): facts any launcher leaves, so agx live list can say which
+// terminal a run is without knowing what started it.
+func (a *App) ownProcess(ctx context.Context) (time.Time, string, string) {
+	if a.d.Host.Processes == nil {
+		return a.Now(), "", ""
+	}
+	procs, err := a.d.Host.Processes.Processes(ctx)
+	if err != nil {
+		return a.Now(), "", ""
+	}
+	pid := os.Getpid()
+	var self *agentio.Process
+	for i := range procs {
+		if procs[i].PID == pid {
+			self = &procs[i]
 		}
 	}
-	return a.Now()
+	if self == nil {
+		return a.Now(), "", ""
+	}
+	start := self.Start
+	if start.IsZero() {
+		start = a.Now()
+	}
+	parent := ""
+	for _, pr := range procs {
+		if pr.PID == self.PPID && self.PPID != 0 {
+			parent = processName(pr)
+		}
+	}
+	return start, self.TTY, parent
+}
+
+// processName is a process row's program name: its executable's base
+// name, else argv[0]'s, without a login shell's leading "-".
+func processName(pr agentio.Process) string {
+	name := pr.Exe
+	if name == "" && len(pr.Argv) > 0 {
+		name = pr.Argv[0]
+	}
+	return strings.TrimPrefix(filepath.Base(name), "-")
 }

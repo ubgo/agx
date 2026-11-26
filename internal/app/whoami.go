@@ -5,6 +5,7 @@ import (
 	"errors"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/ubgo/agx/config"
 	"github.com/ubgo/agx/internal/resolve"
@@ -32,6 +33,17 @@ type Whoami struct {
 	// InUse is the login whose key the agent got last (live runs; for a
 	// pool, the member): what the session is on now. "" = not asked yet.
 	InUse string `json:"in_use"`
+	// InUseSince is when InUse last changed (a member switch, the first
+	// key, a refusal that cleared it); null when never.
+	InUseSince *time.Time `json:"in_use_since"`
+	// InUseText is InUse as people read it: the login, "none (all over
+	// caps) since 10:52" after a refused key request; "" = not asked yet.
+	InUseText string `json:"in_use_text"`
+	// KeyAt is when agx credential last handed out a real key; null when
+	// never.
+	KeyAt *time.Time `json:"key_at"`
+	// Label is the run's label (run.jsonc); "" = none.
+	Label string `json:"label"`
 	// InUseDetected is the kind agx credential detected in InUse's token
 	// (oauth-token, api-key, unknown); "" when not recorded.
 	InUseDetected string `json:"in_use_detected"`
@@ -75,6 +87,9 @@ func (a *App) Whoami() (Whoami, error) {
 		return w, nil
 	}
 	w.RunDir = dir
+	if rec, err := run.ReadRecord(dir); err == nil {
+		w.Label = rec.Label
+	}
 	st, err := live.Read(dir)
 	switch {
 	case errors.Is(err, live.ErrNotLive):
@@ -90,6 +105,8 @@ func (a *App) Whoami() (Whoami, error) {
 		}
 		if w.Live != nil {
 			w.InUse, w.Only = w.Live.InUse, w.Live.PoolOnly
+			w.InUseText = InUseText(*w.Live, a.Now())
+			w.InUseSince, w.KeyAt = timePtr(w.Live.InUseSince), timePtr(w.Live.KeyAt)
 			if w.InUse != "" {
 				w.InUseDetected = w.Live.InUseDetected
 			}
@@ -120,6 +137,14 @@ func (a *App) nextLogin(logins map[string]config.Login, st live.State) string {
 		return ""
 	}
 	return rep.Selected.Name
+}
+
+// timePtr is t, or nil for the zero time (JSON null).
+func timePtr(t time.Time) *time.Time {
+	if t.IsZero() {
+		return nil
+	}
+	return &t
 }
 
 // terminalLogins lists AGX_LOGIN and every AGX_LOGIN_<AGENT> set to a

@@ -414,7 +414,7 @@ func NewRoot(env Env) (*cobra.Command, *cliCtx) {
 func (c *cliCtx) commands() []*cobra.Command {
 	return []*cobra.Command{
 		c.usageCmd(),
-		c.runCmd(), c.newSessionCmd(), c.resumeCmd(), c.whoamiCmd(),
+		c.runCmd(), c.newSessionCmd(), c.resumeCmd(), c.whoamiCmd(), c.statuslineCmd(),
 		c.conversationCmd(), c.liveCmd(),
 		c.profileCmd(), c.loginCmd(), c.poolCmd(), c.projectCmd(), c.sessionCmd(),
 		c.agentCmd(), c.doctorCmd(), c.cleanCmd(), c.configCmd(), c.aliasCmd(),

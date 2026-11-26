@@ -1064,6 +1064,13 @@
                   "log": {
                     "type": "string"
                   },
+                  "when_none_usable": {
+                    "type": "string",
+                    "enum": [
+                      "stop",
+                      "keep"
+                    ]
+                  },
                   "picker": {
                     "anyOf": [
                       {
@@ -1230,6 +1237,34 @@
             "round",
             "minutes"
           ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "live": {
+      "type": "object",
+      "properties": {
+        "when_none_usable": {
+          "type": "string",
+          "enum": [
+            "stop",
+            "keep"
+          ]
+        },
+        "status_line": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "record_env": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          }
         }
       },
       "additionalProperties": false

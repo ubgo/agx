@@ -137,6 +137,10 @@ func (a *App) livePlan(ctx context.Context, o LaunchOptions, res resolve.Result,
 		Value:  fmt.Sprintf("live login: switch with agx live use --id %s --login NAME (refresh %s)", p.RunID, plan.Refresh),
 		Source: src,
 	})
+	if cfg, err := a.Config(); err == nil {
+		mode, msrc := whenNoneUsable(cfg.Config, res.Login.Name)
+		p.Decisions = append(p.Decisions, report.Decision{Name: resolve.DecNote, Value: "when no key is usable: " + whenNoneUsableText(mode), Source: msrc})
+	}
 	return &plan, nil
 }
 
@@ -275,17 +279,7 @@ func outranksHelper(o LaunchOptions, res resolve.Result, scrub []string, src str
 // the running agx binary plus "credential", and --config when this run
 // used one (the helper inherits AGX_CONFIG_DIR / AGX_HOME from the
 // launch env, but not a flag).
-func (a *App) liveHelper() string {
-	self := a.d.Self
-	if self == "" {
-		self = selfFallback
-	}
-	cmd := shellQuote(self) + " " + credentialVerb
-	if a.d.ConfigFlag != "" {
-		cmd += " --config " + shellQuote(a.paths.File)
-	}
-	return cmd
-}
+func (a *App) liveHelper() string { return a.selfCommand(credentialVerb) }
 
 // shellQuote quotes s for a POSIX shell when it holds anything beyond a
 // plain path: the helper is a settings string the agent runs through its

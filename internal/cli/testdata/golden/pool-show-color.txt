@@ -34,3 +34,4 @@ picker.command                my-picker [2m(pool)[0m
 picker.timeout                5s [2m(pool)[0m
 timezone                      local [2m(default)[0m
 log                           ~/pool.log [2m(pool)[0m
+when_none_usable              stop [2m(default)[0m

@@ -240,6 +240,9 @@ func (a *App) launchConfig(ctx context.Context, o LaunchOptions, res resolve.Res
 		}
 		st.settings = merged
 		applyLive(live, t, req, p)
+		if err := a.addStatusLine(res, o.Dir, st); err != nil {
+			return err
+		}
 	}
 
 	if err := a.delivery(o, res, st, p); err != nil {

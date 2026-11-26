@@ -13,6 +13,8 @@ import (
 	"github.com/ubgo/agentio/agenttest"
 
 	"github.com/ubgo/agx/internal/apperr"
+	"github.com/ubgo/agx/internal/run"
+	"github.com/ubgo/agx/live"
 	"github.com/ubgo/agx/login"
 )
 
@@ -127,6 +129,9 @@ type helperResult struct {
 	token string
 	code  int
 	warns []string
+	// refused is the reason when no key was handed out under
+	// when_none_usable "stop" (token is then the placeholder).
+	refused string
 }
 
 // helper is one key request as Claude makes it: a new agx process.
@@ -140,7 +145,20 @@ func (fl *flow) helper() helperResult {
 	if err != nil {
 		return helperResult{code: apperr.Exit(err, false), warns: append(warns, err.Error())}
 	}
+	if cr.Refused != "" {
+		// What the CLI prints: the placeholder, exit 0.
+		return helperResult{token: NoKeyPlaceholder, warns: warns, refused: cr.Refused}
+	}
 	return helperResult{token: cr.Token.Reveal(), warns: warns}
+}
+
+// state is the run's live.jsonc now.
+func (fl *flow) state() live.State {
+	st, err := live.Read(run.Dir(fl.m.app(fl.t).paths.Runs, fl.run))
+	if err != nil {
+		fl.t.Fatal(err)
+	}
+	return st
 }
 
 // probes is how many probes the vendor has answered.
@@ -240,7 +258,8 @@ func TestPortFlow(t *testing.T) {
 		}
 		fl.m.f.WriteConfig(flowConfig(""))
 	})
-	t.Run("10. nothing usable: exit 2, empty stdout (Claude gets no key)", func(t *testing.T) {
+	t.Run("10. nothing usable: the placeholder, exit 0 (Claude stops spending)", func(t *testing.T) {
+		before := fl.state().KeyAt
 		fl.setUsage(
 			member{tok: tokAlice, week: 100, resetH: 140, limited: true},
 			member{tok: tokCarol2, week: 100, resetH: 60, limited: true},
@@ -249,11 +268,44 @@ func TestPortFlow(t *testing.T) {
 		)
 		fl.advance(61 * time.Second)
 		r := fl.helper()
-		// agx's exit code for "none usable" is 1 (auto-pick); exit 2 is a
-		// usage error in agx (SELECTOR_PORT.md).
-		if r.code != apperr.ExitFailure || r.token != "" || !strings.Contains(fl.lastLog(), "picked=null") {
+		if r.code != 0 || r.token != NoKeyPlaceholder || !strings.Contains(r.refused, "no member is usable") || !strings.Contains(fl.lastLog(), "picked=null") {
 			t.Errorf("%+v log %s", r, fl.lastLog())
 		}
+		st := fl.state()
+		if st.InUse != "" || st.NoKeyBrief != briefAllOverCaps || st.WhenNoneUsable != "stop" || !st.NoKeySince.Equal(fl.now) || !st.KeyAt.Equal(before) || !strings.Contains(st.NoKey, "no member is usable") {
+			t.Errorf("live.jsonc %+v", st)
+		}
+		if got := InUseText(st, fl.now); !strings.HasPrefix(got, "none (all over caps) since ") {
+			t.Errorf("in use %q", got)
+		}
+		// A second refusal keeps the first one's time.
+		first := st.NoKeySince
+		fl.advance(10 * time.Second)
+		if r := fl.helper(); r.token != NoKeyPlaceholder {
+			t.Errorf("%+v", r)
+		}
+		if st := fl.state(); !st.NoKeySince.Equal(first) || !st.InUseAt.Equal(fl.now) {
+			t.Errorf("second refusal %+v", st)
+		}
+	})
+	t.Run("10b. nothing usable with when_none_usable keep: exit 1, empty stdout, the agent keeps its key", func(t *testing.T) {
+		fl.m.f.WriteConfig(strings.Replace(flowConfig(""), `"usage_max_age"`, `"when_none_usable": "keep", "usage_max_age"`, 1))
+		if _, err := live.Update(context.Background(), run.Dir(fl.m.app(t).paths.Runs, fl.run), func(s *live.State) error {
+			s.SetInUse("grace", fl.now)
+			return nil
+		}); err != nil {
+			t.Fatal(err)
+		}
+		fl.advance(time.Second)
+		r := fl.helper()
+		if r.code != apperr.ExitFailure || r.token != "" || r.refused != "" {
+			t.Errorf("%+v", r)
+		}
+		st := fl.state()
+		if st.InUse != "grace" || st.WhenNoneUsable != "keep" || st.NoKeyBrief != briefAllOverCaps {
+			t.Errorf("live.jsonc %+v", st)
+		}
+		fl.m.f.WriteConfig(flowConfig(""))
 	})
 	t.Run("11. several sessions' helpers at once with a stale cache: all succeed, cache stays valid", func(t *testing.T) {
 		fl.startUsage()
@@ -272,6 +324,10 @@ func TestPortFlow(t *testing.T) {
 			if r.code != 0 || r.token != tokGrace {
 				t.Errorf("%+v", r)
 			}
+		}
+		// Recovery: a member is usable again, so the refusal is over.
+		if st := fl.state(); st.InUse != "grace" || st.NoKey != "" || !st.NoKeySince.IsZero() || !st.KeyAt.Equal(fl.now) || st.WhenNoneUsable != "" {
+			t.Errorf("after recovery %+v", st)
 		}
 		b, err := os.ReadFile(cache)
 		var c login.UsageCache

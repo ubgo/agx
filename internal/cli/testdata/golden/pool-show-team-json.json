@@ -170,6 +170,11 @@
         "key": "log",
         "value": "~/pool.log",
         "source": "pool"
+      },
+      {
+        "key": "when_none_usable",
+        "value": "stop",
+        "source": "default"
       }
     ],
     "schedules": []

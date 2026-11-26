@@ -50,7 +50,7 @@ The [Scripting with agx](../guides/scripting.md) guide uses every global flag; [
 | [Launching](launch.md) | `run`, `new`, `resume`, `whoami` |
 | [Usage](usage.md) | `usage` |
 | [Conversations and sessions](conversation.md) | `conversation list/show/move`, `session list/clean/promote` |
-| [Live login](live.md) | `live list/show/use` |
+| [Live login](live.md) | `live list/show/use`, `statusline`, and the hidden `credential` the agent runs |
 | [Profiles](profile.md) | `profile list/show/add/import/edit/remove/use` |
 | [Logins](login.md) | `login list/show/add/edit/remove/use/check/token` |
 | [Pools](pool.md) | `pool list/show/pick/preset/prune`; the pool flags of other commands: `--pool-force` and `--pool-only` (with `--pool-only-short`, `--pool-only-week`) on `run`, `new`, `resume`, `pool pick` and `login token`, `--pool-only` on `live use` |

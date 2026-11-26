@@ -33,7 +33,7 @@ $ agx run --login carol --live-login --dry-run --quiet --json --field decisions.
 {"name":"note","value":"live login: switch with agx live use --id 20261114-101500-k3x9 --login NAME (refresh 10s)","source":"--live-login"}
 
 $ agx live list
-RUN  AGENT  PROFILE  STARTED ON  NEXT  IN USE  LIVENESS
+RUN  LABEL  FOLDER  PID  IN USE  LAST KEY  LIVENESS
 ```
 
 `agx live list` shows the live runs whose agent is still running; it is empty here because a dry run starts nothing.
@@ -86,7 +86,7 @@ agx: no run 20261114-101500-k3x9
 
 - A profile whose `env`, `env_refs`, `--env` or `--setting env.*` sets a variable that outranks the helper (such as `ANTHROPIC_AUTH_TOKEN` for an API-provider profile) cannot be live; agx names the input to drop.
 - `agx live use` on a run whose agent has ended is refused: nothing would read the choice. `agx clean --yes` removes ended runs.
-- Switch only to a login that resolves (`agx login check --id NAME --no-probe`). Claude Code treats a failing key helper as fatal: three tries, then it exits, with no fallback to the home's own login. `agx credential` puts the reason in one line that Claude shows in `/status`; after that, resume on a good login.
+- Switch only to a login that resolves (`agx login check --id NAME --no-probe`). When it does not, `agx credential` hands Claude no key: by default the placeholder `agx-no-account-usable`, so the session waits (no fallback to the home's own login) and goes on once you switch it to a login that resolves; with `when_none_usable: "keep"` it exits 1 and Claude reuses its old key or, with none yet, exits after three tries. The one-line reason shows in `/status` and under `no key:` in `agx whoami`. See [when the helper has no key](../guides/live-login.md#when-the-helper-has-no-key).
 - The switch is not instant: it applies at Claude's next key refresh or right after a rejected key, and the first request after a timed refresh may still use the old key ([when a switch applies](../guides/live-login.md#when-a-switch-applies)).
 - Live login is Claude only; other agents report why they are not switchable.
 - `conversation move` is Claude only (Codex indexes conversations in its own database with absolute paths). It backs up what it moves unless you pass `--no-backup`; try it with `--dry-run` first:

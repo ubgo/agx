@@ -338,11 +338,18 @@ func TestPoolOnlyWhoami(t *testing.T) {
 		t.Fatal(err)
 	}
 	w, _ = m.app(t).Whoami()
-	if w.Next != "" || w.InUse != "" || InUseText(w.InUse, w.Live.NoKey, "-") != "none (derek over cap: 5h is 60% (cap 50%))" {
+	if w.Next != "" || w.InUse != "" || w.InUseText != "none (derek over cap: 5h is 60% (cap 50%))" {
 		t.Errorf("blocked: %+v", w)
 	}
-	if OnlyText("carol") != "carol (caps enforced)" || InUseText("", "", "-") != "-" || InUseText("bob", "x", "-") != "bob" {
+	now := time.Date(2026, 11, 26, 10, 52, 0, 0, time.Local)
+	if OnlyText("carol") != "carol (caps enforced)" || InUseText(live.State{}, now) != "" || InUseText(live.State{InUse: "bob"}, now) != "bob" {
 		t.Error("texts")
+	}
+	if got := InUseText(live.State{NoKey: "x", NoKeyBrief: "all over caps", NoKeySince: now}, now); got != "none (all over caps) since 10:52" {
+		t.Errorf("stop: %q", got)
+	}
+	if got := InUseText(live.State{InUse: "bob", NoKey: "x", NoKeyBrief: "all over caps", NoKeySince: now.Add(-24 * time.Hour)}, now); got != "bob (no key since 25 Nov 10:52: all over caps; the agent keeps its key)" {
+		t.Errorf("keep: %q", got)
 	}
 }
 
@@ -397,17 +404,17 @@ func TestPoolOnlyCredentialFlow(t *testing.T) {
 			t.Errorf("log %s", fl.lastLog())
 		}
 	})
-	t.Run("usage crosses the cap: no key, exit 1, one stderr line", func(t *testing.T) {
+	t.Run("usage crosses the cap: the placeholder, exit 0, the reason in one line", func(t *testing.T) {
 		fl.setUsage(member{tok: tokIvan, short: 4, week: 70, resetH: 42})
 		fl.advance(61 * time.Second)
 		r := fl.helper()
-		if r.code != apperr.ExitFailure || r.token != "" {
+		if r.code != 0 || r.token != NoKeyPlaceholder {
 			t.Fatalf("%+v", r)
 		}
-		if len(r.warns) != 1 || r.warns[0] != "ivan: week is 70% (cap 70%)" {
-			t.Errorf("stderr %q, want one line", r.warns)
+		if len(r.warns) != 0 || r.refused != "ivan: week is 70% (cap 70%)" {
+			t.Errorf("stderr %q refused %q, want the reason alone", r.warns, r.refused)
 		}
-		if st := state(); st.InUse != "" || st.NoKey != "ivan over cap: week is 70% (cap 70%)" {
+		if st := state(); st.InUse != "" || st.NoKey != "ivan over cap: week is 70% (cap 70%)" || st.NoKeyBrief != "ivan over cap" {
 			t.Errorf("state %+v", st)
 		}
 		if !strings.Contains(fl.lastLog(), `picked=null`) {
@@ -420,7 +427,7 @@ func TestPoolOnlyCredentialFlow(t *testing.T) {
 	})
 	t.Run("still over the cap within max age: still no key, no probe", func(t *testing.T) {
 		fl.advance(10 * time.Second)
-		if r := fl.helper(); r.code != apperr.ExitFailure || fl.probes() != 2 {
+		if r := fl.helper(); r.token != NoKeyPlaceholder || fl.probes() != 2 {
 			t.Errorf("%+v probes %d", r, fl.probes())
 		}
 	})
@@ -440,7 +447,7 @@ func TestPoolOnlyCredentialFlow(t *testing.T) {
 			t.Fatal(err)
 		}
 		r := fl.helper()
-		if r.code != apperr.ExitFailure || len(r.warns) != 1 || r.warns[0] != "ivan: week is 40% (cap 40%)" {
+		if r.code != 0 || r.token != NoKeyPlaceholder || r.refused != "ivan: week is 40% (cap 40%)" {
 			t.Errorf("%+v", r)
 		}
 	})

@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ubgo/agx/internal/app"
 	"github.com/ubgo/agx/internal/testkit"
 )
 
@@ -187,6 +188,21 @@ func TestEdge47to49Clean(t *testing.T) {
 	}
 }
 
+// runFactsRe matches the facts of a stand-in run that change every time:
+// its process id and its folder cut to fit a table (the cut drops the
+// fixture root the goldens replace).
+var runFactsRe = regexp.MustCompile(`("pid": |(?m)^pid +)[0-9]+|("folder_short": )"[^"]*"`)
+
+// pinRunFacts replaces them, so a golden pins the shape.
+func pinRunFacts(s string) string {
+	return runFactsRe.ReplaceAllStringFunc(s, func(m string) string {
+		if strings.HasPrefix(m, `"folder_short"`) {
+			return `"folder_short": "<folder>"`
+		}
+		return regexp.MustCompile(`[0-9]+$`).ReplaceAllString(m, "0")
+	})
+}
+
 // TestLiveUseAndCredential: live use chooses the login, agx credential
 // (run by the agent, found by AGX_RUN_ID) prints only that login's token
 // and records it as in use; --start-login goes back.
@@ -198,7 +214,7 @@ func TestLiveUseAndCredential(t *testing.T) {
 	if r.Code != 0 {
 		t.Fatalf("list: %d %s", r.Code, r.Stdout)
 	}
-	f.Golden(t, "live-list", r.Stdout)
+	f.Golden(t, "live-list", pinRunFacts(r.Stdout))
 
 	r = f.Run("live", "use", "--id", runAlive, "--login", "alice", "--json")
 	if r.Code != 0 || !strings.Contains(r.Stdout, `"next": "alice"`) {
@@ -221,7 +237,7 @@ func TestLiveUseAndCredential(t *testing.T) {
 	delete(f.Env, "AGX_RUN_ID")
 
 	r = f.Run("live", "use", "--id", runAlive, "--start-login")
-	if r.Code != 0 || !strings.Contains(r.Stdout, "next        carol") {
+	if r.Code != 0 || !regexp.MustCompile(`(?m)^next +carol$`).MatchString(r.Stdout) {
 		t.Fatalf("start-login: %d %q", r.Code, r.Stdout)
 	}
 	r = f.Run("whoami", "--json")
@@ -345,17 +361,17 @@ case "$3" in
 esac
 `
 
-// TestCredentialNeverEmpty: agx credential is the agent's apiKeyHelper,
-// and an empty or failing helper is a hard failure for Claude Code (it
-// retries three times, then exits 1, with no fallback; LIVEFIX V1). So
-// every token that is not one usable line (empty, whitespace only,
-// multi-line, unresolvable) exits non-zero with nothing on stdout and
-// exactly one stderr line (Claude shows it in /status) that names the
-// login and the reference, never a value and never the store's own
-// paths.
+// TestCredentialNeverEmpty: agx credential is the agent's apiKeyHelper.
+// Every token that is not one usable line (empty, whitespace only,
+// multi-line, unresolvable) hands out no key. Under when_none_usable
+// "stop" (the default) stdout is the placeholder, which is not a key, so
+// the agent stops instead of reusing its old key, exit 0, and stderr is
+// one warning line with the reason. Under "keep" it exits 1 with nothing
+// on stdout and exactly one stderr line (Claude shows it in /status).
+// Either way the line names the login and the reference, never a value
+// and never the store's own paths.
 func TestCredentialNeverEmpty(t *testing.T) {
 	f, _ := fixtureResume(t)
-	f.WriteConfig(strings.Replace(resumeConfig, `"logins": {`, credentialLogins, 1))
 	f.WriteFile(filepath.Join(f.Bin, "gopass"), credentialGopass, 0o755)
 	f.Env["BLANKTOK"] = " \t "
 	f.Env["MULTITOK"] = "fake-token-LINE1\nfake-token-LINE2"
@@ -364,38 +380,111 @@ func TestCredentialNeverEmpty(t *testing.T) {
 	}
 	cases := []struct {
 		login string
-		code  int
 		line  string
 	}{
-		{"gpempty", 1, "agx: login gpempty: token is empty" + check("gpempty")},
-		{"blank", 1, "agx: login blank: token is empty" + check("blank")},
-		{"multi", 1, "agx: login multi: token has 2 lines" + check("multi")},
-		{"unset", 1, "agx: login unset: NOT_SET_ANYWHERE is not set" + check("unset")},
-		{"gpgone", 1, "agx: login gpgone: gopass:team/claude/gone is not in the gopass store" + check("gpgone")},
-		{"gpbad", 1, "agx: login gpbad: gopass:team/claude/bob could not be read by gopass" + check("gpbad")},
-		{"cmdbad", 1, `agx: login cmdbad: command "sh -c 'echo cannot open /secret/store/bob >&2; exit 3'" failed: exit 3` + check("cmdbad")},
-		{"stored", 1, "agx: login stored: no stored value in tokens.jsonc (try: agx login edit --id stored --stdin)"},
-		{"nosuch", 1, "agx: unknown login nosuch (try: agx login list)"},
+		{"gpempty", "login gpempty: token is empty" + check("gpempty")},
+		{"blank", "login blank: token is empty" + check("blank")},
+		{"multi", "login multi: token has 2 lines" + check("multi")},
+		{"unset", "login unset: NOT_SET_ANYWHERE is not set" + check("unset")},
+		{"gpgone", "login gpgone: gopass:team/claude/gone is not in the gopass store" + check("gpgone")},
+		{"gpbad", "login gpbad: gopass:team/claude/bob could not be read by gopass" + check("gpbad")},
+		{"cmdbad", `login cmdbad: command "sh -c 'echo cannot open /secret/store/bob >&2; exit 3'" failed: exit 3` + check("cmdbad")},
+		{"stored", "login stored: no stored value in tokens.jsonc (try: agx login edit --id stored --stdin)"},
+		{"nosuch", "unknown login nosuch (try: agx login list)"},
 	}
-	for i, c := range cases {
-		id := fmt.Sprintf("20261114-101500-c%03d", i)
-		writeRun(t, f, id, 1, `{"run_id":"`+id+`","agent":"claude","start_login":"`+c.login+`","helper":"agx credential"}`)
-		f.Env["AGX_RUN_ID"] = id
-		r := f.Run("credential")
-		if r.Code != c.code || r.Stdout != "" || r.Stderr != c.line+"\n" {
-			t.Errorf("%s: code %d stdout %q stderr %q\nwant stderr %q", c.login, r.Code, r.Stdout, r.Stderr, c.line)
-		}
-		if strings.Contains(r.Stderr, "fake-token") || (c.login != "cmdbad" && strings.Contains(r.Stderr, storePath)) {
-			t.Errorf("%s: stderr leaks a value or a store path: %q", c.login, r.Stderr)
-		}
-		st := f.ReadFile(filepath.Join(f.ConfigDir, "runs", id, "live.jsonc"))
-		if strings.Contains(st, `"in_use"`) {
-			t.Errorf("%s: a failed fetch recorded a login in use: %s", c.login, st)
+	modes := []struct {
+		name, config   string
+		code           int
+		stdout, prefix string
+	}{
+		{"stop", "", 0, app.NoKeyPlaceholder + "\n", "agx: warning: no key handed out: "},
+		{"keep", `"live": { "when_none_usable": "keep" },`, 1, "", "agx: "},
+	}
+	for mi, m := range modes {
+		cfg := strings.Replace(resumeConfig, `"logins": {`, credentialLogins, 1)
+		f.WriteConfig(strings.Replace(cfg, `"logins": {`, m.config+`"logins": {`, 1))
+		for i, c := range cases {
+			id := fmt.Sprintf("20261114-10150%d-c%03d", mi, i)
+			writeRun(t, f, id, 1, `{"run_id":"`+id+`","agent":"claude","start_login":"`+c.login+`","helper":"agx credential"}`)
+			f.Env["AGX_RUN_ID"] = id
+			r := f.Run("credential")
+			if r.Code != m.code || r.Stdout != m.stdout || r.Stderr != m.prefix+c.line+"\n" {
+				t.Errorf("%s %s: code %d stdout %q stderr %q\nwant stderr %q", m.name, c.login, r.Code, r.Stdout, r.Stderr, m.prefix+c.line)
+			}
+			if strings.Contains(r.Stderr, "fake-token") || (c.login != "cmdbad" && strings.Contains(r.Stderr, storePath)) {
+				t.Errorf("%s %s: stderr leaks a value or a store path: %q", m.name, c.login, r.Stderr)
+			}
+			st := f.ReadFile(filepath.Join(f.ConfigDir, "runs", id, "live.jsonc"))
+			if strings.Contains(st, `"in_use"`) || !strings.Contains(st, `"when_none_usable": "`+m.name+`"`) || strings.Contains(st, app.NoKeyPlaceholder) {
+				t.Errorf("%s %s: live.jsonc: %s", m.name, c.login, st)
+			}
 		}
 	}
 	// No run: the one line names the run and the command that lists runs.
 	f.Env["AGX_RUN_ID"] = "20261114-101500-none"
 	if r := f.Run("credential"); r.Code != 1 || r.Stdout != "" || r.Stderr != "agx: no run 20261114-101500-none (try: agx live list)\n" {
 		t.Errorf("no run: code %d stdout %q stderr %q", r.Code, r.Stdout, r.Stderr)
+	}
+}
+
+// TestLiveListWideAndRefusal: the default table names the run (label,
+// folder, pid) and what it is on; --wide adds every column; a refused
+// run reads "none (why) since HH:MM" in the table, show, whoami and the
+// status line; agx credential --json says why.
+func TestLiveListWideAndRefusal(t *testing.T) {
+	f, _ := fixtureResume(t)
+	dir := writeRun(t, f, runAlive, startAgent(t, runAlive), liveState(runAlive))
+	rec := f.ReadFile(filepath.Join(dir, "run.jsonc"))
+	f.WriteFile(filepath.Join(dir, "run.jsonc"), strings.Replace(rec, `"id":`, `"label":"api fix","tty":"pts/3","parent":"zsh","env":{"TERM_SESSION":"pane-7"},"id":`, 1), 0o600)
+
+	r := f.Run("live", "list", "--color", "never")
+	head := strings.Fields(strings.SplitN(r.Stdout, "\n", 2)[0])
+	if r.Code != 0 || strings.Join(head, " ") != "RUN LABEL FOLDER PID IN USE LAST KEY LIVENESS" || !strings.Contains(r.Stdout, "api fix") {
+		t.Fatalf("list: %d %q", r.Code, r.Stdout)
+	}
+	r = f.Run("live", "list", "--wide", "--color", "never")
+	for _, col := range []string{"AGENT", "PROFILE", "TTY", "PARENT", "STARTED ON", "NEXT", "SINCE", "CONVERSATION", "TITLE", "pts/3", "zsh"} {
+		if !strings.Contains(r.Stdout, col) {
+			t.Errorf("--wide lacks %q:\n%s", col, r.Stdout)
+		}
+	}
+	r = f.Run("live", "show", "--id", runAlive, "--color", "never")
+	for _, want := range []string{"label", "api fix", "tty", "pts/3", "parent", "env TERM_SESSION", "pane-7"} {
+		if !strings.Contains(r.Stdout, want) {
+			t.Errorf("show lacks %q:\n%s", want, r.Stdout)
+		}
+	}
+
+	// Every key request refused: the token of carol is gone.
+	f.Env["AGX_RUN_ID"] = runAlive
+	f.WriteConfig(strings.Replace(resumeConfig, `"logins": {`, credentialLogins, 1))
+	if r := f.Run("live", "use", "--id", runAlive, "--login", "unset"); r.Code != 0 {
+		t.Fatalf("use: %d %s", r.Code, r.Stderr)
+	}
+	r = f.Run("credential", "--json")
+	if e := parseEnv(t, r); r.Code != 0 || !strings.Contains(string(e.Data), `"refused": "login unset: NOT_SET_ANYWHERE is not set`) || !strings.Contains(string(e.Data), `"refused_brief": "key not resolved"`) {
+		t.Fatalf("credential --json: %d %s", r.Code, r.Stdout)
+	}
+	since := regexp.MustCompile(`none \(key not resolved\) since [0-9]{2}:[0-9]{2}`)
+	r = f.Run("statusline")
+	if r.Code != 0 || !regexp.MustCompile(`^login unset: none \(key not resolved\) since [0-9]{2}:[0-9]{2}\n$`).MatchString(r.Stdout) {
+		t.Errorf("statusline: %d %q", r.Code, r.Stdout)
+	}
+	r = f.Run("whoami", "--color", "never")
+	if !since.MatchString(r.Stdout) || !strings.Contains(r.Stdout, "no key:") {
+		t.Errorf("whoami:\n%s", r.Stdout)
+	}
+	delete(f.Env, "AGX_RUN_ID")
+	r = f.Run("live", "list", "--color", "never")
+	if !since.MatchString(r.Stdout) {
+		t.Errorf("list after refusal:\n%s", r.Stdout)
+	}
+	r = f.Run("live", "list", "--json", "--field", "data.0.when_none_usable")
+	if strings.TrimSpace(r.Stdout) != "stop" {
+		t.Errorf("when_none_usable %q", r.Stdout)
+	}
+	// Outside a run the status line prints nothing and succeeds.
+	if r := f.Run("statusline"); r.Code != 0 || r.Stdout != "" || r.Stderr != "" {
+		t.Errorf("outside: %d %q %q", r.Code, r.Stdout, r.Stderr)
 	}
 }

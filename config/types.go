@@ -60,7 +60,47 @@ type Config struct {
 	DateFormat string `json:"date_format,omitempty"`
 	// Usage holds agx usage display defaults.
 	Usage UsageConfig `json:"usage,omitzero"`
+	// Live holds the defaults of live-login runs (pools included): what
+	// agx credential does when it has no key to hand out, the status
+	// line, and what a run records about itself at launch.
+	Live LiveConfig `json:"live,omitzero"`
 }
+
+// LiveConfig is the "live" block.
+type LiveConfig struct {
+	// WhenNoneUsable is what agx credential does when it cannot hand out
+	// a key (no pool member usable, a pinned member over its cap, a
+	// refused API key, a login that does not resolve): "stop" (the
+	// default) hands the agent a placeholder that is not a key, so its
+	// next request fails and nothing more is spent until a key is
+	// usable again; "keep" exits 1, and the agent goes on with the key it
+	// already has. A pool's own when_none_usable wins for its runs.
+	WhenNoneUsable string `json:"when_none_usable,omitempty" enum:"stop,keep"`
+	// StatusLine writes "agx statusline" as the status line of a live run
+	// of an agent that has one, unless the user's own settings already
+	// set a status line (theirs is kept); omitted = true.
+	StatusLine *bool `json:"status_line,omitempty"`
+	// RecordEnv are environment variables whose values a live run records
+	// at launch (run.jsonc), shown by agx live list --wide and agx live
+	// show; empty = none. Names only here; never put a secret's name in
+	// it, since the value is stored in plain text.
+	RecordEnv []string `json:"record_env,omitempty"`
+}
+
+// When-none-usable modes (live.when_none_usable,
+// logins.<pool>.pool.when_none_usable).
+const (
+	// WhenNoneUsableStop hands the agent a placeholder that is not a key.
+	WhenNoneUsableStop = "stop"
+	// WhenNoneUsableKeep fails the request; the agent keeps its old key.
+	WhenNoneUsableKeep = "keep"
+)
+
+// WhenNoneUsableValues are the modes, the default first.
+func WhenNoneUsableValues() []string { return []string{WhenNoneUsableStop, WhenNoneUsableKeep} }
+
+// StatusLineOn reports live.status_line (omitted = true).
+func (l LiveConfig) StatusLineOn() bool { return l.StatusLine == nil || *l.StatusLine }
 
 // UsageConfig is the "usage" block: how agx usage shows its data.
 type UsageConfig struct {
@@ -346,6 +386,10 @@ type Pool struct {
 	// Log is a file that gets one line per key request (time, pick,
 	// source; never a token); "" = no log. "~" and ${VAR} are expanded.
 	Log string `json:"log,omitempty"`
+	// WhenNoneUsable is what agx credential does for this pool's runs
+	// when no member is usable: "stop" or "keep" (live.when_none_usable
+	// has the meaning); omitted = live.when_none_usable, else "stop".
+	WhenNoneUsable string `json:"when_none_usable,omitempty" enum:"stop,keep"`
 	// Picker is a command of the user's that picks the member instead of
 	// the built-in rules; nil = the built-in rules decide.
 	Picker *PoolPicker `json:"picker,omitempty"`

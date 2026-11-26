@@ -59,6 +59,7 @@ picker.command                built-in rules (default)
 picker.timeout                10s (default)
 timezone                      local (default)
 log                           none (default)
+when_none_usable              stop (default)
 
 #endregion
 #region pick
@@ -216,12 +217,14 @@ pool      auto (claude): own alice, bob; shared carol, derek, erin              
           probe model: the agent's default (all-models windows only)                                    from default
           member entries: 2                                                                             from config logins.auto.pool.accounts
           pick now: carol (rules), from the cache (20s old); agx pool pick --id auto probes             from login-usage cache
-note      live login: switch with agx live use --id 20261119-100000-opfn --login NAME (refresh 1m0s)    from login auto (pool)
+note      live login: switch with agx live use --id 20261119-100000-9z9x --login NAME (refresh 1m0s)    from login auto (pool)
+          when no key is usable: stop (the agent waits for a usable key)                                from default
 settings  apiKeyHelper                                                                                  from login auto (pool)
-          delivered as file ~/.agx/runs/20261119-100000-opfn/settings-20261119-100000-opfn.json (0600)  from settings_delivery file
-run       ~/.agx/runs/20261119-100000-opfn                                                              from AGX_RUN_ID=20261119-100000-opfn
-command   claude --settings ~/.agx/runs/20261119-100000-opfn/settings-20261119-100000-opfn.json         from built by agentio
-env       set AGX_RUN_ID=20261119-100000-opfn                                                           from launch environment
+          statusLine agx statusline (the account in use)                                                from default
+          delivered as file ~/.agx/runs/20261119-100000-9z9x/settings-20261119-100000-9z9x.json (0600)  from settings_delivery file
+run       ~/.agx/runs/20261119-100000-9z9x                                                              from AGX_RUN_ID=20261119-100000-9z9x
+command   claude --settings ~/.agx/runs/20261119-100000-9z9x/settings-20261119-100000-9z9x.json         from built by agentio
+env       set AGX_RUN_ID=20261119-100000-9z9x                                                           from launch environment
           set AGX_RUN_AGENT=claude                                                                      from launch environment
           set AGX_RUN_PROFILE=personal                                                                  from launch environment
           set AGX_RUN_LOGIN=auto                                                                        from launch environment
@@ -462,9 +465,8 @@ only        erin (caps enforced)
 in use      carol
 liveness    unknown (process info unreadable: run.jsonc records no process id)
 
-$ AGX_RUN_ID=20261119-095000-p7q2 agx credential --json --field data.login
-agx: erin: 5h is 55% (cap 50%)
-[exit 1]
+$ AGX_RUN_ID=20261119-095000-p7q2 agx credential --json --field data.refused
+erin: 5h is 55% (cap 50%)
 
 $ AGX_RUN_ID=20261119-095000-p7q2 AGX_RUN_AGENT=claude AGX_RUN_PROFILE=personal AGX_RUN_LOGIN=auto AGX_RUN_HOME=~/.claude agx whoami
 run:      20261119-095000-p7q2
@@ -473,7 +475,8 @@ profile:  personal
 login:    auto (pool)
 home:     ~/.claude
 only:     erin (caps enforced)
-in use:   none (erin over cap: 5h is 55% (cap 50%))
+in use:   none (erin over cap) since 10:00
+no key:   erin over cap: 5h is 55% (cap 50%)
 
 $ agx live show --id 20261119-095000-p7q2 --json --field data.no_key
 erin over cap: 5h is 55% (cap 50%)
@@ -514,5 +517,5 @@ changed login auto (pool, pool 2 own, 3 shared)
   pool.deadline_window          —  ->  24h
 
 $ agx pool show --id auto --json --field data.settings
-[{"key":"force","value":"off","source":"default"},{"key":"order","value":"urgency","source":"pool"},{"key":"deadline_window","value":"24h","source":"pool"},{"key":"deadline_min_room","value":"2","source":"pool"},{"key":"week_relax_window","value":"24h","source":"pool"},{"key":"defaults.week_relax_max","value":"95","source":"pool"},{"key":"max_sessions","value":"4","source":"pool"},{"key":"sticky","value":"true","source":"pool"},{"key":"sticky_leave_ratio","value":"3","source":"pool"},{"key":"shared_borrow_window","value":"48h","source":"pool"},{"key":"short_unavailable_at_percent","value":"99","source":"pool"},{"key":"own_caps.short","value":"95","source":"default"},{"key":"own_caps.week","value":"98","source":"default"},{"key":"defaults.short","value":"50","source":"pool"},{"key":"defaults.week","value":"70","source":"pool"},{"key":"probe_models","value":"none","source":"default"},{"key":"usage_max_age","value":"60s","source":"pool"},{"key":"key_ttl","value":"60s","source":"pool"},{"key":"picker.command","value":"built-in rules","source":"default"},{"key":"picker.timeout","value":"10s","source":"default"},{"key":"timezone","value":"local","source":"default"},{"key":"log","value":"none","source":"default"}]
+[{"key":"force","value":"off","source":"default"},{"key":"order","value":"urgency","source":"pool"},{"key":"deadline_window","value":"24h","source":"pool"},{"key":"deadline_min_room","value":"2","source":"pool"},{"key":"week_relax_window","value":"24h","source":"pool"},{"key":"defaults.week_relax_max","value":"95","source":"pool"},{"key":"max_sessions","value":"4","source":"pool"},{"key":"sticky","value":"true","source":"pool"},{"key":"sticky_leave_ratio","value":"3","source":"pool"},{"key":"shared_borrow_window","value":"48h","source":"pool"},{"key":"short_unavailable_at_percent","value":"99","source":"pool"},{"key":"own_caps.short","value":"95","source":"default"},{"key":"own_caps.week","value":"98","source":"default"},{"key":"defaults.short","value":"50","source":"pool"},{"key":"defaults.week","value":"70","source":"pool"},{"key":"probe_models","value":"none","source":"default"},{"key":"usage_max_age","value":"60s","source":"pool"},{"key":"key_ttl","value":"60s","source":"pool"},{"key":"picker.command","value":"built-in rules","source":"default"},{"key":"picker.timeout","value":"10s","source":"default"},{"key":"timezone","value":"local","source":"default"},{"key":"log","value":"none","source":"default"},{"key":"when_none_usable","value":"stop","source":"default"}]
 #endregion

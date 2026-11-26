@@ -487,7 +487,7 @@ Help for agx. For one command, use `agx <command> --help` (`agx usage --help`); 
 <!-- runnable -->
 ```sh
 $ agx help --json --field data.commands.*.name
-["agent","alias","clean","completion","config","conversation","credential","doctor","help","launch","live","login","new","plan","pool","profile","project","resume","run","session","shell-init","skill","usage","version","whoami"]
+["agent","alias","clean","completion","config","conversation","credential","doctor","help","launch","live","login","new","plan","pool","profile","project","resume","run","session","shell-init","skill","statusline","usage","version","whoami"]
 ```
 
 Hidden commands (`credential`, `launch`, `plan`) appear with `"hidden": true`; the shell layer and live login use them, and you never type them. Guide: [know the cost before you call](../guides/scripting.md#step-6-know-the-cost-before-you-call).

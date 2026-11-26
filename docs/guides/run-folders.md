@@ -54,7 +54,7 @@ What happened, in order:
 
 1. agx picked a run id `<YYYYMMDD-HHMMSS>-<4 random letters or digits>` and created `~/.agx/runs/<run id>/` (mode 0700).
 2. The profile has settings, so agx wrote them to `settings-<run id>.json` (mode 0600) in that folder and passed its path (see [how settings reach the agent](../launch-options.md#how-settings-reach-the-agent)).
-3. It wrote `run.jsonc` (mode 0600): the run id, its own pid and start time, the agent, binary, profile, home, login and folder.
+3. It wrote `run.jsonc` (mode 0600): the run id, its own pid and start time, the agent, binary, profile, home, login and folder, and when known its `label` (`--label`, else `AGX_RUN_LABEL`), its terminal (`tty`), the name of the program that started agx (`parent`) and the values of the variables `live.record_env` names (`env`).
 4. It set the `AGX_RUN_*` variables and the home variable (`CLAUDE_CONFIG_DIR`, because `~/.claude-work` is not Claude Code's default home).
 5. It replaced itself with the agent (exec). agx is gone; the agent keeps agx's pid, which is the pid `run.jsonc` recorded.
 
@@ -64,7 +64,7 @@ What happened, in order:
 |---|---|---|
 | `run.jsonc` | every launch, just before the agent starts | who was started, where, with which pid and start time; `agx clean` reads it |
 | `settings-<run id>.json` | the launch has settings and `settings_delivery` is `file` (the default) | the merged settings the agent reads via `--settings` |
-| `live.jsonc` | the launch used `--live-login` | the live login state that `agx live` and `agx login use --live` change (see [Logins](../logins.md)) |
+| `live.jsonc` | the launch used `--live-login` or a pool login | the live login state that `agx live` and `agx login use --live` change (see [Logins](../logins.md)), and what `agx credential` last did: `in_use` and `in_use_since` (the login in use and since when), `key_at` (the last real key), and after a refused request `no_key`, `no_key_brief`, `no_key_since` and `when_none_usable`. Login names and times only, never a token; any tool may read it |
 | `plan.jsonc` | the [shell layer](../shell.md) launched the run | what the launch resolved (agent, profile, home, login, folder), never a secret |
 
 `--dry-run` builds in a temporary folder and deletes it again, so it never leaves a run folder behind. It still shows the run id and path the launch would use (the `run` line).
@@ -116,7 +116,7 @@ $ AGX_RUN_ID=20261118-101500-k3x9 agx whoami --json --field data.run_dir
 ~/.agx/runs/20261118-101500-k3x9
 ```
 
-`data.run_dir` is set only when the run folder exists in this config dir; for a run with `--live-login`, `data.live` holds its live state.
+`data.run_dir` is set only when the run folder exists in this config dir; for a run with `--live-login`, `data.live` holds its live state. In a live or pool session `data.in_use` is the login whose key the agent holds, `data.in_use_text` the same as people read it (`none (all over caps) since 10:52` after a refused key request), `data.in_use_since` when it last changed, `data.key_at` when a real key was last handed out, and `data.label` the run's label: stable fields any tool may read. The text form adds `label:` and, after a refused key request, `no key:` with the full reason.
 
 ## Step 3: know which home variable the agent gets
 

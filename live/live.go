@@ -48,11 +48,21 @@ type State struct {
 	ChosenLogin string `json:"chosen_login,omitempty"`
 	// ChosenAt is when ChosenLogin was last set (zero = never).
 	ChosenAt time.Time `json:"chosen_at,omitzero"`
-	// InUse is the login agx credential last handed to the agent; "" =
-	// the agent has not asked yet.
+	// InUse is the login whose key the agent holds now: the login agx
+	// credential last handed out. "" = the agent has not asked yet, or
+	// its last request was refused under when_none_usable "stop" (it was
+	// handed no key; NoKey says why). Under "keep" a refusal leaves InUse
+	// as it was, since the agent goes on with that key.
 	InUse string `json:"in_use,omitempty"`
 	// InUseAt is when the agent last asked (zero = never).
 	InUseAt time.Time `json:"in_use_at,omitzero"`
+	// InUseSince is when InUse last changed to its current value (a
+	// switch of member, the first key, or a refusal that cleared it);
+	// zero = never.
+	InUseSince time.Time `json:"in_use_since,omitzero"`
+	// KeyAt is when agx credential last handed out a real key (zero =
+	// never); a refused request does not change it.
+	KeyAt time.Time `json:"key_at,omitzero"`
 	// Helper is the command the agent runs to fetch its credential.
 	Helper string `json:"helper"`
 	// Model is the model the run's session uses (--model, its profile's
@@ -70,9 +80,21 @@ type State struct {
 	// run (--pool-only-short, --pool-only-week); nil = the configured cap.
 	PoolOnlyShort *float64 `json:"pool_only_short,omitempty"`
 	PoolOnlyWeek  *float64 `json:"pool_only_week,omitempty"`
-	// NoKey says why the last key request of a pinned run handed out no
-	// key ("alice over cap: week is 70% (cap 70%)"); "" once one did.
+	// NoKey says why the last key request handed out no key, in one line
+	// ("pool auto: no member is usable: …", "alice over cap: week is 70%
+	// (cap 70%)"); "" once one did.
 	NoKey string `json:"no_key,omitempty"`
+	// NoKeyBrief is NoKey in a few words for a table or a status line
+	// ("all over caps", "alice over cap", "api key refused").
+	NoKeyBrief string `json:"no_key_brief,omitempty"`
+	// NoKeySince is the first refused request of the current run of
+	// refusals: since when the run has had no key (zero = it has one).
+	NoKeySince time.Time `json:"no_key_since,omitzero"`
+	// WhenNoneUsable is how the last refusal was handled: "stop" (the
+	// agent was handed a placeholder, so it stops) or "keep" (the
+	// request failed and the agent kept its old key); "" with no
+	// refusal.
+	WhenNoneUsable string `json:"when_none_usable,omitempty"`
 	// AllowAPIKey is the run's --allow-api-key: a token login (not a pool
 	// member) declared oauth-token whose token is an API key is handed out
 	// anyway.
@@ -90,6 +112,31 @@ func (s State) Want() string {
 		return s.ChosenLogin
 	}
 	return s.StartLogin
+}
+
+// SetInUse records a key handed out at now: login is in use, the
+// refusal (if any) is over.
+func (s *State) SetInUse(login string, now time.Time) {
+	if s.InUse != login || s.InUseSince.IsZero() {
+		s.InUseSince = now
+	}
+	s.InUse, s.InUseAt, s.KeyAt = login, now, now
+	s.NoKey, s.NoKeyBrief, s.NoKeySince, s.WhenNoneUsable = "", "", time.Time{}, ""
+}
+
+// SetNoKey records a refused key request at now: why in one line, brief
+// in a few words, and how it was handled (mode). Under "stop" the agent
+// holds no usable key, so nothing is in use; under "keep" it goes on
+// with the key it has, so InUse stays. NoKeySince keeps the first
+// refusal of a run of them.
+func (s *State) SetNoKey(why, brief, mode string, now time.Time) {
+	if s.NoKeySince.IsZero() {
+		s.NoKeySince = now
+	}
+	if mode != config.WhenNoneUsableKeep && s.InUse != "" {
+		s.InUse, s.InUseSince = "", now
+	}
+	s.InUseAt, s.NoKey, s.NoKeyBrief, s.WhenNoneUsable = now, why, brief, mode
 }
 
 // Path is live.jsonc of a run folder.

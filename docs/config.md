@@ -64,6 +64,7 @@ $ agx config path --config ~/other/agx.jsonc --json --field data.file --field da
 | `aliases` | map of name to string | shell aliases: named-flag agx arguments, such as `"run --profile work"` |
 | `date_format` | string | how every human date and time reads: a preset (`iso`, `short`, `long`, `us`) or tokens ([below](#date-formats)); unset keeps each screen's own (`long` in `agx usage`, `iso` in table timestamps and `conversation show`); `--date-format` overrides it for one run |
 | `usage` | object | how `agx usage` shows its readings (below) |
+| `live` | object | live-login and pool runs: what happens when no key is usable, the status line, what a run records about itself ([below](#live)) |
 
 ## Sessions
 
@@ -447,6 +448,7 @@ This pool sets its members, caps and cache keys; the rule values, schedules and 
 | `logins.<login>.pool.picker` | object | your own picker instead of the built-in rules; unset (the default) uses the rules. See [your own picker](guides/login-pool.md#your-own-picker) |
 | `logins.<login>.pool.picker.command` | string | a shell command line; it reads the members and their usage as JSON on stdin (never a token) and prints one member's login name. A failure falls back to the built-in rules with a warning |
 | `logins.<login>.pool.picker.timeout` | duration | how long one run may take; default `10s` |
+| `logins.<login>.pool.when_none_usable` | `stop` or `keep` | what `agx credential` does for this pool's runs when no member is usable (every member over a cap, disabled or unreadable; a `--pool-only` member over its cap): `stop` hands Claude `agx-no-account-usable`, which is not a key, so its next request fails and nothing more is spent until a member is usable again; `keep` exits 1 and Claude goes on with the key it already holds, past the caps. Omitted = `live.when_none_usable`, else `stop`. `agx pool show` lists it with its source (`pool`, `live`, `default`). See [when no account is usable](guides/pool-rules.md#when-no-account-is-usable) |
 | `logins.<login>.pool.log` | path | a file that gets one line per key request (time, pick, group, forced, source, the picked member's usage in percent and the probe models; never a token); `~` and `${VAR}` expand |
 | `logins.<login>.pool.timezone` | IANA time zone | the zone of schedules without their own and of `--until` times, like `Europe/Istanbul`; omitted = this machine's local time |
 | `logins.<login>.pool.schedules` | list of objects | recurring windows of different caps: on their days and hours their caps replace the named members' caps. `agx login edit --pool-schedule 'NAME key=value …'` changes the keys it gives of one schedule and keeps the rest (`key=` removes one); `--pool-schedule-replace` writes a whole one. See [schedules and overrides](guides/pool-rules.md#schedules-and-overrides) |
@@ -463,6 +465,24 @@ This pool sets its members, caps and cache keys; the rule values, schedules and 
 | `logins.<login>.pool.schedules[].release_before` | duration | stop applying this long before the window ends; omitted = `5h` when it sets `short` (a teammate starting right after finds a fresh 5-hour window), else `0s` |
 
 Durations are Go duration strings (`48h`, `90m`, `60s`). A member's caps come from its override while it applies, else the schedules that apply now (one naming the member before one naming its group), else its own entry, else its group's (`own_caps`, `shared_caps`), else for a shared member `defaults`, else agx's default (own 95/98, shared 50/70), each cap on its own ([which cap wins](guides/pool-rules.md#which-cap-wins)); `agx pool show` prints each value with its source (`member`, `group`, `pool`, `default`). `agx pool preset --name recommended|classic --id POOL` writes a named set of the rule values ([presets](guides/pool-rules.md#presets)). Caps and the cutoff are 0 to 100, and the published schema says so (`minimum`, `maximum`), so your editor flags a wrong one as you type. Every key here has a flag on `agx login add` and `agx login edit` (`--pool-cap-short NAME=N`, `--pool-cap-week NAME=N`, `--pool-disable`, `--pool-enable`, `--pool-default-short`, `--pool-default-week`, `--pool-short-cutoff`, `--pool-borrow-window`, `--pool-usage-max-age`, `--pool-key-ttl`, `--pool-picker`, `--pool-order`, `--pool-deadline-window`, `--pool-deadline-min-room`, `--pool-week-relax-window`, `--pool-max-sessions`, `--pool-sticky`, `--pool-sticky-leave-ratio`, `--pool-default-week-relax`, `--pool-cap-week-relax NAME=N`, `--pool-capacity NAME=N`, `--pool-group-cap-short GROUP=N`, `--pool-group-cap-week GROUP=N`, `--pool-group-cap-week-relax GROUP=N`, `--pool-probe-model MODEL`, `--pool-timezone`, `--pool-schedule`, `--pool-schedule-replace`, `--pool-schedule-remove`, `--until` (an override that ends) and `--pool-clear-override`; see the [login reference](commands/login.md#agx-login-edit)), and `agx config set` sets any single value (a list such as `probe_models` goes through the flag). Nothing in a pool is ignored silently: an unknown key anywhere, a cap that is not a number from 0 to 100, `null` for anything but `force`, an empty `force`, an `enabled` that is not `true`/`false` and a bad duration are each an error at their line. The old setting names of the stand-alone selector (`burnToFullest`, `priority`, `accountLimits`, `limits`, `sharedBorrowWindowHours`) are unknown keys and refused at their line.
+
+## Live
+
+The `live` block holds the defaults of every live-login run (`--live-login`, a profile with `live_login`, and every run on a pool login).
+
+```jsonc
+"live": {
+  "when_none_usable": "stop",   // or "keep": the agent goes on with its old key
+  "status_line": true,          // false: never add agx statusline
+  "record_env": ["TERM_SESSION_NAME"]
+}
+```
+
+| Key | Type | Meaning |
+|---|---|---|
+| `live.when_none_usable` | `stop` or `keep` | what `agx credential` does when it cannot hand out a key (no pool member usable, a pinned member over its cap, a refused API key, a login that does not resolve): `stop` (the default) prints `agx-no-account-usable` instead of a key and exits 0, so the agent's next request fails authentication and it waits, asking again, until a key is usable; `keep` exits 1, and the agent goes on with the key it already holds (Claude Code does), so a pool's caps are not kept. A pool's own `when_none_usable` wins for its runs. See [when no account is usable](guides/pool-rules.md#when-no-account-is-usable) |
+| `live.status_line` | bool | write `agx statusline` as the status line of a live run of an agent that has one (Claude Code's `statusLine`), so the session shows the account it is on now; default `true`. A status line you set yourself (in any of the agent's settings files for that home and folder, the profile's settings or `--setting`) is kept, and the dry run says so. See [`agx statusline`](commands/live.md#agx-statusline) |
+| `live.record_env` | list of variable names | environment variables whose values a live run records at launch (run.jsonc `env`, only those set), shown by `agx live list --wide`, `--json` and `agx live show` as `env NAME`. Default empty. The value is stored in plain text: never name a secret's variable. A list, so write it in config.jsonc (`agx config path` names the file); `agx config set` sets the two single values |
 
 ## Projects
 

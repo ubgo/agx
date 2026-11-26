@@ -55,6 +55,9 @@ type LaunchOptions struct {
 	BeforeRun string
 	// LiveLogin is --live-login.
 	LiveLogin bool
+	// Label is --label: a name for the run, kept in run.jsonc and shown
+	// by agx live list; "" = AGX_RUN_LABEL, else none.
+	Label string
 	// AllowAPIKey is --allow-api-key: an oauth-token login whose token is
 	// detected as an API key (billed per use) may start this run (and, on
 	// a live run, be handed out by agx credential). Pool members are not

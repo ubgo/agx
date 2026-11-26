@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ubgo/agx/internal/app"
 	"github.com/ubgo/agx/internal/testkit"
 )
 
@@ -262,8 +263,11 @@ func TestCredentialPerUseAndWhoami(t *testing.T) {
 	dir := writeRun(t, f, id, 0, `{"run_id":"`+id+`","agent":"claude","start_login":"peruse","helper":"agx credential"}`)
 	f.Env["AGX_RUN_ID"] = id
 	r := f.Run("credential")
-	if r.Code == 0 || r.Stdout != "" || strings.Count(strings.TrimSpace(r.Stderr), "\n") != 0 || !strings.Contains(r.Stderr, "billed per use") {
-		t.Fatalf("credential must refuse in one line: %d %q %q", r.Code, r.Stdout, r.Stderr)
+	if r.Code != 0 || r.Stdout != app.NoKeyPlaceholder+"\n" || strings.Count(strings.TrimSpace(r.Stderr), "\n") != 0 || !strings.Contains(r.Stderr, "billed per use") {
+		t.Fatalf("credential must refuse in one line, with the placeholder: %d %q %q", r.Code, r.Stdout, r.Stderr)
+	}
+	if st := f.ReadFile(filepath.Join(dir, "live.jsonc")); !strings.Contains(st, `"no_key_brief": "api key refused"`) {
+		t.Fatalf("live.jsonc: %s", st)
 	}
 	f.WriteFile(filepath.Join(dir, "live.jsonc"), `{"run_id":"`+id+`","agent":"claude","start_login":"peruse","helper":"agx credential","allow_api_key":true}`, 0o600)
 	r = f.Run("credential")

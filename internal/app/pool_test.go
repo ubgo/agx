@@ -237,15 +237,24 @@ func TestPoolCredential(t *testing.T) {
 	}
 }
 
-// TestPoolCredentialNoneUsableIsOneLine: no member usable fails the
-// helper with one line naming the reasons.
+// TestPoolCredentialNoneUsableIsOneLine: no member usable answers the
+// helper with the placeholder and one line naming the reasons (stop, the
+// default); under when_none_usable keep the same line is the error.
 func TestPoolCredentialNoneUsableIsOneLine(t *testing.T) {
 	m, _ := poolMachine(t, map[string]account{tokPersonal: {weekly: 99}, tokWork: {weekly: 99}, tokCarol: {weekly: 80}, tokDave: {weekly: 80}})
 	a := m.app(t)
 	liveRun(t, m, a, "auto")
-	_, err := a.Credential(context.Background())
-	if err == nil || strings.Contains(err.Error(), "\n") || !strings.Contains(err.Error(), "pool auto: no member is usable") || !strings.Contains(err.Error(), "(try: agx pool pick --id auto --pool-force NAME)") {
-		t.Fatalf("err %v", err)
+	cr, err := a.Credential(context.Background())
+	line := func(s string) bool {
+		return !strings.Contains(s, "\n") && strings.Contains(s, "pool auto: no member is usable") && strings.Contains(s, "(try: agx pool pick --id auto --pool-force NAME)")
+	}
+	if err != nil || !line(cr.Refused) || cr.RefusedBrief != briefAllOverCaps || cr.Token.Reveal() != "" || cr.Pool != "auto" {
+		t.Fatalf("stop: %+v err %v", cr, err)
+	}
+	m.f.WriteConfig(strings.Replace(poolConfig, `"pool": {`, `"pool": { "when_none_usable": "keep",`, 1))
+	cr, err = m.app(t).Credential(context.Background())
+	if err == nil || !line(err.Error()) || cr.Refused != "" {
+		t.Fatalf("keep: %+v err %v", cr, err)
 	}
 }
 

@@ -2,9 +2,11 @@ run         <run-id>
 agent       claude
 profile     work
 folder      <root>/work
+pid         0
 started on  auto
 chosen      —
 next        auto
 only        ivan (caps enforced)
 in use      none (ivan over cap: week is 43% (cap 40%))
+no key      ivan over cap: week is 43% (cap 40%)
 liveness    alive (running)

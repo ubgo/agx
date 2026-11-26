@@ -32,37 +32,39 @@ The dry run shows what it adds. Instead of `CLAUDE_CODE_OAUTH_TOKEN`, Claude get
 <!-- snippet: examples/acct-live-login/session.txt#dry-run -->
 ```sh
 $ agx run --profile personal --login carol --live-login --dry-run --quiet
-agent    claude                                                                                        from profile personal
-profile  personal                                                                                      from --profile
-home     ~/.claude                                                                                     from profile personal
-login    carol (not resolved: --dry-run)                                                               from --login
-binary   /usr/local/bin/claude version unknown                                                         from no install metadata
-folder   ~/projects/app                                                                                from current folder
-note     live login: switch with agx live use --id 20261118-061305-aaaj --login NAME (refresh 10s)     from --live-login
-settings apiKeyHelper                                                                                  from --live-login
-         delivered as file ~/.agx/runs/20261118-061305-aaaj/settings-20261118-061305-aaaj.json (0600)  from settings_delivery file
-run      ~/.agx/runs/20261118-061305-aaaj                                                              from AGX_RUN_ID=20261118-061305-aaaj
-command  claude --settings ~/.agx/runs/20261118-061305-aaaj/settings-20261118-061305-aaaj.json         from built by agentio
-env      set AGX_RUN_ID=20261118-061305-aaaj                                                           from launch environment
-         set AGX_RUN_AGENT=claude                                                                      from launch environment
-         set AGX_RUN_PROFILE=personal                                                                  from launch environment
-         set AGX_RUN_LOGIN=carol                                                                       from launch environment
-         set AGX_RUN_HOME=~/.claude                                                                    from launch environment
-         set CLAUDE_CODE_API_KEY_HELPER_TTL_MS=10000                                                   from launch environment
-note     installed Claude Code version unknown; flags not checked
+agent     claude                                                                                        from profile personal
+profile   personal                                                                                      from --profile
+home      ~/.claude                                                                                     from profile personal
+login     carol (not resolved: --dry-run)                                                               from --login
+binary    /usr/local/bin/claude version unknown                                                         from no install metadata
+folder    ~/projects/app                                                                                from current folder
+note      live login: switch with agx live use --id 20261118-120000-8pyt --login NAME (refresh 10s)     from --live-login
+          when no key is usable: stop (the agent waits for a usable key)                                from default
+settings  apiKeyHelper                                                                                  from --live-login
+          statusLine agx statusline (the account in use)                                                from default
+          delivered as file ~/.agx/runs/20261118-120000-8pyt/settings-20261118-120000-8pyt.json (0600)  from settings_delivery file
+run       ~/.agx/runs/20261118-120000-8pyt                                                              from AGX_RUN_ID=20261118-120000-8pyt
+command   claude --settings ~/.agx/runs/20261118-120000-8pyt/settings-20261118-120000-8pyt.json         from built by agentio
+env       set AGX_RUN_ID=20261118-120000-8pyt                                                           from launch environment
+          set AGX_RUN_AGENT=claude                                                                      from launch environment
+          set AGX_RUN_PROFILE=personal                                                                  from launch environment
+          set AGX_RUN_LOGIN=carol                                                                       from launch environment
+          set AGX_RUN_HOME=~/.claude                                                                    from launch environment
+          set CLAUDE_CODE_API_KEY_HELPER_TTL_MS=10000                                                   from launch environment
+note      installed Claude Code version unknown; flags not checked
 ```
 
 The run folder also gets `live.jsonc`: the login the run started on, the login chosen for it, and the login in use at the agent's last refresh. Never a token.
 
 ## Step 2: find the run
 
-In another terminal, `agx live list` shows every live run whose agent has not ended: the login it started on, the login it gets at the next refresh (`NEXT`), the login in use, and its liveness. `agx live show --id RUN` shows one run, ended or not.
+In another terminal, `agx live list` shows every live run whose agent has not ended: its label, folder and process id, so you can tell which terminal it is, the login in use (`IN USE`), when a key was last handed out (`LAST KEY`) and its liveness. `--wide` adds the agent, profile, terminal, parent process, the login it started on and gets next (`STARTED ON`, `NEXT`), and the conversation with its title. Name a run when you start it, `agx run --login carol --live-login --label review`, or let your terminal tool set `AGX_RUN_LABEL`. `agx live show --id RUN` shows one run, ended or not.
 
 <!-- snippet: examples/acct-live-login/session.txt#list -->
 ```sh
 $ agx live list --agent claude
-RUN                   AGENT   PROFILE  STARTED ON  NEXT   IN USE  LIVENESS
-20261114-101500-k3x9  claude  work     carol       carol  —       unknown
+RUN                   LABEL  FOLDER          PID  IN USE  LAST KEY  LIVENESS
+20261114-101500-k3x9  —      ~/projects/app  —    —       —         unknown
 
 $ agx live show --id 20261114-101500-k3x9
 run         20261114-101500-k3x9
@@ -111,38 +113,44 @@ fake-token-alice
 <!-- snippet: examples/acct-live-login/session.txt#after -->
 ```sh
 $ agx live show --id 20261114-101500-k3x9
-run         20261114-101500-k3x9
-agent       claude
-profile     work
-folder      ~/projects/app
-started on  carol
-chosen      alice
-next        alice
-in use      alice
-liveness    unknown (process info unreadable: run.jsonc records no process id)
+run           20261114-101500-k3x9
+agent         claude
+profile       work
+folder        ~/projects/app
+started on    carol
+chosen        alice
+next          alice
+in use        alice
+in use since  2026-11-18 12:00:00
+last key      2026-11-18 12:00:00
+liveness      unknown (process info unreadable: run.jsonc records no process id)
 
 $ agx live use --id 20261114-101500-k3x9 --start-login
-run         20261114-101500-k3x9
-agent       claude
-profile     work
-folder      ~/projects/app
-started on  carol
-chosen      —
-next        carol
-in use      alice
-liveness    unknown (process info unreadable: run.jsonc records no process id)
+run           20261114-101500-k3x9
+agent         claude
+profile       work
+folder        ~/projects/app
+started on    carol
+chosen        —
+next          carol
+in use        alice
+in use since  2026-11-18 12:00:00
+last key      2026-11-18 12:00:00
+liveness      unknown (process info unreadable: run.jsonc records no process id)
 ```
 
 ## Let a pool switch for you
 
-A run on a [`pool` login](login-pool.md) is a live run that switches by itself: its start login is the pool, and each time Claude runs its key helper, `agx credential` picks a member by usage and hands out that member's token, with the pool's `key_ttl` (60 s by default) as the refresh interval instead of ten seconds. `agx live use --id RUN --login alice` pins one member for that run, ignoring her caps; `agx live use --id RUN --pool-only alice` pins her with her caps enforced (no key while she is over one); `agx live use --id RUN --start-login` goes back to the pool.
+A run on a [`pool` login](login-pool.md) is a live run that switches by itself: its start login is the pool, and each time Claude runs its key helper, `agx credential` picks a member by usage and hands out that member's token, with the pool's `key_ttl` (60 s by default) as the refresh interval instead of ten seconds. `agx live use --id RUN --login alice` pins one member for that run, ignoring her caps; `agx live use --id RUN --pool-only alice` pins her with her caps enforced (the session waits with no key while she is over one); `agx live use --id RUN --start-login` goes back to the pool.
 
 ```sh
 agx run --login auto                 # live without --live-login
 agx pool pick --id auto             # which member the next key comes from, and why
 ```
 
-Which account is my session on? Run `! agx whoami` inside Claude: `in use:` is the login whose key Claude got last, and `next:` the one it gets at its next refresh when a switch is pending. /status only says apiKeyHelper, and Claude's own guess reads the keychain login, not the key it uses.
+When every member is over its caps, the session waits instead of going past them: `agx credential` hands Claude a placeholder that is not a key, and Claude continues by itself once a member is usable ([when no account is usable](pool-rules.md#when-no-account-is-usable)).
+
+Which account is my session on? The bottom of Claude's screen says it: a live run's launch sets [`agx statusline`](../commands/live.md#agx-statusline) as Claude's status line (`pool auto: alice · 5h 40% · week 61%`, `login carol`), unless you set your own. Or run `! agx whoami` inside Claude: `in use:` is the login whose key Claude got last, and `next:` the one it gets at its next refresh when a switch is pending. /status only says apiKeyHelper, and Claude's own guess reads the keychain login, not the key it uses.
 
 ## When a switch applies
 
@@ -203,11 +211,16 @@ agx: --login and --start-login both choose the login; pick one
 - The switch takes effect at the agent's next key refresh or right after a rejected key, not at once, and the first request after a refresh may still use the old key ([When a switch applies](#when-a-switch-applies)); `in use` tells you when the helper ran.
 - Live login replaces the token variable with the helper, so the run's `CLAUDE_CODE_OAUTH_TOKEN` is not set. `agx run --dry-run` shows exactly what is set.
 
-### A helper that fails stops the session
+### When the helper has no key
 
-An empty helper output, or a helper that exits non-zero, is a hard failure for Claude Code: it runs the helper three times, then exits 1 (`apiKeyHelper failed: did not return a value`, or `exited 1`). It never falls back to the home's own keychain login. So a live login whose token cannot be resolved ends the session at the next refresh.
+Claude Code treats its key helper's answer in two ways. A helper that prints nothing or exits non-zero is a failure: with no key yet (the session's first request) Claude runs it three times, then exits 1 (`apiKeyHelper failed: did not return a value`, or `exited 1`), never falling back to the home's own keychain login; once it holds a key, it prints `apiKeyHelper failed` and goes on with the key it already has (tested with Claude Code 2.1.330). A helper that prints a value Claude cannot use is not a failure: the next request gets 401, and Claude retries it about ten times over four to five minutes, asking the helper before each try; after the last try it stops the turn (`Invalid API key · Fix external API key`, `Once fixed, resend your message`) and the next message you send asks again (tested with Claude Code 2.1.332).
 
-`agx credential` therefore never prints an empty value. A token that is empty, only whitespace, more than one line, or does not resolve (an unset variable, a missing gopass entry, a failing command, no stored value) makes it exit non-zero with nothing on stdout and one line on stderr, which Claude shows in `/status`. The line names the login and the reference, never a value and never what the secret store itself printed; `agx login check --id NAME --no-probe` shows the full reason.
+So `agx credential` never prints an empty value. When it has no key for its run (a token that is empty, only whitespace, more than one line, or does not resolve: an unset variable, a missing gopass entry, a failing command, no stored value; or a pool with no usable member), it answers by the run's `when_none_usable` ([when no account is usable](pool-rules.md#when-no-account-is-usable)):
+
+- `stop` (the default) prints `agx-no-account-usable` (not a key) and exits 0, with one line on stderr: `agx: warning: no key handed out: <reason>`. The session stops spending and waits; it goes on by itself once the login resolves again (or a pool member is usable).
+- `keep` exits 1 with nothing on stdout and one line on stderr, which Claude shows in `/status`; a running session goes on with its old key.
+
+The line names the login and the reference, never a value and never what the secret store itself printed; `agx login check --id NAME --no-probe` shows the full reason. `agx live show` and `agx whoami` show the refusal as `none (key not resolved) since 10:52` with the full line under `no key`.
 
 <!-- snippet: examples/acct-live-login/config.jsonc#broken -->
 ```jsonc
@@ -223,25 +236,25 @@ $ agx live use --id 20261114-101500-k3x9 --login blank --field data.next
 blank
 
 $ AGX_RUN_ID=20261114-101500-k3x9 agx credential
-agx: login blank: token is empty (try: agx login check --id blank --no-probe)
-[exit 1]
+agx: warning: no key handed out: login blank: token is empty (try: agx login check --id blank --no-probe)
+agx-no-account-usable
 
 $ agx live use --id 20261114-101500-k3x9 --login twolines --field data.next
 twolines
 
 $ AGX_RUN_ID=20261114-101500-k3x9 agx credential
-agx: login twolines: token has 2 lines (try: agx login check --id twolines --no-probe)
-[exit 1]
+agx: warning: no key handed out: login twolines: token has 2 lines (try: agx login check --id twolines --no-probe)
+agx-no-account-usable
 
 $ agx live use --id 20261114-101500-k3x9 --login unset --field data.next
 unset
 
 $ AGX_RUN_ID=20261114-101500-k3x9 agx credential
-agx: login unset: DAVE_TOKEN is not set (try: agx login check --id unset --no-probe)
-[exit 1]
+agx: warning: no key handed out: login unset: DAVE_TOKEN is not set (try: agx login check --id unset --no-probe)
+agx-no-account-usable
 ```
 
-Before switching to a login, check that it resolves: `agx login check --id NAME --no-probe` (no tokens spent). If a session already stopped, its run has ended (`agx live use` refuses it): resume the conversation on a login that resolves, `agx resume --last --login NAME --live-login`.
+Before switching to a login, check that it resolves: `agx login check --id NAME --no-probe` (no tokens spent). A waiting session goes on once you switch it to a login that resolves (`agx live use --id RUN --login NAME`); type `continue` if Claude has given up. If a session already exited, its run has ended (`agx live use` refuses it): resume the conversation on a login that resolves, `agx resume --last --login NAME --live-login`.
 
 ## Related
 

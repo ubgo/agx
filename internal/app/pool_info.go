@@ -24,6 +24,8 @@ const (
 	SourcePool    = "pool"
 	SourceGroup   = "group"
 	SourceMember  = "member"
+	// SourceLiveBlock is the top-level live block (live.when_none_usable).
+	SourceLiveBlock = "live"
 )
 
 // Pool setting keys, as the pool block in config names them, so a key in
@@ -51,6 +53,9 @@ const (
 	poolKeyLog          = "log"
 	poolKeyTimezone     = "timezone"
 	poolKeyProbeModels  = "probe_models"
+	// poolKeyWhenNoneUsable is what agx credential does with no member
+	// usable.
+	poolKeyWhenNoneUsable = "when_none_usable"
 )
 
 // poolRuleKeys are the settings that decide the pick (agx pool pick and a
@@ -205,8 +210,26 @@ func (a *App) PoolShow(o PoolShowOptions) (PoolInfo, error) {
 		return PoolInfo{}, apperr.Usage(a.notAPool(poolCmdShow, o.ID, lg)).WithHint(poolListHint)
 	}
 	info := poolInfo(o.ID, lg)
+	if cfg, err := a.Config(); err == nil {
+		info.Settings = append(info.Settings, whenNoneUsableSetting(cfg.Config, o.ID))
+	}
 	poolTimed(&info, poolOf(lg), a.Now())
 	return info, nil
+}
+
+// whenNoneUsableSetting is the pool's when_none_usable as agx pool show
+// lists it: the pool's own value (source pool), else the live block's
+// (source live), else stop (default).
+func whenNoneUsableSetting(c config.Config, name string) PoolSetting {
+	mode, src := whenNoneUsable(c, name)
+	switch src {
+	case SourceDefault:
+	case liveKeyWhenNoneUsable:
+		src = SourceLiveBlock
+	default:
+		src = SourcePool
+	}
+	return PoolSetting{Key: poolKeyWhenNoneUsable, Value: mode, Source: src}
 }
 
 // poolSummary is a pool's list row. A pool login without its pool block

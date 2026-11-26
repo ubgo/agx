@@ -211,11 +211,11 @@ Every command takes named flags only; a bare `agx`, or a bare group such as `agx
 | [`agx run`](docs/commands/launch.md#agx-run) | Start an agent in the current folder (or `--dir`); on a pool, `--pool-only NAME` keeps it on one member within its caps |
 | [`agx new`](docs/commands/launch.md#agx-new) | Create a timestamped session folder and start an agent in it |
 | [`agx resume`](docs/commands/launch.md#agx-resume) | Continue a conversation on the home that stores it |
-| [`agx whoami`](docs/commands/launch.md#agx-whoami) | Profile, login, home and run id of the current session; in a pool session the member in use, a `--pool-only` pin and the next member |
+| [`agx whoami`](docs/commands/launch.md#agx-whoami) | Profile, login, home and run id of the current session; in a pool session the member in use and since when, a `--pool-only` pin and the next member |
 | [`agx usage`](docs/commands/usage.md#agx-usage) | Plan usage, one row per configured home |
 | [`agx conversation`](docs/commands/conversation.md) | Conversations stored in agent homes: list, show, move |
 | [`agx session`](docs/commands/conversation.md#agx-session-list) | Session folders made by `agx new`: list, clean, promote |
-| [`agx live`](docs/commands/live.md) | Running live and pool sessions: list, show, switch the login, pin a pool member with `--pool-only` |
+| [`agx live`](docs/commands/live.md) | Running live and pool sessions: list (label, folder, pid, account in use, last key; `--wide` for terminal and conversation), show, switch the login, pin a pool member with `--pool-only`; `agx statusline` for the agent's status line |
 | [`agx profile`](docs/commands/profile.md) | Profiles, a name for one home plus launch defaults: list, show, add, import, edit, remove, use |
 | [`agx login`](docs/commands/login.md) | Logins, what a launch authenticates with: list, show, add, edit, remove, use, check, token |
 | [`agx pool`](docs/commands/pool.md) | Login pools: list, show their settings, pick (which member a pool uses now, and why; `--pool-only NAME` for one pinned member), preset (a named set of rule values), prune (remove overrides that have ended) |
@@ -329,7 +329,7 @@ For Claude Code, yes: start it with `--live-login`, then `agx live use --id <run
 
 ### Can agx move a running Claude session between accounts automatically?
 
-Yes, with a login pool: a login of kind `pool` lists your own Claude logins and your teammates' shared ones, and `agx run --login auto` starts Claude with agx as its key helper. Each time Claude asks for a key (every minute by default), agx reads the members' usage (one small probe each, cached and shared by every session) and hands out the token of the member whose weekly room is lost first (a member within a day of its reset, soonest first), else the one with the most room to lose per hour, using your own accounts almost fully and teammates' only up to their caps, and spreading several sessions over several accounts. `agx pool pick --id auto` shows the pick and why. To keep one session on one account but within its caps, add `--pool-only NAME`: it gets no key while that account is over a cap, rather than switching. It is Claude Code only. See [Share a pool of Claude accounts](docs/guides/login-pool.md).
+Yes, with a login pool: a login of kind `pool` lists your own Claude logins and your teammates' shared ones, and `agx run --login auto` starts Claude with agx as its key helper. Each time Claude asks for a key (every minute by default), agx reads the members' usage (one small probe each, cached and shared by every session) and hands out the token of the member whose weekly room is lost first (a member within a day of its reset, soonest first), else the one with the most room to lose per hour, using your own accounts almost fully and teammates' only up to their caps, and spreading several sessions over several accounts. `agx pool pick --id auto` shows the pick and why. To keep one session on one account but within its caps, add `--pool-only NAME`: it gets no key while that account is over a cap, rather than switching. When no account is usable the session waits instead of going past the caps. It is Claude Code only. See [Share a pool of Claude accounts](docs/guides/login-pool.md).
 
 ### Can a pool use a teammate's account more on weekends?
 
@@ -430,7 +430,7 @@ Every way to use a pool, with the names of the [example](examples/acct-login-poo
    agx login edit --id auto --pool-cap-short erin=40 --pool-cap-week erin=60
    ```
 
-8. **Which account is my session on?** When to use it: inside Claude, whose `/status` only says `apiKeyHelper`.
+8. **Which account is my session on?** When to use it: inside Claude, whose `/status` only says `apiKeyHelper` (the status line at the bottom, `agx statusline`, shows it too; `agx live list` from another terminal).
 
    ```sh
    ! agx whoami
@@ -455,7 +455,11 @@ Every recipe is explained in [Share a pool of Claude accounts](docs/guides/login
 
 ### Which account is my Claude session on?
 
-Run `! agx whoami` inside Claude. In a pool or `--live-login` session it shows `in use:` (the login whose key Claude got last) and `next:` when a switch is pending. Claude's `/status` only says `apiKeyHelper`, and Claude's own guess reads the keychain login, not the key it uses.
+Look at the bottom of Claude's screen: a pool or `--live-login` session shows `pool auto: alice · 5h 40% · week 61%` there, because the launch sets [`agx statusline`](docs/commands/live.md#agx-statusline) as Claude's status line (unless you set your own; then call `agx statusline` from your script). `! agx whoami` inside Claude shows `in use:` (the login whose key Claude got last) and `next:` when a switch is pending. From another terminal, `agx live list` lists every running session with its label, folder, process id, the account in use and when it last got a key (`--wide` adds the terminal and the conversation title); name a run with `--label TEXT`. Claude's `/status` only says `apiKeyHelper`, and Claude's own guess reads the keychain login, not the key it uses.
+
+### What happens when every account in a pool is over its caps?
+
+The session waits: agx hands Claude `agx-no-account-usable`, which is not a key, so Claude's next request fails authentication and nothing more is spent on any account. Claude retries the request about ten times over four to five minutes and goes on by itself if an account becomes usable in that time; after that it stops the turn (`Invalid API key · Fix external API key`), and you type `continue` once an account is usable. One request after the refusal still uses the old key (Claude fetches keys in the background), and usage readings can be up to a minute old. To go on past the caps instead, set `when_none_usable` to `keep` on the pool. See [when no account is usable](docs/guides/pool-rules.md#when-no-account-is-usable).
 
 ### Does agx work on Windows?
 

@@ -44,6 +44,13 @@ const (
 	EnvRunHome    = "AGX_RUN_HOME"
 )
 
+// EnvRunLabel names a run at launch when --label is not given (any
+// launcher, script or person may set it; agx gives it no meaning). An
+// input, unlike the AGX_RUN_* outputs above: the launch removes it from
+// the agent's environment, so an agx started inside the agent does not
+// take the outer run's label.
+const EnvRunLabel = "AGX_RUN_LABEL"
+
 // File names inside a run folder.
 const (
 	RecordFile = "run.jsonc"
@@ -99,6 +106,18 @@ type Record struct {
 	Folder string `json:"folder"`
 	// LiveLogin is true when the run was started with --live-login.
 	LiveLogin bool `json:"live_login,omitempty"`
+	// Label names the run for people and tools (--label, else
+	// AGX_RUN_LABEL at launch); "" = none. agx gives it no meaning.
+	Label string `json:"label,omitempty"`
+	// TTY is the controlling terminal at launch without "/dev/"
+	// ("pts/3", "ttys004"); "" = none or unknown.
+	TTY string `json:"tty,omitempty"`
+	// Parent is the name of the process that started agx (a shell, a
+	// terminal tool, a script); "" = unknown.
+	Parent string `json:"parent,omitempty"`
+	// Env are the values at launch of the variables live.record_env
+	// names (only those set); nil = none.
+	Env map[string]string `json:"env,omitempty"`
 }
 
 // Dir is a run folder path for id under runs.

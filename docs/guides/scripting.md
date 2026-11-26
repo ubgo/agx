@@ -316,13 +316,13 @@ $ agx help --json --field data.flags.*.name
 ["color","config","date-format","field","json","quiet","timeout"]
 
 $ agx help --json --field data.commands.*.name
-["agent","alias","clean","completion","config","conversation","credential","doctor","help","launch","live","login","new","plan","pool","profile","project","resume","run","session","shell-init","skill","usage","version","whoami"]
+["agent","alias","clean","completion","config","conversation","credential","doctor","help","launch","live","login","new","plan","pool","profile","project","resume","run","session","shell-init","skill","statusline","usage","version","whoami"]
 
-$ agx help --json --field data.commands.22.name --field data.commands.22.cost --field data.commands.22.fields
+$ agx help --json --field data.commands.23.name --field data.commands.23.cost --field data.commands.23.fields
 {
-  "data.commands.22.name": "usage",
-  "data.commands.22.cost": "N",
-  "data.commands.22.fields": [
+  "data.commands.23.name": "usage",
+  "data.commands.23.cost": "N",
+  "data.commands.23.fields": [
     "data.*.kind",
     "data.*.name",
     "data.*.agent",
@@ -494,11 +494,13 @@ agx pool pick --id auto --cached --pool-only carol --json --field data.selected.
 
 With `--pool-only NAME` the pick is that member alone with its caps enforced (`data.selected.picked_by` is `only`); exit 1 means it is blocked, and `data.candidates[0].reasons` says why. Inside a pinned session, `agx whoami --json --field data.only` is the pinned member.
 
-A session started with `agx run --login auto --pool-only carol` stays on carol for every key. At her cap the key helper (`agx credential`) prints nothing on stdout, one line on stderr (`carol: week is 70% (cap 70%)`) and exits 1 with code `auto-pick`, so Claude's request fails rather than switching; the next key request after her usage falls under the cap gets her key again. A script can watch for that:
+A session started with `agx run --login auto --pool-only carol` stays on carol for every key. At her cap the key helper (`agx credential`) hands Claude `agx-no-account-usable` instead of a key, with one line on stderr (`agx: warning: no key handed out: carol: week is 70% (cap 70%)`) and exit 0, so the session waits rather than switching (with `when_none_usable: "keep"` it exits 1 with code `auto-pick` and Claude goes on with its old key); the next key request after her usage falls under the cap gets her key again. A script can watch for that:
 
 ```sh
 agx live show --id "$RUN" --json --field data.only     # carol: the run is pinned
 agx live show --id "$RUN" --json --field data.no_key   # empty, or why the last key request got none
+agx live show --id "$RUN" --json --field data.no_key_since   # since when it has had no key
+agx live list --json --field 'data.*.in_use_text'      # what each run is on: "carol", "none (carol over cap) since 10:52"
 agx pool pick --id auto --cached --pool-only carol >/dev/null 2>&1 && echo "carol usable again"
 ```
 

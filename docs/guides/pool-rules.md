@@ -19,7 +19,46 @@ The defaults were chosen with the [pool simulator](pool-simulator.md) to do well
    `order: "deadline"` puts the soonest weekly reset first, with no minimum room. An unknown or passed reset sorts last (a reading whose weekly reset has passed is old as a whole, so it still blocks at its caps until the next probe); ties keep config order, own before shared.
 6. **A pick per session.** Each session (each `--login POOL` run) gets its own pick. It stays on its member while that member is still in the pool (`sticky`), unless the member it would go to (the first in order that can take another session) is at least `sticky_leave_ratio` (3) times as urgent; a member takes at most `max_sessions` (4) sessions before the next one is used, then the waiting members, then the least loaded. A session counts while its agent still runs and it asked for a key within two `key_ttl`s: a run that ended a moment ago, or one that sits idle, holds no place. So `agx live list` (every run that still runs, busy or idle) can show more runs on a member than `max_sessions`, and more than `agx pool pick` counts: idle runs keep their member (sticky) when they wake, and when every member is at `max_sessions` the least loaded takes the next session. With `max_sessions: 0` and `sticky: false` every session gets the first member.
 
-An empty pool picks nothing: the key request fails with each member's reasons, and `agx pool pick` exits 1 (error code `auto-pick`).
+An empty pool picks nothing: the key request hands Claude no key, with each member's reasons ([when no account is usable](#when-no-account-is-usable)), and `agx pool pick` exits 1 (error code `auto-pick`).
+
+## When no account is usable
+
+When every member is over a cap (or disabled, or has no reading), the pool has no key to hand out. What happens next is `when_none_usable`, a key of the pool (or of the top-level `live` block for every live run):
+
+- **`stop` (the default): the session waits.** `agx credential` hands Claude the word `agx-no-account-usable` instead of a key, exits 0 and writes the reason on stderr. That word is not a key, so Claude's next request fails authentication and nothing more is spent on any account. Claude retries the request about ten times over four to five minutes, asking agx for a key before each try (an interactive session shows `401 invalid x-api-key · retrying in 3s · attempt 3/10`), and goes on by itself if a member becomes usable in that time: a reset, a cap you raise, a member you enable or add. After the last try it stops the turn with `Invalid API key · Fix external API key` and `Once fixed, resend your message`: type `continue` once an account is usable (checked with Claude Code 2.1.332).
+- **`keep`: the session goes on, past the caps.** `agx credential` exits 1 with the reason, which is how agx behaved before v0.4.23. Claude Code then keeps using the key it already holds, on every request, so a session on a member that went over its cap stays on it. Choose it only when finishing the work matters more than the caps (your own accounts only, say).
+
+Why not simply fail: tested with Claude Code 2.1.330, a key helper that exits 1 makes Claude print `apiKeyHelper failed` and carry on with its previous key, and every request still succeeds. Sessions on a pool whose members were all over their caps kept a shared member running past 100% of its 5-hour window while agx was refusing every key request. With the placeholder, the same test made one more request on the old key and then stopped spending.
+
+Two limits, in plain words:
+
+- **One more request on the old key.** Claude fetches a new key in the background, so the request that triggers the fetch still uses the key it had. Only the requests after it fail.
+- **Readings up to a minute old.** Usage comes from the shared cache while it is younger than `usage_max_age` (60s), so an account can go about a minute of work past its cap before the pool sees it.
+
+Where to see it:
+
+- `agx pool show --id POOL` lists `when_none_usable` with its source (`pool`, `live` or `default`), and a launch's dry run says `when no key is usable: stop (the agent waits for a usable key)`.
+- `agx live list` shows `IN USE  none (all over caps) since 10:52` for a waiting session, the session's status line shows `pool auto: none (all over caps) since 10:52` ([`agx statusline`](../commands/live.md#agx-statusline)), and `agx whoami` adds a `no key:` line with the full reason. `agx live show --id RUN --json` has `no_key`, `no_key_brief`, `no_key_since` and `when_none_usable`.
+- Under `keep` the session is still on its member, so `IN USE` reads `alice (no key since 10:52: all over caps; the agent keeps its key)`, and it still counts as a session on alice.
+
+Set it for one pool, or for every live run:
+
+```sh
+agx config set --key logins.auto.pool.when_none_usable --value keep
+agx config set --key live.when_none_usable --value keep
+```
+
+The same answer applies to every other refusal of a live run: a `--pool-only` member over its cap, a member or login whose token is a per-use API key, a login whose token does not resolve.
+
+### Proving it with the real Claude
+
+The unit tests cover agx's side (the placeholder, exit 0, the reason on stderr, `live.jsonc`, `keep`, recovery). Whether Claude actually stops is Claude's behaviour, so a gated end-to-end test runs the real `claude`: it starts it through `agx run --live-login` on a temporary config whose login hands out a real key once and then nothing, asks haiku for three `sleep 12` steps, and fails if Claude finishes the task (requests did not stop) or `live.jsonc` lacks the refusal. It is off unless asked for, and spends a few haiku requests:
+
+```sh
+AGX_E2E_CLAUDE=1 AGX_E2E_CLAUDE_LOGIN=alice go test -count=1 -run TestClaudeStopsOnRefusal -v ./internal/e2e/
+```
+
+`AGX_E2E_CLAUDE_LOGIN` names an agx login whose token the test may use; or set `AGX_E2E_CLAUDE_TOKEN` in the environment instead (never on the command line). `AGX_E2E_CLAUDE_KEEP=1` also runs the `keep` control, which must finish, proving the test can see the old behaviour. Run it again after every Claude Code update: the stop depends on how Claude answers a key it cannot use.
 
 ## Every value and its default
 
@@ -52,6 +91,7 @@ Each is a key of `logins.<pool>.pool` in config.jsonc, set with a flag of `agx l
 | `schedules` | (none) | `--pool-schedule` (change the keys given, or create), `--pool-schedule-replace`, `--pool-schedule-remove` | caps that change on set days and hours, and `week_before_reset`, the weekly cap of members whose week resets before the schedule ends ([schedules](#schedules-and-overrides), [change one value](#change-one-value-of-a-schedule)) |
 | `force` | `null` | `--pool-force NAME` (`''` clears it) | always pick this member, ignoring every rule and cap |
 | `picker.command`, `picker.timeout` | (none), `10s` | `--pool-picker` (`''` removes the picker) | a command of yours that picks the member instead of the built-in rules ([your own picker](login-pool.md#your-own-picker)) |
+| `when_none_usable` | `stop` | `agx config set` | when no member is usable: `stop` hands Claude a placeholder so it waits; `keep` lets it go on with its old key, past the caps ([when no account is usable](#when-no-account-is-usable)) |
 | `log` | (none) | `agx config set` | a file that gets one line per key request (the pick, its source, the member's usage; never a token) |
 | `accounts.NAME.override` | (none) | `--pool-cap-… NAME=N --until TIME`, `--pool-clear-override` | one member's caps until a time ([overrides](#use-one-persons-account-fully-for-a-while)) |
 
@@ -99,6 +139,7 @@ picker.command                built-in rules (default)
 picker.timeout                10s (default)
 timezone                      local (default)
 log                           none (default)
+when_none_usable              stop (default)
 ```
 
 ## Presets
@@ -141,7 +182,7 @@ changed login auto (pool, pool 2 own, 3 shared)
   pool.deadline_window          —  ->  24h
 
 $ agx pool show --id auto --json --field data.settings
-[{"key":"force","value":"off","source":"default"},{"key":"order","value":"urgency","source":"pool"},{"key":"deadline_window","value":"24h","source":"pool"},{"key":"deadline_min_room","value":"2","source":"pool"},{"key":"week_relax_window","value":"24h","source":"pool"},{"key":"defaults.week_relax_max","value":"95","source":"pool"},{"key":"max_sessions","value":"4","source":"pool"},{"key":"sticky","value":"true","source":"pool"},{"key":"sticky_leave_ratio","value":"3","source":"pool"},{"key":"shared_borrow_window","value":"48h","source":"pool"},{"key":"short_unavailable_at_percent","value":"99","source":"pool"},{"key":"own_caps.short","value":"95","source":"default"},{"key":"own_caps.week","value":"98","source":"default"},{"key":"defaults.short","value":"50","source":"pool"},{"key":"defaults.week","value":"70","source":"pool"},{"key":"probe_models","value":"none","source":"default"},{"key":"usage_max_age","value":"60s","source":"pool"},{"key":"key_ttl","value":"60s","source":"pool"},{"key":"picker.command","value":"built-in rules","source":"default"},{"key":"picker.timeout","value":"10s","source":"default"},{"key":"timezone","value":"local","source":"default"},{"key":"log","value":"none","source":"default"}]
+[{"key":"force","value":"off","source":"default"},{"key":"order","value":"urgency","source":"pool"},{"key":"deadline_window","value":"24h","source":"pool"},{"key":"deadline_min_room","value":"2","source":"pool"},{"key":"week_relax_window","value":"24h","source":"pool"},{"key":"defaults.week_relax_max","value":"95","source":"pool"},{"key":"max_sessions","value":"4","source":"pool"},{"key":"sticky","value":"true","source":"pool"},{"key":"sticky_leave_ratio","value":"3","source":"pool"},{"key":"shared_borrow_window","value":"48h","source":"pool"},{"key":"short_unavailable_at_percent","value":"99","source":"pool"},{"key":"own_caps.short","value":"95","source":"default"},{"key":"own_caps.week","value":"98","source":"default"},{"key":"defaults.short","value":"50","source":"pool"},{"key":"defaults.week","value":"70","source":"pool"},{"key":"probe_models","value":"none","source":"default"},{"key":"usage_max_age","value":"60s","source":"pool"},{"key":"key_ttl","value":"60s","source":"pool"},{"key":"picker.command","value":"built-in rules","source":"default"},{"key":"picker.timeout","value":"10s","source":"default"},{"key":"timezone","value":"local","source":"default"},{"key":"log","value":"none","source":"default"},{"key":"when_none_usable","value":"stop","source":"default"}]
 ```
 
 ## Per-model weekly windows

@@ -86,7 +86,7 @@ Every way to use a pool, with the names of the [example](../../examples/acct-log
    agx login edit --id auto --pool-cap-short carol=95 --pool-cap-week carol=95 --until 'sun 23:59'
    ```
 
-9. **Which account is my session on?** When to use it: inside Claude, whose `/status` only says `apiKeyHelper`.
+9. **Which account is my session on?** When to use it: inside Claude, whose `/status` only says `apiKeyHelper` (the status line at the bottom, `agx statusline`, shows it too; `agx live list` from another terminal).
 
    ```sh
    ! agx whoami
@@ -101,9 +101,9 @@ Every way to use a pool, with the names of the [example](../../examples/acct-log
 
 | | Switches account | Caps enforced | At the cap |
 |---|---|---|---|
-| `agx run --login auto` | yes, by usage | yes | moves to another member; no key when none is usable |
-| `--pool-only carol` | no | yes, the pool's; can be lowered for the run | no key until carol is under her caps |
-| one-member pool `carol-only` | no | yes, that pool's | no key until carol is under her caps |
+| `agx run --login auto` | yes, by usage | yes | moves to another member; when none is usable the session waits with no key ([more](pool-rules.md#when-no-account-is-usable)) |
+| `--pool-only carol` | no | yes, the pool's; can be lowered for the run | the session waits with no key until carol is under her caps |
+| one-member pool `carol-only` | no | yes, that pool's | the session waits with no key until carol is under her caps |
 | `--pool-force carol` | no | no, each broken rule is a warning | Claude gets 429s from carol's account |
 | `--login carol` (or `agx live use --login carol`) | no | no, never checked | Claude gets 429s from carol's account |
 
@@ -333,12 +333,14 @@ pool      auto (claude): own alice, bob; shared carol, derek, erin              
           probe model: the agent's default (all-models windows only)                                    from default
           member entries: 2                                                                             from config logins.auto.pool.accounts
           pick now: carol (rules), from the cache (20s old); agx pool pick --id auto probes             from login-usage cache
-note      live login: switch with agx live use --id 20261119-100000-opfn --login NAME (refresh 1m0s)    from login auto (pool)
+note      live login: switch with agx live use --id 20261119-100000-9z9x --login NAME (refresh 1m0s)    from login auto (pool)
+          when no key is usable: stop (the agent waits for a usable key)                                from default
 settings  apiKeyHelper                                                                                  from login auto (pool)
-          delivered as file ~/.agx/runs/20261119-100000-opfn/settings-20261119-100000-opfn.json (0600)  from settings_delivery file
-run       ~/.agx/runs/20261119-100000-opfn                                                              from AGX_RUN_ID=20261119-100000-opfn
-command   claude --settings ~/.agx/runs/20261119-100000-opfn/settings-20261119-100000-opfn.json         from built by agentio
-env       set AGX_RUN_ID=20261119-100000-opfn                                                           from launch environment
+          statusLine agx statusline (the account in use)                                                from default
+          delivered as file ~/.agx/runs/20261119-100000-9z9x/settings-20261119-100000-9z9x.json (0600)  from settings_delivery file
+run       ~/.agx/runs/20261119-100000-9z9x                                                              from AGX_RUN_ID=20261119-100000-9z9x
+command   claude --settings ~/.agx/runs/20261119-100000-9z9x/settings-20261119-100000-9z9x.json         from built by agentio
+env       set AGX_RUN_ID=20261119-100000-9z9x                                                           from launch environment
           set AGX_RUN_AGENT=claude                                                                      from launch environment
           set AGX_RUN_PROFILE=personal                                                                  from launch environment
           set AGX_RUN_LOGIN=auto                                                                        from launch environment
@@ -347,9 +349,11 @@ env       set AGX_RUN_ID=20261119-100000-opfn                                   
 note      installed Claude Code version unknown; flags not checked
 ```
 
-`agx live list` shows the run; its `NEXT` is the pool and `IN USE` the member Claude got last.
+`agx live list` shows the run: its `LABEL` (name a run with `--label TEXT`, or have your terminal tool set `AGX_RUN_LABEL`), `FOLDER`, `PID`, `IN USE` (the member Claude got last, or `none (all over caps) since 10:52`) and `LAST KEY`; `--wide` adds the terminal, the parent process, the conversation and its title, and `NEXT`.
 
-Which account is my session on? Run `! agx whoami` inside Claude: it shows `login:  auto (pool)`, `in use:` (the member whose key Claude got last), `only:` on a run pinned with `--pool-only`, and `next:` when a switch is pending. /status only says apiKeyHelper, and Claude's own guess reads the keychain login, not the key it uses.
+Which account is my session on? Look at the bottom of Claude's screen: the launch sets [`agx statusline`](../commands/live.md#agx-statusline) as Claude's status line (unless you have your own), which reads `pool auto: alice · 5h 40% · week 61%` and follows every switch. Or run `! agx whoami` inside Claude: it shows `login:  auto (pool)`, `in use:` (the member whose key Claude got last), `only:` on a run pinned with `--pool-only`, and `next:` when a switch is pending. /status only says apiKeyHelper, and Claude's own guess reads the keychain login, not the key it uses.
+
+When every member is over its caps the session waits instead of going on past them: Claude gets `agx-no-account-usable`, not a key, stops spending, and continues by itself once a member is usable again. `when_none_usable: "keep"` restores the old behaviour. See [when no account is usable](pool-rules.md#when-no-account-is-usable).
 
 ## Step 4: steer it while sessions run
 
@@ -376,7 +380,7 @@ agx live use --id RUN --login auto                             # back to the poo
 
 `--pool-only-short N` and `--pool-only-week N` lower the member's caps for that run only; they never raise one (`--pool-only-week 80 is above carol's week cap 70; it may only lower it`, exit 2, or 125 from a launch). To lift a cap, change the pool (`agx login edit --id auto --pool-cap-week carol=80`). The name must be a member of the pool, and a disabled member is refused at launch: it would never get a key.
 
-When carol reaches a cap, the key helper prints nothing on stdout and one line on stderr, `carol: week is 70% (cap 70%)`, and exits 1; `! agx whoami` shows `only:  carol (caps enforced)` and `in use:  none (carol over cap: week is 70% (cap 70%))`. `agx pool pick --id auto --pool-only carol` shows the same report the pool uses, restricted to carol:
+When carol reaches a cap, the key helper hands Claude no key: by default it prints `agx-no-account-usable` (not a key, so the session waits) and the reason on stderr, `agx: warning: no key handed out: carol: week is 70% (cap 70%)` ([when no account is usable](pool-rules.md#when-no-account-is-usable); with `when_none_usable: "keep"` it exits 1 and Claude goes on with carol's key, past the cap). `! agx whoami` shows `only:  carol (caps enforced)`, `in use:  none (carol over cap) since 10:52` and `no key:  carol over cap: week is 70% (cap 70%)`. `agx pool pick --id auto --pool-only carol` shows the same report the pool uses, restricted to carol:
 
 <!-- snippet: examples/acct-login-pool/session.txt#only -->
 ```sh
@@ -457,9 +461,8 @@ only        erin (caps enforced)
 in use      carol
 liveness    unknown (process info unreadable: run.jsonc records no process id)
 
-$ AGX_RUN_ID=20261119-095000-p7q2 agx credential --json --field data.login
-agx: erin: 5h is 55% (cap 50%)
-[exit 1]
+$ AGX_RUN_ID=20261119-095000-p7q2 agx credential --json --field data.refused
+erin: 5h is 55% (cap 50%)
 
 $ AGX_RUN_ID=20261119-095000-p7q2 AGX_RUN_AGENT=claude AGX_RUN_PROFILE=personal AGX_RUN_LOGIN=auto AGX_RUN_HOME=~/.claude agx whoami
 run:      20261119-095000-p7q2
@@ -468,7 +471,8 @@ profile:  personal
 login:    auto (pool)
 home:     ~/.claude
 only:     erin (caps enforced)
-in use:   none (erin over cap: 5h is 55% (cap 50%))
+in use:   none (erin over cap) since 10:00
+no key:   erin over cap: 5h is 55% (cap 50%)
 
 $ agx live show --id 20261119-095000-p7q2 --json --field data.no_key
 erin over cap: 5h is 55% (cap 50%)
@@ -657,9 +661,10 @@ To make this rare, give your own members caps a little under 100 (95 and 98), so
 | A new key applies one request late | the request right after a switch still fails | Claude refreshes the key in the background | expect one extra failed request after a switch |
 | No switch while idle | the old member is kept for a while | Claude asks for a key only when it is about to call the API and the TTL has passed | nothing; it switches on the next request |
 | claude.ai connectors warning | `claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set` | a helper key counts as another auth source | expected; connectors do not load in that session |
-| Nothing usable | Claude's request fails with `pool auto: no member is usable: …` | the helper exits 1 with no key | `agx pool pick --id auto` shows why; force a member if you must go on |
+| Nothing usable | the session waits: Claude's requests fail authentication (`agx-no-account-usable`), the status line reads `pool auto: none (all over caps) since 10:52` | the helper hands out a placeholder so no account goes past its caps (`when_none_usable: "stop"`) | wait, or `agx pool pick --id auto` shows why; raise a cap or force a member if you must go on; type `continue` if Claude gave up ([more](pool-rules.md#when-no-account-is-usable)) |
+| Sessions over a cap keep running | a member past 100% of its 5-hour window, sessions still on it | `when_none_usable: "keep"` (or agx before v0.4.23): Claude reuses its old key when the helper fails | `agx pool show --id auto` shows `when_none_usable`; set it to `stop` |
 | Forced member at its limit | every request is a 429 | force ignores every rule | clear it: `agx login edit --id auto --pool-force ''` |
-| A pinned session stops | Claude's request fails with `carol: week is 70% (cap 70%)` | `--pool-only` never goes over a cap and never switches | wait for it to fall under the cap, or hand the run back: `agx live use --id RUN --login auto` |
+| A pinned session stops | the session waits; `! agx whoami` shows `in use:  none (carol over cap) since …` | `--pool-only` never goes over a cap and never switches | wait for it to fall under the cap, or hand the run back: `agx live use --id RUN --login auto` |
 | A teammate's account is picked before yours | `Use: carol (shared)` while yours have room | her weekly quota expires within the window; yours can wait | intended; `"shared_borrow_window": "0s"` borrows only when none of yours is usable |
 | A member skipped for one model only | `skip: fable week is 99% (cap 98%)` for a Fable session, picked for an Opus one | a per-model weekly window applies to its own model | intended; `agx pool pick --model opus` shows the other model's view |
 | A per-model limit not seen | a Fable session gets 429s from an account with all-models room | the probe asked with another model, so the Fable window was not reported | run with `--model fable` (or set it in the profile or `/model`), or set `probe_models` |
@@ -682,7 +687,7 @@ Picking cannot silently go wrong because three layers check the rules (package `
 
 1. **Example tests**: every case of the stand-alone selector's suite ported one to one (the mapping, case by case, is in [`pool/testdata/SELECTOR_PORT.md`](../../pool/testdata/SELECTOR_PORT.md)), every config mistake and the built-in defaults, plus boundary tables for every cap, window and cutoff.
 2. **Randomised tests**: thousands of seeded pools and readings, odd ones included (missing windows, usage that is not a number, stale or unreadable resets, caps at their edges). For each, the pick and the whole pick order must equal a second implementation of the rules written separately inside the test, and invariants must hold: the pick is never blocked, disabled, at or over a cap or the 5-hour cutoff; a teammate's account goes before a usable own one only inside the window and only when it resets sooner; nothing in the pool resets sooner than the pick; reading order never changes the result; a force always wins; the same input always gives the same output. A failure names its seed: `SEED=1234 go test -run TestPortRandomised ./pool/` replays it, `CASES=50000` runs more. That port covers the classic rules; [`pool/invariant_test.go`](../../pool/invariant_test.go) does the same for the default rules, with random rule values, schedules, overrides, per-model windows, capacities and sessions: a sooner reset with the same room never ranks later, no pick is above a cap in effect, an ended override or schedule never applies, a member resetting before a schedule ends is never blocked below its `week_before_reset` (`SEED=1234 go test -run TestInvariant ./pool/`).
-3. **Mutation check** (`task mutation`, opt-in, a few minutes): breaks the rules on purpose 234 ways (a `>=` turned into `>`, a rule skipped, an order reversed, a default changed, a config check removed, a `--pool-only` pin ignored or its caps lifted, a schedule edit that replaces instead of merging, an override that `agx pool prune` keeps) on a temporary copy of the repository and confirms the tests fail every time; a break that does not compile counts as a failure of the check, since no test ran. Last run (v0.4.22): 234/234 caught, about 27 minutes on a busy machine. Run it after any change to the rules; if a break survives, add a test for it. The key-helper flow runs end to end through `agx credential` with a moving clock and a fake usage server: first call, cache reuse, a change while fresh, re-probe after max age, caps, limits, probe failure, disabled, force, nothing usable, six helpers at once, and a log that never holds a token.
+3. **Mutation check** (`task mutation`, opt-in, a few minutes): breaks the rules on purpose 260 ways (a `>=` turned into `>`, a rule skipped, an order reversed, a default changed, a config check removed, a `--pool-only` pin ignored or its caps lifted, a schedule edit that replaces instead of merging, an override that `agx pool prune` keeps) on a temporary copy of the repository and confirms the tests fail every time; a break that does not compile counts as a failure of the check, since no test ran. Last run (v0.4.23): 260/260 caught, about 23 minutes on a busy machine. Run it after any change to the rules; if a break survives, add a test for it. The key-helper flow runs end to end through `agx credential` with a moving clock and a fake usage server: first call, cache reuse, a change while fresh, re-probe after max age, caps, limits, probe failure, disabled, force, nothing usable (the placeholder and exit 0 under `stop`, exit 1 under `keep`, the refusal in `live.jsonc`, then recovery once a member is usable), six helpers at once, and a log that never holds a token. Whether the real Claude stops on the placeholder is checked by a gated end-to-end test ([proving it with the real Claude](pool-rules.md#proving-it-with-the-real-claude)).
 
 Live, opt-in (run them yourself; they print no token value, only its length):
 

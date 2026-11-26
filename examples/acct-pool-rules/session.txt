@@ -100,6 +100,7 @@ picker.command                built-in rules (default)
 picker.timeout                10s (default)
 timezone                      local (default)
 log                           none (default)
+when_none_usable              stop (default)
 
 #endregion
 #region pick-deadline

@@ -1,9 +1,11 @@
 package app
 
 import (
+	"cmp"
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/ubgo/agx/config"
 	"github.com/ubgo/agx/internal/apperr"
@@ -108,12 +110,19 @@ func onlyReasons(res pool.Result) []string {
 // "alice not usable: …" for any other reason (status, disabled, no
 // reading), so whoami's "in use: none (…)" says which.
 func onlyNoKey(member string, reasons []string) string {
-	what := "not usable"
-	if slices.ContainsFunc(reasons, func(r string) bool { return strings.Contains(r, capMarker) }) {
-		what = "over cap"
-	}
-	return member + " " + what + ": " + strings.Join(reasons, "; ")
+	return member + " " + onlyWhat(reasons) + ": " + strings.Join(reasons, "; ")
 }
+
+// onlyWhat is "over cap" when a cap blocks the member, else "not usable".
+func onlyWhat(reasons []string) string {
+	if slices.ContainsFunc(reasons, isCapReason) {
+		return briefOverCap
+	}
+	return briefNotUsable
+}
+
+// isCapReason reports a pool reason that names a cap.
+func isCapReason(r string) bool { return strings.Contains(r, capMarker) }
 
 // capMarker is how the pool's reasons name a cap ("week is 70% (cap 70%)").
 const capMarker = "(cap "
@@ -122,18 +131,42 @@ const capMarker = "(cap "
 // "alice (caps enforced)".
 func OnlyText(member string) string { return member + " " + onlyEnforced }
 
-// InUseText is the "in use" value whoami and live show print: the login
-// in use; "none (why)" when a pinned run's last key request got nothing;
-// else empty (the agent has not asked yet).
-func InUseText(inUse, noKey, empty string) string {
-	switch {
-	case inUse != "":
-		return inUse
-	case noKey != "":
-		return "none (" + noKey + ")"
+// InUseText is the "in use" value whoami, agx live list, agx live show
+// and agx statusline print for a live run at now: the login in use;
+// "none (all over caps) since 10:52" when the last key request was
+// refused and the agent was handed no key (when_none_usable "stop");
+// "alice (no key since 10:52: all over caps; the agent keeps its key)"
+// when it was refused under "keep"; "" when the agent has not asked yet.
+func InUseText(st live.State, now time.Time) string {
+	if st.NoKey == "" {
+		return st.InUse
 	}
-	return empty
+	brief := cmp.Or(st.NoKeyBrief, st.NoKey)
+	since := ""
+	if t := cmp.Or(st.NoKeySince, st.InUseAt); !t.IsZero() {
+		since = " since " + clockText(t, now)
+	}
+	if st.InUse == "" {
+		return "none (" + brief + ")" + since
+	}
+	return st.InUse + " (no key" + since + ": " + brief + "; the agent keeps its key)"
 }
+
+// clockText is a time of a live run as a person reads it next to now:
+// "10:52" today, "25 Nov 10:52" on another day (local time).
+func clockText(t, now time.Time) string {
+	t, now = t.In(time.Local), now.In(time.Local)
+	if y, m, d := t.Date(); y == now.Year() && m == now.Month() && d == now.Day() {
+		return t.Format(clockLayout)
+	}
+	return t.Format(dayClockLayout)
+}
+
+// clockLayout and dayClockLayout are clockText's layouts.
+const (
+	clockLayout    = "15:04"
+	dayClockLayout = "2 Jan 15:04"
+)
 
 // onlyDecisions are a pinned launch's dry-run lines: the pin and the
 // member's effective caps, each with its source (the run's flag, the

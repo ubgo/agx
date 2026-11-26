@@ -30,7 +30,7 @@ $ agx run --login carol --live-login --dry-run --quiet --json --field decisions.
 {"name":"note","value":"live login: switch with agx live use --id 20261114-101500-k3x9 --login NAME (refresh 10s)","source":"--live-login"}
 
 $ agx live list
-RUN  AGENT  PROFILE  STARTED ON  NEXT  IN USE  LIVENESS
+RUN  LABEL  FOLDER  PID  IN USE  LAST KEY  LIVENESS
 
 #endregion
 #region live-refused

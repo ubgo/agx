@@ -1,30 +1,32 @@
 #region dry-run
 $ agx run --profile personal --login carol --live-login --dry-run --quiet
-agent    claude                                                                                        from profile personal
-profile  personal                                                                                      from --profile
-home     ~/.claude                                                                                     from profile personal
-login    carol (not resolved: --dry-run)                                                               from --login
-binary   /usr/local/bin/claude version unknown                                                         from no install metadata
-folder   ~/projects/app                                                                                from current folder
-note     live login: switch with agx live use --id 20261118-061305-aaaj --login NAME (refresh 10s)     from --live-login
-settings apiKeyHelper                                                                                  from --live-login
-         delivered as file ~/.agx/runs/20261118-061305-aaaj/settings-20261118-061305-aaaj.json (0600)  from settings_delivery file
-run      ~/.agx/runs/20261118-061305-aaaj                                                              from AGX_RUN_ID=20261118-061305-aaaj
-command  claude --settings ~/.agx/runs/20261118-061305-aaaj/settings-20261118-061305-aaaj.json         from built by agentio
-env      set AGX_RUN_ID=20261118-061305-aaaj                                                           from launch environment
-         set AGX_RUN_AGENT=claude                                                                      from launch environment
-         set AGX_RUN_PROFILE=personal                                                                  from launch environment
-         set AGX_RUN_LOGIN=carol                                                                       from launch environment
-         set AGX_RUN_HOME=~/.claude                                                                    from launch environment
-         set CLAUDE_CODE_API_KEY_HELPER_TTL_MS=10000                                                   from launch environment
-note     installed Claude Code version unknown; flags not checked
+agent     claude                                                                                        from profile personal
+profile   personal                                                                                      from --profile
+home      ~/.claude                                                                                     from profile personal
+login     carol (not resolved: --dry-run)                                                               from --login
+binary    /usr/local/bin/claude version unknown                                                         from no install metadata
+folder    ~/projects/app                                                                                from current folder
+note      live login: switch with agx live use --id 20261118-120000-8pyt --login NAME (refresh 10s)     from --live-login
+          when no key is usable: stop (the agent waits for a usable key)                                from default
+settings  apiKeyHelper                                                                                  from --live-login
+          statusLine agx statusline (the account in use)                                                from default
+          delivered as file ~/.agx/runs/20261118-120000-8pyt/settings-20261118-120000-8pyt.json (0600)  from settings_delivery file
+run       ~/.agx/runs/20261118-120000-8pyt                                                              from AGX_RUN_ID=20261118-120000-8pyt
+command   claude --settings ~/.agx/runs/20261118-120000-8pyt/settings-20261118-120000-8pyt.json         from built by agentio
+env       set AGX_RUN_ID=20261118-120000-8pyt                                                           from launch environment
+          set AGX_RUN_AGENT=claude                                                                      from launch environment
+          set AGX_RUN_PROFILE=personal                                                                  from launch environment
+          set AGX_RUN_LOGIN=carol                                                                       from launch environment
+          set AGX_RUN_HOME=~/.claude                                                                    from launch environment
+          set CLAUDE_CODE_API_KEY_HELPER_TTL_MS=10000                                                   from launch environment
+note      installed Claude Code version unknown; flags not checked
 
 #endregion
 #: The run folder ~/.agx/runs/20261114-101500-k3x9 stands in for a session started with agx run --profile work, still running in another terminal.
 #region list
 $ agx live list --agent claude
-RUN                   AGENT   PROFILE  STARTED ON  NEXT   IN USE  LIVENESS
-20261114-101500-k3x9  claude  work     carol       carol  —       unknown
+RUN                   LABEL  FOLDER          PID  IN USE  LAST KEY  LIVENESS
+20261114-101500-k3x9  —      ~/projects/app  —    —       —         unknown
 
 $ agx live show --id 20261114-101500-k3x9
 run         20261114-101500-k3x9
@@ -59,26 +61,30 @@ fake-token-alice
 #endregion
 #region after
 $ agx live show --id 20261114-101500-k3x9
-run         20261114-101500-k3x9
-agent       claude
-profile     work
-folder      ~/projects/app
-started on  carol
-chosen      alice
-next        alice
-in use      alice
-liveness    unknown (process info unreadable: run.jsonc records no process id)
+run           20261114-101500-k3x9
+agent         claude
+profile       work
+folder        ~/projects/app
+started on    carol
+chosen        alice
+next          alice
+in use        alice
+in use since  2026-11-18 12:00:00
+last key      2026-11-18 12:00:00
+liveness      unknown (process info unreadable: run.jsonc records no process id)
 
 $ agx live use --id 20261114-101500-k3x9 --start-login
-run         20261114-101500-k3x9
-agent       claude
-profile     work
-folder      ~/projects/app
-started on  carol
-chosen      —
-next        carol
-in use      alice
-liveness    unknown (process info unreadable: run.jsonc records no process id)
+run           20261114-101500-k3x9
+agent         claude
+profile       work
+folder        ~/projects/app
+started on    carol
+chosen        —
+next          carol
+in use        alice
+in use since  2026-11-18 12:00:00
+last key      2026-11-18 12:00:00
+liveness      unknown (process info unreadable: run.jsonc records no process id)
 
 #endregion
 #region refusals
@@ -106,21 +112,21 @@ $ agx live use --id 20261114-101500-k3x9 --login blank --field data.next
 blank
 
 $ AGX_RUN_ID=20261114-101500-k3x9 agx credential
-agx: login blank: token is empty (try: agx login check --id blank --no-probe)
-[exit 1]
+agx: warning: no key handed out: login blank: token is empty (try: agx login check --id blank --no-probe)
+agx-no-account-usable
 
 $ agx live use --id 20261114-101500-k3x9 --login twolines --field data.next
 twolines
 
 $ AGX_RUN_ID=20261114-101500-k3x9 agx credential
-agx: login twolines: token has 2 lines (try: agx login check --id twolines --no-probe)
-[exit 1]
+agx: warning: no key handed out: login twolines: token has 2 lines (try: agx login check --id twolines --no-probe)
+agx-no-account-usable
 
 $ agx live use --id 20261114-101500-k3x9 --login unset --field data.next
 unset
 
 $ AGX_RUN_ID=20261114-101500-k3x9 agx credential
-agx: login unset: DAVE_TOKEN is not set (try: agx login check --id unset --no-probe)
-[exit 1]
+agx: warning: no key handed out: login unset: DAVE_TOKEN is not set (try: agx login check --id unset --no-probe)
+agx-no-account-usable
 
 #endregion

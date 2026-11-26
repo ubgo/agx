@@ -167,7 +167,7 @@ func TestPoolOnlyWhoamiAndLiveShow(t *testing.T) {
 	if r.Code != 0 {
 		t.Fatalf("live show %d %s", r.Code, r.Stderr)
 	}
-	testkit.GoldenText(t, "live-show-pool-only", f.Normalize(r.Stdout))
+	testkit.GoldenText(t, "live-show-pool-only", pinRunFacts(f.Normalize(r.Stdout)))
 	for _, want := range []string{"only        ivan (caps enforced)", "in use      none (ivan over cap: week is 43% (cap 40%))"} {
 		if !strings.Contains(r.Stdout, want) {
 			t.Errorf("missing %q:\n%s", want, r.Stdout)

@@ -33,6 +33,7 @@ Start an agent in the current folder (or `--dir`). Cost R, plus N for `--auto-pr
 | `--env-file` | a dotenv file, relative to the current folder (repeat) |
 | `--before-run` | a script to run first, for this run |
 | `--live-login` | make the session's login switchable while it runs |
+| `--label` | a name for this run, kept in its `run.jsonc` and shown by `agx live list`, `agx live show` and `agx whoami`; default `$AGX_RUN_LABEL`, else none. agx gives it no meaning: any launcher, script or person can name its runs (a terminal tool passes its own session name). The dry run shows `label  NAME  from --label` or `from env AGX_RUN_LABEL`; `AGX_RUN_LABEL` is removed from the agent's environment, so an agx started inside the session does not take the outer run's label |
 | `--allow-api-key` | start even when the login is declared `oauth-token` but its token is an API key (billed per use); without it such a launch is refused (`per-use-key`). Pool members need their own `allow_api_key`. See [Is a login billed per use?](../logins.md#is-a-login-billed-per-use) |
 | `--pool-force` | on a [pool login](../guides/login-pool.md): every key of this run comes from this member, over the pool's rules, force and picker (`agx live use` ends it) |
 | `--pool-only` | on a pool login: every key of this run comes from this member while the pool's rules allow it (its caps, the 5-hour cutoff, enabled, status), and no key while they do not, never another member's; the pool's `force` and picker do not apply. Not with `--pool-force` (exit 125). See [Pin one account but keep its limits](../guides/login-pool.md#pin-one-account-but-keep-its-limits) |
@@ -116,7 +117,7 @@ Create a timestamped session folder under `sessions.root` and start an agent in 
 | `--agent`, `--login`, `--home-login`, `--auto-login`, `--token-ref`, `--token-kind` | as `run` |
 | `--model`, `--prompt`, `--add-dir`, `--autonomy`, `--consent`, `--headless` | as `run` |
 | `--option`, `--setting`, `--settings-delivery` | as `run` |
-| `--env`, `--no-env`, `--env-file`, `--before-run`, `--live-login`, `--allow-api-key`, `--pool-force` | as `run` |
+| `--env`, `--no-env`, `--env-file`, `--before-run`, `--live-login`, `--label`, `--allow-api-key`, `--pool-force` | as `run` |
 | `--pool-only`, `--pool-only-short`, `--pool-only-week` | as `run` |
 | `--dry-run`, `--resolved-secrets` | as `run`; with `--dry-run` no folder is created |
 
@@ -181,7 +182,7 @@ agx asks every configured home whose agent lists conversations whether it stores
 | `--login`, `--home-login`, `--auto-login`, `--token-ref`, `--token-kind` | as `run`: the quota comes from this login, the history from the conversation's home |
 | `--model`, `--prompt`, `--add-dir`, `--autonomy`, `--consent`, `--headless` | as `run` |
 | `--option`, `--setting`, `--settings-delivery` | as `run` |
-| `--env`, `--no-env`, `--env-file`, `--before-run`, `--live-login`, `--allow-api-key`, `--pool-force` | as `run` |
+| `--env`, `--no-env`, `--env-file`, `--before-run`, `--live-login`, `--label`, `--allow-api-key`, `--pool-force` | as `run` |
 | `--pool-only`, `--pool-only-short`, `--pool-only-week` | as `run` |
 | `--dry-run`, `--resolved-secrets` | as `run` |
 | `--` | raw args to the agent |

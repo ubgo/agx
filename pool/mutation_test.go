@@ -288,7 +288,46 @@ var mutants = []mutant{
 	// Live sessions (run_liveness.go).
 	{"ended runs counted as sessions", "internal/app/pool.go", "if lives[s.id].liveness == agentio.LivenessEnded {", "if _ = lives; false {", appLiveness},
 	{"one process-table read per run folder", "internal/app/run_liveness.go", "if lives, err := a.d.Host.ProcessesAlive(ctx, refs); err == nil {", "if lives, err := a.d.Host.ProcessesAlive(ctx, refs); false && err == nil {", appLiveness},
+	// No usable key (v0.4.23): when_none_usable, the refusal record, the
+	// status line and the run's label.
+	{"stop answered like keep", "internal/app/livecmd.go", "if rf.mode == config.WhenNoneUsableKeep {", "if true {", appNoKey},
+	{"keep answered like stop", "internal/app/livecmd.go", "if rf.mode == config.WhenNoneUsableKeep {", "if false {", appNoKey},
+	{"refusal not recorded", "internal/app/livecmd.go", "a.recordNoKey(ctx, rf.dir, why, rf.brief, rf.mode)", "_ = why", appNoKey},
+	{"pool when_none_usable ignored", "internal/app/livecmd.go", "ok && lg.Pool != nil && lg.Pool.WhenNoneUsable != \"\" {", "ok && lg.Pool != nil && false {", appNoKey},
+	{"live.when_none_usable ignored", "internal/app/livecmd.go", "if c.Live.WhenNoneUsable != \"\" {", "if false {", appNoKey},
+	{"default becomes keep", "internal/app/livecmd.go", "return config.WhenNoneUsableStop, SourceDefault", "return config.WhenNoneUsableKeep, SourceDefault", appNoKey},
+	{"unknown setting answered with keep", "internal/app/livecmd.go", "mode: config.WhenNoneUsableStop, brief: briefRequestFailed}", "mode: config.WhenNoneUsableKeep, brief: briefRequestFailed}", appNoKey},
+	{"all over caps said of a mixed pool", "internal/app/livecmd.go", "if !slices.ContainsFunc(c.Reasons, isCapReason) {", "if _ = slices.ContainsFunc(c.Reasons, isCapReason); false {", appNoKey},
+	{"refusal brief by code dropped", "internal/app/livecmd.go", "case apperr.CodePerUseKey:\n\t\treturn briefAPIKey", "case apperr.CodePerUseKey:\n\t\treturn briefRequestFailed", appNoKey},
+	{"no-key since moves with every refusal", "live/live.go", "if s.NoKeySince.IsZero() {", "if true {", liveState},
+	{"stop leaves the old login in use", "live/live.go", "if mode != config.WhenNoneUsableKeep && s.InUse != \"\" {", "if false {", liveState},
+	{"keep clears the login in use", "live/live.go", "if mode != config.WhenNoneUsableKeep && s.InUse != \"\" {", "if s.InUse != \"\" {", liveState},
+	{"a key does not end the refusal", "live/live.go", "s.NoKey, s.NoKeyBrief, s.NoKeySince, s.WhenNoneUsable = \"\", \"\", time.Time{}, \"\"", "s.NoKeyBrief = \"\"", liveState},
+	{"a refusal moves the last key time", "live/live.go", "s.InUseAt, s.NoKey, s.NoKeyBrief, s.WhenNoneUsable = now, why, brief, mode", "s.InUseAt, s.NoKey, s.NoKeyBrief, s.WhenNoneUsable, s.KeyAt = now, why, brief, mode, now", liveState},
+	{"same login moves in_use_since", "live/live.go", "if s.InUse != login || s.InUseSince.IsZero() {", "if true {", liveState},
+	{"in use text drops the since", "internal/app/pool_only.go", "since = \" since \" + clockText(t, now)", "since = \"\"", appNoKey},
+	{"keep shown as none", "internal/app/pool_only.go", "\tif st.InUse == \"\" {\n\t\treturn \"none (\" + brief + \")\" + since", "\tif true {\n\t\treturn \"none (\" + brief + \")\" + since", appNoKey},
+	{"placeholder never printed", "internal/cli/resume_cmd.go", "value = app.NoKeyPlaceholder", "value = \"\"", cliNoKey},
+	{"user's status line replaced", "internal/app/statusline.go", "dir, spec.Key); path != \"\" {", "dir, spec.Key); false && path != \"\" {", appNoKey},
+	{"run settings' status line replaced", "internal/app/statusline.go", "if _, set := m[spec.Key]; set {", "if _, set := m[spec.Key]; false && set {", appNoKey},
+	{"live.status_line false ignored", "internal/app/statusline.go", "if !cfg.Config.Live.StatusLineOn() {", "if false {", appNoKey},
+	{"status line shows no usage", "internal/app/statusline.go", "\tif s.Short != nil {\n\t\tline +=", "\tif false {\n\t\tline +=", appNoKey},
+	{"AGX_RUN_LABEL ignored", "internal/app/launch.go", "label, _ = a.d.Lookup(run.EnvRunLabel)", "label = \"\"", appNoKey},
+	{"AGX_RUN_LABEL left in the agent's env", "internal/app/launch.go", "out = append(out, agentio.EnvUnset(run.EnvRunLabel))", "_ = out", appNoKey},
+	{"record_env not recorded", "internal/app/launch.go", "\t\tout[n] = v\n", "\t\t_ = v\n", appNoKey},
+	{"conversation not matched by pid", "internal/app/livecmd.go", "if s.PID != pid || s.ConversationID == \"\" {", "if true {", appNoKey},
 }
+
+// appNoKey runs the internal/app tests of a refused key request
+// (when_none_usable, live.jsonc's record, the in-use text), the status
+// line and the run's label and records.
+var appNoKey = []string{"-run", "PortFlow|PoolOnlyCredentialFlow|PoolOnlyWhoami|PoolCredentialNoneUsable|WhenNoneUsable|RefusalBriefs|CredentialTokenLogin|CredentialBefore|CredentialBroken|StatusLine|LaunchLabel|LiveListConversation", "./internal/app/"}
+
+// liveState runs the live package's tests (live.jsonc's state changes).
+var liveState = []string{"./live/"}
+
+// cliNoKey runs the CLI tests of agx credential's placeholder.
+var cliNoKey = []string{"-run", "CredentialNeverEmpty|CredentialPerUse|LiveListWideAndRefusal", "./internal/cli/"}
 
 // appSchedule runs the internal/app tests of --pool-schedule.
 var appSchedule = []string{"-run", "PoolSchedule", "./internal/app/"}
